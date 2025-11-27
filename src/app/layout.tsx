@@ -2,6 +2,7 @@ import "@/styles/globals.css";
 import type { Metadata } from "next";
 import { Sora } from "next/font/google";
 import ThemeRegistry from "@/components/layout/ThemeRegistry";
+import { ClerkProvider } from "@clerk/nextjs";
 
 
 export const metadata: Metadata = {
@@ -22,6 +23,16 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={sora.variable}><ThemeRegistry><body>{children}</body></ThemeRegistry></html>
+    <html lang="en" className={sora.variable}>
+      <ClerkProvider
+        publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+        signInUrl="/auth"
+        signUpUrl="/auth"
+      >
+        <ThemeRegistry>
+          <body>{children}</body>
+        </ThemeRegistry>
+      </ClerkProvider>
+    </html>
   );
 }

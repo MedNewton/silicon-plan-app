@@ -1,7 +1,23 @@
+// src/app/auth/page.tsx
+"use client";
+
+import { useEffect } from "react";
+import { useUser } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
 import { Box } from "@mui/material";
 import AuthCard from "@/components/auth/AuthCard";
 
 export default function AuthPage() {
+  const { user, isLoaded } = useUser();
+  const router = useRouter();
+
+  // If already authenticated, keep user on "/" (or any main page)
+  useEffect(() => {
+    if (isLoaded && user) {
+      router.replace("/");
+    }
+  }, [isLoaded, user, router]);
+
   return (
     <Box
       sx={{
