@@ -24,15 +24,17 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={sora.variable}>
-      <ClerkProvider
-        publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
-        signInUrl="/auth"
-        signUpUrl="/auth"
-      >
-        <ThemeRegistry>
-          <body>{children}</body>
-        </ThemeRegistry>
-      </ClerkProvider>
+      <body>
+        <ClerkProvider
+          publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+          signInUrl="/auth"
+          signUpUrl="/auth"
+        >
+          <ThemeRegistry>
+            {children}
+          </ThemeRegistry>
+        </ClerkProvider>
+      </body>
     </html>
   );
 }
