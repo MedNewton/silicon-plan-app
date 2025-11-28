@@ -38,6 +38,7 @@ import type {
   Workspace,
   WorkspaceBusinessProfile,
 } from "@/types/workspaces";
+import { toast } from "react-toastify";
 
 type NavKey =
   | "ai-documents"
@@ -243,6 +244,7 @@ export default function WorkspaceSettingsPage() {
 
       if (!res.ok) {
         console.error("Failed to update workspace");
+        toast.error("Failed to update workspace");
         return;
       }
 
@@ -253,8 +255,10 @@ export default function WorkspaceSettingsPage() {
       setInitialImageUrl(ws.image_url ?? null);
       setWorkspaceName(ws.name ?? "");
       setImageUrl(ws.image_url ?? null);
+      toast.success("Workspace details updated");
     } catch (error) {
       console.error("Error while updating workspace", error);
+      toast.error("Something went wrong while updating workspace");
     } finally {
       setWorkspaceSaving(false);
     }
@@ -326,6 +330,7 @@ export default function WorkspaceSettingsPage() {
 
       if (!res.ok) {
         console.error("Failed to save business profile");
+        toast.error("Failed to save business profile");
         return;
       }
 
@@ -357,8 +362,11 @@ export default function WorkspaceSettingsPage() {
       } else {
         setBizInitial(biz);
       }
+
+      toast.success("Business activities saved");  
     } catch (error) {
       console.error("Error while saving business profile", error);
+      toast.error("Something went wrong while saving business profile");
     } finally {
       setBizSaving(false);
     }
@@ -791,14 +799,17 @@ export default function WorkspaceSettingsPage() {
 
                     if (!res.ok) {
                       console.error("Failed to upload workspace image");
+                      toast.error("Failed to upload workspace image");
                       return;
                     }
 
                     const json = (await res.json()) as GetWorkspaceResponse;
                     const ws = json.workspace;
                     setImageUrl(ws.image_url ?? null);
+                    toast.success("Workspace image updated");
                   } catch (error) {
                     console.error("Error uploading workspace image", error);
+                    toast.error("Something went wrong while uploading workspace image");
                   } finally {
                     event.target.value = "";
                   }

@@ -34,6 +34,7 @@ import ChatBubbleOutlineOutlinedIcon from "@mui/icons-material/ChatBubbleOutline
 import AppsOutlinedIcon from "@mui/icons-material/AppsOutlined";
 
 import type { Workspace } from "@/types/workspaces";
+import { toast } from "react-toastify";
 
 type ActiveTab = "create" | "myWorkspaces";
 
@@ -109,13 +110,16 @@ export default function AIDocumentsPage() {
 
       if (!response.ok) {
         throw new Error("Failed to create workspace");
+        toast.error("Failed to create workspace");
       }
 
       const data = (await response.json()) as CreateWorkspaceResponse;
 
+      toast.success("Workspace created");
       router.push(`/workspaces/${data.workspace.id}/business-setup`);
     } catch (error) {
       console.error(error);
+      toast.error("Something went wrong while creating workspace");
     } finally {
       setIsSubmitting(false);
     }
