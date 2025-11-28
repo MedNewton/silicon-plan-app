@@ -26,7 +26,6 @@ export default async function JoinWorkspacePage({
   const { invite } = await searchParams;
   const inviteId = invite ?? "";
 
-  // No invite token -> nothing to do here
   if (!inviteId) {
     redirect("/");
   }
@@ -34,12 +33,10 @@ export default async function JoinWorkspacePage({
   const user = await currentUser();
   const joinUrl = `/workspaces/join?invite=${encodeURIComponent(inviteId)}`;
 
-  // 1) Not authenticated → go to /auth, but keep where we came from in ?next=
   if (!user) {
     redirect(`/auth?next=${encodeURIComponent(joinUrl)}`);
   }
 
-  // 2) Authenticated but not onboarded → go through onboarding, then come back here
   const metadata = user.unsafeMetadata;
   const onboardingCompleted =
     hasOnboardingMetadata(metadata) && metadata.onboardingCompleted === true;
@@ -48,6 +45,5 @@ export default async function JoinWorkspacePage({
     redirect(`/onboarding?next=${encodeURIComponent(joinUrl)}`);
   }
 
-  // 3) Authenticated + onboarded → show the join page
   return <JoinWorkspaceClient inviteId={inviteId} />;
 }

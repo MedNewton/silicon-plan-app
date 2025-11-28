@@ -36,7 +36,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
     const client = getSupabaseClient();
 
-    // 1) Load invite by token
     const {
       data: inviteRow,
       error: inviteError,
@@ -87,7 +86,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
     const workspaceId: WorkspaceId = invite.workspace_id;
 
-    // 2) Load workspace
     const {
       data: workspaceRow,
       error: workspaceError,
@@ -107,7 +105,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
     const workspace = workspaceRow as WorkspaceRow;
 
-    // 3) Inviter info from Clerk using invited_by_user_id (Clerk user id)
     let inviterName: string | null = null;
     let inviterEmail: string | null = null;
 
@@ -136,7 +133,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       }
     }
 
-    // 4) Check if current user is already an active member
     const {
       data: membershipRow,
       error: membershipError,

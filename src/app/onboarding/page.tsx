@@ -79,27 +79,22 @@ export default function OnboardingPage() {
     return metadata.onboardingCompleted === true;
   }, [user]);
 
-  // === REDIRECT LOGIC ========================================================
   useEffect(() => {
     if (!isLoaded) return;
 
-    // Not signed in -> go to auth
     if (!user && !hasRedirected) {
       setHasRedirected(true);
       router.replace("/auth");
       return;
     }
 
-    // Already completed onboarding -> go to home
     if (user && onboardingCompleted && !hasRedirected) {
       setHasRedirected(true);
       router.replace("/");
     }
   }, [isLoaded, user, onboardingCompleted, hasRedirected, router]);
 
-  // === LOADING / REDIRECT STATES ============================================
   if (!isLoaded || !user || onboardingCompleted || hasRedirected) {
-    // While Clerk is loading OR we are mid-redirect, show a simple loader instead of blank screen
     return (
       <Box
         sx={{
@@ -118,7 +113,6 @@ export default function OnboardingPage() {
     );
   }
 
-  // === NORMAL ONBOARDING UI ==================================================
   const markOnboardingCompleted = async () => {
     if (!user || completing) return;
 

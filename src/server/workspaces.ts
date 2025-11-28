@@ -475,7 +475,6 @@ export async function getWorkspaceMembersForSettings(params: {
     ? currentMember.role
     : null;
 
-  // ---- Fetch profile info from Clerk ----
   const uniqueUserIds = Array.from(
     new Set<UserId>(rows.map((m) => m.user_id)),
   );

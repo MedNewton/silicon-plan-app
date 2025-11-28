@@ -72,7 +72,6 @@ export default function JoinWorkspaceClient({ inviteId }: Props) {
   const handleJoin = async () => {
     if (!data) return;
     if (data.alreadyMember) {
-      // just open the workspace
       router.push(`/`);
       return;
     }
@@ -97,7 +96,6 @@ export default function JoinWorkspaceClient({ inviteId }: Props) {
       }
 
       const json = (await res.json()) as { workspaceId: string };
-      // you can change this redirect target if you prefer /settings, /ai-documents, etc.
       router.push(`/`);
     } catch (err) {
       console.error(err);

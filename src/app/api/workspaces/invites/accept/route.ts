@@ -37,7 +37,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const inviteToken = body.inviteId;
     const client: Supa = getSupabaseClient();
 
-    // 1) Load invite by token
     const {
       data: inviteRow,
       error: inviteError,
@@ -90,7 +89,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const role: WorkspaceRole = invite.role;
     const invitedByUserId: UserId = invite.invited_by_user_id;
 
-    // 2) Upsert workspace_members row (user_id is Clerk user id)
     const memberPayload: Tables["workspace_members"]["Insert"] = {
       workspace_id: workspaceId,
       user_id: user.id,
@@ -114,7 +112,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // 3) Mark invite as accepted
     const { error: updateInviteError } = await client
       .from("workspace_member_invites")
       .update({
@@ -124,7 +121,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     if (updateInviteError) {
       console.error("updateInviteError", updateInviteError);
-      // not fatal for the user; we still added them
     }
 
     return NextResponse.json({

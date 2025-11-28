@@ -7,7 +7,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Box } from "@mui/material";
 import AuthCard from "@/components/auth/AuthCard";
 
-// ---- Inner content that actually uses useSearchParams -----------------------
 function AuthPageContent() {
   const { user, isLoaded } = useUser();
   const router = useRouter();
@@ -17,7 +16,6 @@ function AuthPageContent() {
     if (!isLoaded) return;
     if (!user) return;
 
-    // We standardize on ?redirect_url=... everywhere
     const redirectParam = searchParams.get("redirect_url");
     const target = redirectParam?.startsWith("/") ? redirectParam : "/";
 
@@ -41,7 +39,6 @@ function AuthPageContent() {
   );
 }
 
-// ---- Default export wrapped in Suspense ------------------------------------
 export default function AuthPage() {
   return (
     <Suspense
@@ -57,7 +54,6 @@ export default function AuthPage() {
             py: 4,
           }}
         >
-          {/* simple loader instead of blank page */}
           Loading...
         </Box>
       }

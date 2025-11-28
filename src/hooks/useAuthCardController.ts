@@ -148,8 +148,6 @@ export function useAuthCardController() {
     const strategy =
       provider === "google" ? "oauth_google" : "oauth_facebook";
 
-    // If we came here with ?redirect_url=/workspaces/join?invite=...
-    // preserve that and send it to Clerk as redirectUrlComplete.
     let redirectUrlComplete = "/";
     try {
       const url = new URL(window.location.href);
