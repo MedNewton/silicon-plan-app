@@ -10,6 +10,11 @@ import {
   Typography,
   useTheme,
 } from "@mui/material";
+import {
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
+
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import PersonOutlineOutlinedIcon from "@mui/icons-material/PersonOutlineOutlined";
 import BookmarkBorderOutlinedIcon from "@mui/icons-material/BookmarkBorderOutlined";
@@ -37,8 +42,13 @@ type CreateWorkspaceResponse = {
 
 export default function AIDocumentsPage() {
   const theme = useTheme();
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
-  const [activeTab, setActiveTab] = useState<ActiveTab>("create");
+  const initialTab: ActiveTab =
+    searchParams.get("tab") === "my-workspaces" ? "myWorkspaces" : "create";
+
+  const [activeTab, setActiveTab] = useState<ActiveTab>(initialTab);
   const [activeNav, setActiveNav] = useState<NavKey>("ai-documents");
 
   const [workspaceName, setWorkspaceName] = useState<string>("");
@@ -66,9 +76,9 @@ export default function AIDocumentsPage() {
       }
 
       const data = (await response.json()) as CreateWorkspaceResponse;
-      // TODO: navigate to workspace details when that page exists
-      console.log("Workspace created:", data.workspace);
-      setWorkspaceName("");
+
+      // ✅ go to business-setup step for this workspace
+      router.push(`/workspaces/${data.workspace.id}/business-setup`);
     } catch (error) {
       console.error(error);
     } finally {
@@ -268,8 +278,7 @@ export default function AIDocumentsPage() {
                 activeTab === "create"
                   ? theme.palette.text.secondary
                   : theme.palette.text.primary,
-              borderColor:
-                activeTab === "create" ? "#4C6AD2" : "transparent",
+              borderColor: activeTab === "create" ? "#4C6AD2" : "transparent",
             }}
           >
             <AddCircleOutlineRoundedIcon sx={{ fontSize: 20, mr: 0.5 }} />
@@ -311,7 +320,7 @@ export default function AIDocumentsPage() {
     >
       <Box
         sx={{
-          maxWidth: 720,
+          maxWidth: 600,
           width: "100%",
           display: "flex",
           justifyContent: "center",
@@ -321,8 +330,8 @@ export default function AIDocumentsPage() {
           sx={{
             width: "100%",
             borderRadius: 5,
-            border: "1px solid #E1E6F5",          // softened border
-            bgcolor: "#FBFCFF",                    // card background closer to mock
+            border: "1px solid #E1E6F5",
+            bgcolor: "#FBFCFF",
             p: 4,
             boxSizing: "border-box",
           }}
@@ -414,7 +423,7 @@ export default function AIDocumentsPage() {
                   fontSize: 16,
                   py: 1.5,
                   backgroundImage:
-                    "linear-gradient(90deg, #4C6AD2 0%, #7B4FD6 100%)", // button gradient
+                    "linear-gradient(90deg, #4C6AD2 0%, #7B4FD6 100%)",
                   color: "#FFFFFF",
                   boxShadow: "none",
                   "&.Mui-disabled": {
