@@ -1,7 +1,8 @@
+// src/app/onboarding/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { useUser } from "@clerk/nextjs";
 import { Box, Button, Stack, Typography, useTheme } from "@mui/material";
@@ -63,7 +64,10 @@ function hasOnboardingMetadata(
 export default function OnboardingPage() {
   const theme = useTheme();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, isLoaded } = useUser();
+
+  const next = searchParams.get("next");
 
   const [activeStepIndex, setActiveStepIndex] = useState<number>(0);
   const [completing, setCompleting] = useState<boolean>(false);
@@ -85,9 +89,9 @@ export default function OnboardingPage() {
     }
 
     if (onboardingCompleted) {
-      router.replace("/");
+      router.replace(next ?? "/");
     }
-  }, [isLoaded, user, onboardingCompleted, router]);
+  }, [isLoaded, user, onboardingCompleted, router, next]);
 
   const markOnboardingCompleted = async () => {
     if (!user || completing) return;
@@ -108,7 +112,7 @@ export default function OnboardingPage() {
         },
       });
 
-      router.replace("/");
+      router.replace(next ?? "/");
     } finally {
       setCompleting(false);
     }
