@@ -98,7 +98,7 @@ export default function JoinWorkspaceClient({ inviteId }: Props) {
 
       const json = (await res.json()) as { workspaceId: string };
       // you can change this redirect target if you prefer /settings, /ai-documents, etc.
-      router.push(`/workspaces/${json.workspaceId}`);
+      router.push(`/`);
     } catch (err) {
       console.error(err);
       setError("Something went wrong while joining the workspace.");
