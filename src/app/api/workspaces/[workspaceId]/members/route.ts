@@ -8,20 +8,20 @@ import {
 
 export const dynamic = "force-dynamic";
 
-type RouteContext = {
-  params: {
-    workspaceId: string;
-  };
-};
-
+// this is the *user id* of the member to remove
 type DeleteBody = {
-  // this is the *user id* of the member to remove
   userId?: string;
 };
 
+type RouteParams = {
+  workspaceId: string;
+};
+
+// ---------- GET ----------
+
 export async function GET(
   _request: Request,
-  context: RouteContext,
+  context: { params: Promise<RouteParams> },
 ): Promise<NextResponse> {
   try {
     const user = await currentUser();
@@ -29,7 +29,8 @@ export async function GET(
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const { workspaceId } = context.params;
+    // 👇 params is a Promise now – must be awaited
+    const { workspaceId } = await context.params;
 
     if (!workspaceId) {
       return NextResponse.json(
@@ -59,9 +60,11 @@ export async function GET(
   }
 }
 
+// ---------- DELETE ----------
+
 export async function DELETE(
   request: Request,
-  context: RouteContext,
+  context: { params: Promise<RouteParams> },
 ): Promise<NextResponse> {
   try {
     const user = await currentUser();
@@ -69,7 +72,8 @@ export async function DELETE(
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const { workspaceId } = context.params;
+    // 👇 same here – await params
+    const { workspaceId } = await context.params;
 
     if (!workspaceId) {
       return NextResponse.json(
