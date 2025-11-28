@@ -19,6 +19,7 @@ import {
   useRouter,
   useSearchParams,
 } from "next/navigation";
+import Image from "next/image";
 
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import PersonOutlineOutlinedIcon from "@mui/icons-material/PersonOutlineOutlined";
@@ -581,15 +582,21 @@ export default function AIDocumentsPage() {
                       justifyContent: "center",
                     }}
                   >
-                    <Box
-                      sx={{
-                        width: 56,
-                        height: 56,
-                        borderRadius: 3,
-                        bgcolor: "#FFFFFF",
-                        boxShadow: "0 10px 25px rgba(15,23,42,0.12)",
-                      }}
-                    />
+                    {
+                      workspace.image_url ? (
+                        <Image src={workspace.image_url} alt={workspace.name} width={56} height={56} />
+                      ) : (
+                        <Box
+                          sx={{
+                            width: 56,
+                            height: 56,
+                            borderRadius: 3,
+                            bgcolor: "#FFFFFF",
+                            boxShadow: "0 10px 25px rgba(15,23,42,0.12)",
+                          }}
+                        />
+                      )
+                    }
                   </Box>
 
                   <Box sx={{
@@ -685,7 +692,7 @@ export default function AIDocumentsPage() {
                   <Button
                     variant="contained"
                     onClick={() =>
-                      router.push(`/workspaces/${workspace.id}/business-setup`)
+                      router.push(`/workspaces/${workspace.id}/settings`)
                     }
                     sx={{
                       textTransform: "none",

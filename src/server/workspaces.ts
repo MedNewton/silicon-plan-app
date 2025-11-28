@@ -301,3 +301,45 @@ export async function upsertWorkspaceBusinessProfile(
 
   return data as WorkspaceBusinessProfile;
 }
+
+export async function updateWorkspaceGeneral(params: {
+  userId: UserId;
+  workspaceId: WorkspaceId;
+  name?: string;
+  imageUrl?: string | null;
+}): Promise<Workspace> {
+  const { userId, workspaceId, name, imageUrl } = params;
+
+  const client = getSupabaseClient();
+
+  await ensureUserHasWorkspaceAccess(client, workspaceId, userId);
+
+  const updatePayload: Tables["workspaces"]["Update"] = {};
+
+  if (name !== undefined) {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      throw new Error("Workspace name cannot be empty.");
+    }
+    updatePayload.name = trimmed;
+  }
+
+  if (imageUrl !== undefined) {
+    updatePayload.image_url = imageUrl;
+  }
+
+  const { data, error } = await client
+    .from("workspaces")
+    .update(updatePayload)
+    .eq("id", workspaceId)
+    .select("*")
+    .single();
+
+  if (error || !data) {
+    throw new Error(
+      `Failed to update workspace: ${error?.message ?? "Unknown error"}`,
+    );
+  }
+
+  return data as Workspace;
+}
