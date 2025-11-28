@@ -6,6 +6,7 @@ import type {
   WorkspaceBusinessProfile,
   WorkspaceAiDocument,
   WorkspaceAiKnowledge,
+  WorkspaceMemberInvite,
 } from "@/types/workspaces";
 
 export type Database = {
@@ -175,6 +176,39 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "workspace_ai_knowledge_workspace_id_fkey";
+            columns: ["workspace_id"];
+            referencedRelation: "workspaces";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      workspace_member_invites: {
+        Row: WorkspaceMemberInvite;
+        Insert: {
+          id?: string;
+          workspace_id: string;
+          email: string;
+          role: WorkspaceMemberInvite["role"];
+          token: string;
+          invited_by_user_id: string;
+          expires_at?: string | null;
+          accepted_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          workspace_id?: string;
+          email?: string;
+          role?: WorkspaceMemberInvite["role"];
+          token?: string;
+          invited_by_user_id?: string;
+          expires_at?: string | null;
+          accepted_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "workspace_member_invites_workspace_id_fkey";
             columns: ["workspace_id"];
             referencedRelation: "workspaces";
             referencedColumns: ["id"];

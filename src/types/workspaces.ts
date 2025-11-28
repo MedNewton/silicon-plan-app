@@ -8,6 +8,9 @@ export type WorkspaceBusinessProfileId = string;
 export type WorkspaceAiDocumentId = string;
 export type WorkspaceAiKnowledgeId = string;
 
+// id for invites
+export type WorkspaceMemberInviteId = string;
+
 // Clerk user id
 export type UserId = string;
 
@@ -95,6 +98,19 @@ export type WorkspaceAiKnowledge = {
   updated_at: string;
 };
 
+// Invite row type (matches SQL table)
+export type WorkspaceMemberInvite = {
+  id: WorkspaceMemberInviteId;
+  workspace_id: WorkspaceId;
+  email: string;
+  role: WorkspaceRole;
+  token: string;
+  invited_by_user_id: UserId;
+  expires_at: string | null;
+  accepted_at: string | null;
+  created_at: string;
+};
+
 // ========== AGGREGATE TYPES ==========
 
 export type WorkspaceWithDetails = {
@@ -167,4 +183,12 @@ export type UpsertWorkspaceAiKnowledgeParams = {
   label: string; // human label
   value: string;
   orderIndex?: number;
+};
+
+export type CreateWorkspaceMemberInviteParams = {
+  workspaceId: WorkspaceId;
+  email: string;
+  role: WorkspaceRole;
+  invitedByUserId: UserId;
+  expiresAt?: string | null; // optional override, normally we compute +7 days
 };

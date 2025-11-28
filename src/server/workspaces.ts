@@ -1,5 +1,5 @@
 // src/server/workspaces.ts
-
+import { randomUUID } from "crypto";
 import { getSupabaseClient, type SupabaseDb } from "@/lib/supabaseServer";
 import type {
   Workspace,
@@ -11,14 +11,11 @@ import type {
   UserId,
   WorkspaceId,
   WorkspaceRole,
-  WorkspaceMemberStatus,
-  WorkspaceMemberId,
   RemoveWorkspaceMemberParams,
 } from "@/types/workspaces";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   clerkClient as getClerkClient,
-  type User,
 } from "@clerk/nextjs/server";
 
 type Supa = SupabaseClient<SupabaseDb>;
@@ -489,7 +486,6 @@ export async function getWorkspaceMembersForSettings(params: {
   >();
 
   try {
-    // In your installed Clerk version, clerkClient is a function returning the real client
     const clerk = await getClerkClient();
     const usersResponse = await clerk.users.getUserList({
       userId: uniqueUserIds,
@@ -516,7 +512,6 @@ export async function getWorkspaceMembersForSettings(params: {
       });
     }
   } catch (error: unknown) {
-    // If Clerk lookup fails, we just fall back to Supabase data
     console.error("Failed to enrich workspace members from Clerk", error);
   }
 
@@ -535,6 +530,106 @@ export async function getWorkspaceMembersForSettings(params: {
   return {
     currentUserRole,
     members: mappedMembers,
+  };
+}
+
+export type WorkspaceInviteResult = {
+  inviteId: string;
+  workspaceId: WorkspaceId;
+  workspaceName: string | null;
+  email: string;
+  role: WorkspaceRole;
+};
+
+export async function createWorkspaceInvite(params: {
+  workspaceId: WorkspaceId;
+  inviterUserId: UserId;
+  email: string;
+  role: WorkspaceRole;
+}): Promise<WorkspaceInviteResult> {
+  const { workspaceId, inviterUserId, email, role } = params;
+  const client = getSupabaseClient();
+
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail?.includes("@")) {
+    throw new Error("A valid email address is required.");
+  }
+
+  const {
+    data: inviterRow,
+    error: inviterError,
+  } = await client
+    .from("workspace_members")
+    .select("*")
+    .eq("workspace_id", workspaceId)
+    .eq("user_id", inviterUserId)
+    .eq("status", "active")
+    .single();
+
+  if (inviterError || !inviterRow) {
+    throw new Error("You are not a member of this workspace.");
+  }
+
+  const inviter = mapWorkspaceMemberRow(inviterRow);
+  if (inviter.role !== "owner" && inviter.role !== "admin") {
+    throw new Error("Only owner or admin can invite new members.");
+  }
+
+  if (role === "owner") {
+    throw new Error("Cannot invite a member with owner role.");
+  }
+
+  const {
+    data: workspaceRow,
+    error: workspaceError,
+  } = await client
+    .from("workspaces")
+    .select("id,name")
+    .eq("id", workspaceId)
+    .single();
+
+  if (workspaceError || !workspaceRow) {
+    throw new Error("Workspace not found.");
+  }
+
+  type InviteInsert = Tables["workspace_member_invites"]["Insert"];
+
+  const token = randomUUID();
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + 7);
+
+  const insertPayload: InviteInsert = {
+    workspace_id: workspaceId,
+    email: normalizedEmail,
+    role,
+    token,
+    invited_by_user_id: inviterUserId,
+    expires_at: expiresAt.toISOString(),
+  };
+
+  const {
+    data: inviteRow,
+    error: inviteError,
+  } = await client
+    .from("workspace_member_invites")
+    .insert(insertPayload)
+    .select("*")
+    .single();
+
+  if (inviteError || !inviteRow) {
+    throw new Error(
+      `Failed to create workspace invite: ${
+        inviteError?.message ?? "Unknown error"
+      }`,
+    );
+  }
+
+  return {
+    inviteId: (inviteRow as { token?: string }).token ?? token,
+    workspaceId,
+    workspaceName: (workspaceRow as { name: string | null }).name ?? null,
+    email: normalizedEmail,
+    role,
   };
 }
 
