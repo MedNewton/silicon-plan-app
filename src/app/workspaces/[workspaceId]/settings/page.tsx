@@ -477,6 +477,7 @@ export default function WorkspaceSettingsPage() {
           borderRight: "1px solid #E1E6F5",
           pr: 3,
           mr: 4,
+          pt: 4,
         }}
       >
         <Typography
@@ -788,7 +789,7 @@ export default function WorkspaceSettingsPage() {
             flex: 1,
             display: "flex",
             px: 6,
-            py: 5,
+            pb: 5,
             bgcolor: "#FFFFFF",
           }}
         >
