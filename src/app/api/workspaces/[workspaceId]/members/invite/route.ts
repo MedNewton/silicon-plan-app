@@ -120,7 +120,7 @@ export async function POST(
 
     try {
       const sendResult = await resend.emails.send({
-        from: "Silicon Plan <no-reply@silicon-plan.live>",
+        from: "Silicon Plan <notifications@silicon-plan.live>",
         to: invite.email,
         subject: `You're invited to join ${workspaceLabel} on Silicon Plan`,
         html,
