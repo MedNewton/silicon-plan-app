@@ -73,7 +73,7 @@ export default function JoinWorkspaceClient({ inviteId }: Props) {
     if (!data) return;
     if (data.alreadyMember) {
       // just open the workspace
-      router.push(`/workspaces/${data.workspaceId}`);
+      router.push(`/`);
       return;
     }
 

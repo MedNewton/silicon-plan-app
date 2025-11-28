@@ -12,19 +12,16 @@ export default function AuthPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const next = searchParams.get("next");
-
   useEffect(() => {
-    if (!isLoaded || !user) return;
+    if (!isLoaded) return;
+    if (!user) return;
 
-    // If we came here with a target (e.g. /workspaces/join?invite=...)
-    if (next) {
-      router.replace(next);
-    } else {
-      // Normal login flow
-      router.replace("/");
-    }
-  }, [isLoaded, user, router, next]);
+    const next = searchParams.get("next");
+    // Avoid redirecting to external URLs; only allow in-app paths
+    const target = next?.startsWith("/") ? next : "/";
+
+    router.replace(target);
+  }, [isLoaded, user, router, searchParams]);
 
   return (
     <Box

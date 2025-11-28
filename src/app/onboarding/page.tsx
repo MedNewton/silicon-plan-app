@@ -1,8 +1,7 @@
-// src/app/onboarding/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useUser } from "@clerk/nextjs";
 import { Box, Button, Stack, Typography, useTheme } from "@mui/material";
@@ -64,35 +63,62 @@ function hasOnboardingMetadata(
 export default function OnboardingPage() {
   const theme = useTheme();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { user, isLoaded } = useUser();
-
-  const next = searchParams.get("next");
 
   const [activeStepIndex, setActiveStepIndex] = useState<number>(0);
   const [completing, setCompleting] = useState<boolean>(false);
+  const [hasRedirected, setHasRedirected] = useState(false);
 
   const activeStep = STEPS[activeStepIndex];
   const isLastStep = activeStepIndex === STEPS.length - 1;
 
-  const onboardingCompleted =
-    user &&
-    hasOnboardingMetadata(user.unsafeMetadata) &&
-    user.unsafeMetadata.onboardingCompleted === true;
+  const onboardingCompleted = useMemo(() => {
+    if (!user) return false;
+    const metadata = user.unsafeMetadata;
+    if (!hasOnboardingMetadata(metadata)) return false;
+    return metadata.onboardingCompleted === true;
+  }, [user]);
 
+  // === REDIRECT LOGIC ========================================================
   useEffect(() => {
     if (!isLoaded) return;
 
-    if (!user) {
+    // Not signed in -> go to auth
+    if (!user && !hasRedirected) {
+      setHasRedirected(true);
       router.replace("/auth");
       return;
     }
 
-    if (onboardingCompleted) {
-      router.replace(next ?? "/");
+    // Already completed onboarding -> go to home
+    if (user && onboardingCompleted && !hasRedirected) {
+      setHasRedirected(true);
+      router.replace("/");
     }
-  }, [isLoaded, user, onboardingCompleted, router, next]);
+  }, [isLoaded, user, onboardingCompleted, hasRedirected, router]);
 
+  // === LOADING / REDIRECT STATES ============================================
+  if (!isLoaded || !user || onboardingCompleted || hasRedirected) {
+    // While Clerk is loading OR we are mid-redirect, show a simple loader instead of blank screen
+    return (
+      <Box
+        sx={{
+          minHeight: "100vh",
+          bgcolor: "background.default",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          px: 2,
+        }}
+      >
+        <Typography variant="body1" color="text.secondary">
+          Preparing your workspace...
+        </Typography>
+      </Box>
+    );
+  }
+
+  // === NORMAL ONBOARDING UI ==================================================
   const markOnboardingCompleted = async () => {
     if (!user || completing) return;
 
@@ -112,7 +138,7 @@ export default function OnboardingPage() {
         },
       });
 
-      router.replace(next ?? "/");
+      router.replace("/");
     } finally {
       setCompleting(false);
     }
@@ -130,10 +156,6 @@ export default function OnboardingPage() {
   const handleSkip = () => {
     void markOnboardingCompleted();
   };
-
-  if (!isLoaded || !user || onboardingCompleted) {
-    return null;
-  }
 
   return (
     <Box

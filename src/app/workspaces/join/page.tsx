@@ -5,7 +5,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import JoinWorkspaceClient from "./JoinWorkspaceClient";
 
 type JoinPageProps = {
-  searchParams: { invite?: string };
+  searchParams: Promise<{ invite?: string }>;
 };
 
 type OnboardingMetadata = {
@@ -23,7 +23,8 @@ function hasOnboardingMetadata(
 export default async function JoinWorkspacePage({
   searchParams,
 }: JoinPageProps) {
-  const inviteId = searchParams.invite ?? "";
+  const { invite } = await searchParams;
+  const inviteId = invite ?? "";
 
   // No invite token -> nothing to do here
   if (!inviteId) {

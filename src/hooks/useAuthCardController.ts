@@ -77,7 +77,10 @@ export function useAuthCardController() {
 
   const resetError = (): void => setError(null);
 
-  const handleLogin = async ({ email, password }: LoginPayload): Promise<void> => {
+  const handleLogin = async ({
+    email,
+    password,
+  }: LoginPayload): Promise<void> => {
     if (!isSignInLoaded || !signIn) return;
 
     resetError();
@@ -145,11 +148,21 @@ export function useAuthCardController() {
     const strategy =
       provider === "google" ? "oauth_google" : "oauth_facebook";
 
+    // If we came here with ?redirect_url=/workspaces/join?invite=...
+    // preserve that and send it to Clerk as redirectUrlComplete.
+    let redirectUrlComplete = "/";
+    try {
+      const url = new URL(window.location.href);
+      redirectUrlComplete = url.searchParams.get("redirect_url") ?? "/";
+    } catch {
+      // ignore, keep "/"
+    }
+
     try {
       await signIn.authenticateWithRedirect({
         strategy,
         redirectUrl: "/sso-callback",
-        redirectUrlComplete: "/",
+        redirectUrlComplete,
       });
     } catch (err: unknown) {
       setError(extractClerkErrorMessage(err));
