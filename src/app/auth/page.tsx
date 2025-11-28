@@ -11,7 +11,6 @@ export default function AuthPage() {
   const { user, isLoaded } = useUser();
   const router = useRouter();
 
-  // If already authenticated, keep user on "/" (or any main page)
   useEffect(() => {
     if (isLoaded && user) {
       router.replace("/");

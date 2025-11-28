@@ -28,7 +28,6 @@ type Body = {
   rawFormData?: Record<string, unknown>;
 };
 
-// ========= GET (load existing profile) =========
 export async function GET(_request: Request, context: RouteContext) {
   try {
     const { workspaceId } = await context.params;
@@ -40,8 +39,6 @@ export async function GET(_request: Request, context: RouteContext) {
       );
     }
 
-    // For now we just return null so the page loads without error.
-    // Later you can plug in a real "getWorkspaceBusinessProfile" helper.
     return NextResponse.json({ businessProfile: null }, { status: 200 });
   } catch (error) {
     console.error(
@@ -55,7 +52,6 @@ export async function GET(_request: Request, context: RouteContext) {
   }
 }
 
-// ========= POST (create / update profile) =========
 export async function POST(request: Request, context: RouteContext) {
   try {
     const user = await currentUser();
@@ -95,7 +91,6 @@ export async function POST(request: Request, context: RouteContext) {
       rawFormData: body?.rawFormData,
     });
 
-    // matches BusinessProfileResponse on the client
     return NextResponse.json(
       {
         businessProfile: profile,

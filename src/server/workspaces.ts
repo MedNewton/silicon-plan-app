@@ -16,8 +16,6 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 type Supa = SupabaseClient<SupabaseDb>;
 type Tables = SupabaseDb["public"]["Tables"];
 
-// ---------- Access helpers ----------
-
 async function userHasWorkspaceAccess(
   client: Supa,
   workspaceId: WorkspaceId,
@@ -50,7 +48,6 @@ async function ensureUserHasWorkspaceAccess(
   }
 }
 
-// ---------- Core operations ----------
 
 export async function createWorkspace(
   params: CreateWorkspaceParams,
@@ -154,7 +151,6 @@ export async function getWorkspacesForUser(
   return workspaces as Workspace[];
 }
 
-// Small wrapper to match the API route call signature
 export async function getUserWorkspaces({
   userId,
 }: {

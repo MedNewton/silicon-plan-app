@@ -27,8 +27,6 @@ export default function SSOCallbackPage() {
         <Typography variant="body2" color="text.secondary">
           Finishing sign-in, please wait...
         </Typography>
-
-        {/* This component completes the OAuth flow and then redirects to redirectUrlComplete ("/") */}
         <AuthenticateWithRedirectCallback />
       </Box>
     </Box>

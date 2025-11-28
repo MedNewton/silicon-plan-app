@@ -150,7 +150,6 @@ export default function OnboardingPage() {
           textAlign: "center",
         }}
       >
-        {/* top step segments */}
         <Stack
           direction="row"
           justifyContent="center"

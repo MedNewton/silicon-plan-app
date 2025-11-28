@@ -63,7 +63,6 @@ export default function WorkspaceBusinessSetupPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // ---- form state ----
   const [tagline, setTagline] = useState("");
   const [isOperating, setIsOperating] = useState("");
   const [industry, setIndustry] = useState("");
@@ -80,7 +79,6 @@ export default function WorkspaceBusinessSetupPage() {
 
   const isSubmitDisabled = saving || loading || !workspaceId;
 
-  // ========= LOAD EXISTING PROFILE =========
   useEffect(() => {
     if (!workspaceId) return;
 
@@ -125,7 +123,6 @@ export default function WorkspaceBusinessSetupPage() {
     void fetchProfile();
   }, [workspaceId]);
 
-  // ========= STYLES =========
 
   const inputBaseSx = {
     borderRadius: 2.5,
@@ -171,8 +168,6 @@ export default function WorkspaceBusinessSetupPage() {
       <AutoAwesomeOutlinedIcon sx={{ fontSize: 20 }} />
     </Box>
   );
-
-  // ========= LAYOUT HELPERS =========
 
   const sidebar = () => {
     const itemBaseStyles = {
@@ -223,7 +218,6 @@ export default function WorkspaceBusinessSetupPage() {
           flexDirection: "column",
         }}
       >
-        {/* logo */}
         <Box
           sx={{
             height: 72,
@@ -386,8 +380,6 @@ export default function WorkspaceBusinessSetupPage() {
     );
   };
 
-  // ========= SUBMIT =========
-
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (isSubmitDisabled || !workspaceId) return;
@@ -445,7 +437,6 @@ export default function WorkspaceBusinessSetupPage() {
 
       const json = (await response.json()) as BusinessProfileResponse;
 
-      // Redirect to home with "My Workspaces" tab active
       if (json.redirectTo) {
         router.push(json.redirectTo);
       } else {
@@ -458,8 +449,6 @@ export default function WorkspaceBusinessSetupPage() {
     }
   };
 
-  // ========= HANDLERS FOR SELECTS =========
-
   const handleIndustryChange = (event: SelectChangeEvent) => {
     setIndustry(event.target.value);
   };
@@ -471,8 +460,6 @@ export default function WorkspaceBusinessSetupPage() {
   const handleProblemShortChange = (event: SelectChangeEvent) => {
     setProblemShort(event.target.value);
   };
-
-  // ========= RENDER =========
 
   return (
     <Box
@@ -496,8 +483,6 @@ export default function WorkspaceBusinessSetupPage() {
         }}
       >
         {topTabs()}
-
-        {/* main content area (left + right) */}
         <Box
           sx={{
             flex: 1,
@@ -516,7 +501,6 @@ export default function WorkspaceBusinessSetupPage() {
               justifyContent: "space-between",
             }}
           >
-            {/* LEFT COLUMN (description) */}
             <Box
               sx={{
                 flex: "0 0 45%",
@@ -572,7 +556,6 @@ export default function WorkspaceBusinessSetupPage() {
               </Box>
             </Box>
 
-            {/* RIGHT COLUMN (coloured bg, own internal scroll) */}
             <Box
               sx={{
                 flex: "0 0 55%",
@@ -582,7 +565,6 @@ export default function WorkspaceBusinessSetupPage() {
                 minHeight: 0,
               }}
             >
-              {/* the whole column is now the <form> */}
               <Box
                 component="form"
                 onSubmit={handleSubmit}
@@ -593,7 +575,6 @@ export default function WorkspaceBusinessSetupPage() {
                   height: "100%",
                 }}
               >
-                {/* fixed header inside coloured column */}
                 <Box
                   sx={{
                     flexShrink: 0,
@@ -613,8 +594,6 @@ export default function WorkspaceBusinessSetupPage() {
                     Tell us about your business activities
                   </Typography>
                 </Box>
-
-                {/* scrollable form body */}
                 <Box
                   sx={{
                     flex: 1,
@@ -628,7 +607,6 @@ export default function WorkspaceBusinessSetupPage() {
                     msOverflowStyle: "none",
                   }}
                 >
-                  {/* Tagline */}
                   <Box mb={3}>
                     <Typography
                       sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}
@@ -643,8 +621,6 @@ export default function WorkspaceBusinessSetupPage() {
                       InputProps={{ sx: inputBaseSx }}
                     />
                   </Box>
-
-                  {/* Is operating */}
                   <Box mb={3}>
                     <Typography
                       sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}
@@ -668,8 +644,6 @@ export default function WorkspaceBusinessSetupPage() {
                       />
                     </RadioGroup>
                   </Box>
-
-                  {/* Industry */}
                   <Box mb={3}>
                     <Typography
                       sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}
@@ -700,8 +674,6 @@ export default function WorkspaceBusinessSetupPage() {
                       <MenuItem value="Other">Other</MenuItem>
                     </Select>
                   </Box>
-
-                  {/* Stage */}
                   <Box mb={3}>
                     <Typography
                       sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}
@@ -731,8 +703,6 @@ export default function WorkspaceBusinessSetupPage() {
                       <MenuItem value="Established">Established</MenuItem>
                     </Select>
                   </Box>
-
-                  {/* Problem short select */}
                   <Box mb={3}>
                     <Typography
                       sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}
@@ -764,8 +734,6 @@ export default function WorkspaceBusinessSetupPage() {
                       <MenuItem value="Other">Other</MenuItem>
                     </Select>
                   </Box>
-
-                  {/* Problem long */}
                   <Box mb={3}>
                     <Typography
                       sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}
@@ -785,8 +753,6 @@ export default function WorkspaceBusinessSetupPage() {
                       }}
                     />
                   </Box>
-
-                  {/* Solution & uniqueness */}
                   <Box mb={3}>
                     <Typography
                       sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}
@@ -808,8 +774,6 @@ export default function WorkspaceBusinessSetupPage() {
                       }}
                     />
                   </Box>
-
-                  {/* Team & roles */}
                   <Box mb={3}>
                     <Typography
                       sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}
@@ -829,8 +793,6 @@ export default function WorkspaceBusinessSetupPage() {
                       }}
                     />
                   </Box>
-
-                  {/* Financial projections */}
                   <Box mb={3}>
                     <Typography
                       sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}
@@ -852,8 +814,6 @@ export default function WorkspaceBusinessSetupPage() {
                       }}
                     />
                   </Box>
-
-                  {/* Risks & mitigation */}
                   <Box mb={3}>
                     <Typography
                       sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}
@@ -875,8 +835,6 @@ export default function WorkspaceBusinessSetupPage() {
                       }}
                     />
                   </Box>
-
-                  {/* Success metrics */}
                   <Box mb={3}>
                     <Typography
                       sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}
@@ -896,8 +854,6 @@ export default function WorkspaceBusinessSetupPage() {
                       }}
                     />
                   </Box>
-
-                  {/* Partnerships */}
                   <Box mb={1}>
                     <Typography
                       sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}
@@ -920,8 +876,6 @@ export default function WorkspaceBusinessSetupPage() {
                     />
                   </Box>
                 </Box>
-
-                {/* fixed bottom button inside the coloured column */}
                 <Box
                   sx={{
                     flexShrink: 0,
@@ -963,7 +917,6 @@ export default function WorkspaceBusinessSetupPage() {
                 </Box>
               </Box>
             </Box>
-
           </Box>
         </Box>
       </Box>

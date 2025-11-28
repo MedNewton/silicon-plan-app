@@ -71,7 +71,6 @@ export default function AIDocumentsPage() {
 
   const isCreateDisabled = workspaceName.trim().length === 0 || isSubmitting;
 
-  // ------- Load workspaces for "My Workspaces" tab -------
   useEffect(() => {
     const loadWorkspaces = async () => {
       try {
@@ -113,7 +112,6 @@ export default function AIDocumentsPage() {
 
       const data = (await response.json()) as CreateWorkspaceResponse;
 
-      // go to business-setup step for this workspace
       router.push(`/workspaces/${data.workspace.id}/business-setup`);
     } catch (error) {
       console.error(error);
@@ -122,7 +120,6 @@ export default function AIDocumentsPage() {
     }
   };
 
-  // Small helper to format created_at
   const formatDate = (iso?: string | null) => {
     if (!iso) return "";
     try {
@@ -135,8 +132,6 @@ export default function AIDocumentsPage() {
       return "";
     }
   };
-
-  // ---------- UI pieces ----------
 
   const renderSidebar = () => {
     const itemBaseStyles = {
@@ -191,7 +186,6 @@ export default function AIDocumentsPage() {
           flexDirection: "column",
         }}
       >
-        {/* Logo + brand */}
         <Box
           sx={{
             height: 72,
@@ -217,8 +211,6 @@ export default function AIDocumentsPage() {
             Silicon Plan
           </Typography>
         </Box>
-
-        {/* Nav items */}
         <Box sx={{ flex: 1, pt: 2 }}>
           {makeItem(
             "ai-documents",
@@ -246,8 +238,6 @@ export default function AIDocumentsPage() {
             <MenuBookOutlinedIcon sx={{ fontSize: 22 }} />,
           )}
         </Box>
-
-        {/* Settings at the bottom */}
         <Box
           sx={{
             borderTop: "1px solid rgba(226,232,240,1)",
@@ -553,7 +543,6 @@ export default function AIDocumentsPage() {
         >
           {workspaces.map((workspace, index) => {
             const createdAt =
-              // adapt to whatever your Workspace type uses
               workspace.created_at ??
               null as string | null;
 
@@ -580,7 +569,6 @@ export default function AIDocumentsPage() {
                   mb: 4,
                 }}
               >
-                {/* Left: icon + text */}
                 <Stack direction="row" spacing={3} alignItems="center">
                   <Box
                     sx={{
@@ -593,7 +581,6 @@ export default function AIDocumentsPage() {
                       justifyContent: "center",
                     }}
                   >
-                    {/* Decorative building shape placeholder */}
                     <Box
                       sx={{
                         width: 56,
@@ -694,8 +681,6 @@ export default function AIDocumentsPage() {
                   </Box>
                   
                 </Stack>
-
-                {/* Right: icons + Edit button */}
                 <Stack height="100%" alignItems="start">
                   <Button
                     variant="contained"
@@ -727,8 +712,6 @@ export default function AIDocumentsPage() {
       </Box>
     );
   };
-
-  // ---------- Layout ----------
 
   return (
     <Box

@@ -5,7 +5,6 @@ import { createWorkspace, getUserWorkspaces } from "@/server/workspaces";
 
 export const dynamic = "force-dynamic";
 
-// GET /api/workspaces  -> list current user's workspaces
 export async function GET() {
   try {
     const user = await currentUser();
@@ -29,7 +28,6 @@ export async function GET() {
   }
 }
 
-// POST /api/workspaces  -> create a new workspace
 export async function POST(request: Request) {
   try {
     const user = await currentUser();
