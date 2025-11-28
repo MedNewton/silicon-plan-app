@@ -118,12 +118,9 @@ export async function POST(
       </div>
     `;
 
-    const fromAddress =
-      process.env.RESEND_FROM_EMAIL ?? "Silicon Plan <onboarding@resend.dev>";
-
     try {
       const sendResult = await resend.emails.send({
-        from: fromAddress,
+        from: "Silicon Plan <no-reply@silicon-plan.live>",
         to: invite.email,
         subject: `You're invited to join ${workspaceLabel} on Silicon Plan`,
         html,
