@@ -1,7 +1,10 @@
 // src/app/api/workspaces/[workspaceId]/business-profile/route.ts
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
-import { upsertWorkspaceBusinessProfile } from "@/server/workspaces";
+import {
+  upsertWorkspaceBusinessProfile,
+  getWorkspaceWithDetails,
+} from "@/server/workspaces";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +33,14 @@ type Body = {
 
 export async function GET(_request: Request, context: RouteContext) {
   try {
+    const user = await currentUser();
+    if (!user) {
+      return NextResponse.json(
+        { error: "Not authenticated" },
+        { status: 401 },
+      );
+    }
+
     const { workspaceId } = await context.params;
 
     if (!workspaceId) {
@@ -39,7 +50,19 @@ export async function GET(_request: Request, context: RouteContext) {
       );
     }
 
-    return NextResponse.json({ businessProfile: null }, { status: 200 });
+    const details = await getWorkspaceWithDetails(workspaceId, user.id);
+
+    if (!details) {
+      return NextResponse.json(
+        { error: "Workspace not found or no access" },
+        { status: 404 },
+      );
+    }
+
+    return NextResponse.json(
+      { businessProfile: details.businessProfile ?? null },
+      { status: 200 },
+    );
   } catch (error) {
     console.error(
       "Error in GET /api/workspaces/[workspaceId]/business-profile:",

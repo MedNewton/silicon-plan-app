@@ -8,16 +8,20 @@ import {
   TextField,
   Typography,
   useTheme,
+  FormControlLabel,
+  MenuItem,
+  Radio,
+  RadioGroup,
+  Select,
 } from "@mui/material";
+import type { SelectChangeEvent } from "@mui/material/Select";
 import { useRouter, useParams } from "next/navigation";
 import {
   useEffect,
   useMemo,
-  useRef,
   useState,
   type FormEvent,
   type ReactNode,
-  type ChangeEvent,
 } from "react";
 
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
@@ -28,8 +32,12 @@ import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import AddCircleOutlineRoundedIcon from "@mui/icons-material/AddCircleOutlineRounded";
 import BusinessCenterOutlinedIcon from "@mui/icons-material/BusinessCenterOutlined";
+import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
 
-import type { Workspace } from "@/types/workspaces";
+import type {
+  Workspace,
+  WorkspaceBusinessProfile,
+} from "@/types/workspaces";
 
 type NavKey =
   | "ai-documents"
@@ -51,6 +59,40 @@ type ListWorkspacesResponse = {
   workspaces: Workspace[];
 };
 
+type BusinessProfileResponse = {
+  businessProfile: WorkspaceBusinessProfile | null;
+};
+
+type BizFormState = {
+  tagline: string;
+  isOperating: string;
+  industry: string;
+  companyStage: string;
+  problemShort: string;
+  problemLong: string;
+  solutionAndUniqueness: string;
+  teamAndRoles: string;
+  financialProjections: string;
+  risksAndMitigation: string;
+  successMetrics: string;
+  growthPartnerships: string;
+};
+
+const emptyBizForm: BizFormState = {
+  tagline: "",
+  isOperating: "",
+  industry: "",
+  companyStage: "",
+  problemShort: "",
+  problemLong: "",
+  solutionAndUniqueness: "",
+  teamAndRoles: "",
+  financialProjections: "",
+  risksAndMitigation: "",
+  successMetrics: "",
+  growthPartnerships: "",
+};
+
 export default function WorkspaceSettingsPage() {
   const theme = useTheme();
   const router = useRouter();
@@ -69,8 +111,8 @@ export default function WorkspaceSettingsPage() {
 
   const [workspaceCount, setWorkspaceCount] = useState<number>(0);
 
-  const [loading, setLoading] = useState<boolean>(true);
-  const [saving, setSaving] = useState<boolean>(false);
+  const [workspaceLoading, setWorkspaceLoading] = useState<boolean>(true);
+  const [workspaceSaving, setWorkspaceSaving] = useState<boolean>(false);
 
   const [workspaceName, setWorkspaceName] = useState<string>("");
   const [initialName, setInitialName] = useState<string>("");
@@ -78,27 +120,37 @@ export default function WorkspaceSettingsPage() {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [initialImageUrl, setInitialImageUrl] = useState<string | null>(null);
 
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-
   const isNameEmpty = workspaceName.trim().length === 0;
 
-  const isDirty = useMemo(
+  const isGeneralDirty = useMemo(
     () =>
       workspaceName.trim() !== initialName.trim() ||
       imageUrl !== initialImageUrl,
     [workspaceName, initialName, imageUrl, initialImageUrl],
   );
 
-  const isSaveDisabled = saving || loading || isNameEmpty || !isDirty;
+  const isGeneralSaveDisabled =
+    workspaceSaving || workspaceLoading || isNameEmpty || !isGeneralDirty;
 
-  // -------- Load current workspace + count --------
+  const [bizLoading, setBizLoading] = useState<boolean>(true);
+  const [bizSaving, setBizSaving] = useState<boolean>(false);
+  const [biz, setBiz] = useState<BizFormState>(emptyBizForm);
+  const [bizInitial, setBizInitial] = useState<BizFormState>(emptyBizForm);
+
+  const isBusinessDirty = useMemo(
+    () => JSON.stringify(biz) !== JSON.stringify(bizInitial),
+    [biz, bizInitial],
+  );
+
+  const isBusinessSaveDisabled = bizSaving || bizLoading || !isBusinessDirty;
 
   useEffect(() => {
     if (!workspaceId) return;
 
     const load = async () => {
       try {
-        setLoading(true);
+        setWorkspaceLoading(true);
+        setBizLoading(true);
 
         const res = await fetch(`/api/workspaces/${workspaceId}`);
         if (res.ok) {
@@ -116,10 +168,46 @@ export default function WorkspaceSettingsPage() {
           const json = (await listRes.json()) as ListWorkspacesResponse;
           setWorkspaceCount(json.workspaces.length);
         }
+
+        const profileRes = await fetch(
+          `/api/workspaces/${workspaceId}/business-profile`,
+        );
+        if (profileRes.ok) {
+          const json = (await profileRes.json()) as BusinessProfileResponse;
+          const profile = json.businessProfile;
+
+          if (profile) {
+            const mapped: BizFormState = {
+              tagline: profile.tagline ?? "",
+              isOperating:
+                profile.is_operating === true
+                  ? "yes"
+                  : profile.is_operating === false
+                  ? "no"
+                  : "",
+              industry: profile.industry ?? "",
+              companyStage: profile.company_stage ?? "",
+              problemShort: profile.problem_short ?? "",
+              problemLong: profile.problem_long ?? "",
+              solutionAndUniqueness: profile.solution_and_uniqueness ?? "",
+              teamAndRoles: profile.team_and_roles ?? "",
+              financialProjections: profile.financial_projections ?? "",
+              risksAndMitigation: profile.risks_and_mitigation ?? "",
+              successMetrics: profile.success_metrics ?? "",
+              growthPartnerships: profile.growth_partnerships ?? "",
+            };
+            setBiz(mapped);
+            setBizInitial(mapped);
+          } else {
+            setBiz(emptyBizForm);
+            setBizInitial(emptyBizForm);
+          }
+        }
       } catch (error) {
         console.error("Failed to load workspace settings", error);
       } finally {
-        setLoading(false);
+        setWorkspaceLoading(false);
+        setBizLoading(false);
       }
     };
 
@@ -135,12 +223,12 @@ export default function WorkspaceSettingsPage() {
     }
   };
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleGeneralSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (isSaveDisabled || !workspaceId) return;
+    if (isGeneralSaveDisabled || !workspaceId) return;
 
     try {
-      setSaving(true);
+      setWorkspaceSaving(true);
 
       const payload: { name?: string; imageUrl?: string | null } = {
         name: workspaceName.trim(),
@@ -168,54 +256,116 @@ export default function WorkspaceSettingsPage() {
     } catch (error) {
       console.error("Error while updating workspace", error);
     } finally {
-      setSaving(false);
+      setWorkspaceSaving(false);
     }
   };
 
-  const handleCancelChanges = () => {
+  const handleGeneralCancel = () => {
     setWorkspaceName(initialName);
     setImageUrl(initialImageUrl);
   };
 
-  const handleUploadClick = () => {
-    if (fileInputRef.current && !loading && !saving) {
-      fileInputRef.current.click();
-    }
+  const updateBizField = <K extends keyof BizFormState>(
+    key: K,
+    value: BizFormState[K],
+  ) => {
+    setBiz((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleImageInputChange = async (
-    event: ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = event.target.files?.[0];
-    if (!file || !workspaceId) return;
+  const handleIndustryChange = (event: SelectChangeEvent) => {
+    updateBizField("industry", event.target.value);
+  };
+
+  const handleStageChange = (event: SelectChangeEvent) => {
+    updateBizField("companyStage", event.target.value);
+  };
+
+  const handleProblemShortChange = (event: SelectChangeEvent) => {
+    updateBizField("problemShort", event.target.value);
+  };
+
+  const handleBusinessSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (isBusinessSaveDisabled || !workspaceId) return;
 
     try {
-      setSaving(true);
+      setBizSaving(true);
 
-      const formData = new FormData();
-      formData.append("file", file);
+      const payload = {
+        workspaceId,
+        tagline: biz.tagline || undefined,
+        isOperating:
+          biz.isOperating === ""
+            ? undefined
+            : biz.isOperating === "yes"
+            ? true
+            : false,
+        industry: biz.industry || undefined,
+        companyStage: biz.companyStage || undefined,
+        problemShort: biz.problemShort || undefined,
+        problemLong: biz.problemLong || undefined,
+        solutionAndUniqueness: biz.solutionAndUniqueness || undefined,
+        teamAndRoles: biz.teamAndRoles || undefined,
+        financialProjections: biz.financialProjections || undefined,
+        risksAndMitigation: biz.risksAndMitigation || undefined,
+        successMetrics: biz.successMetrics || undefined,
+        growthPartnerships: biz.growthPartnerships || undefined,
+        rawFormData: {
+          ...biz,
+        },
+      };
 
-      const res = await fetch(`/api/workspaces/${workspaceId}/image`, {
-        method: "POST",
-        body: formData,
-      });
+      const res = await fetch(
+        `/api/workspaces/${workspaceId}/business-profile`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        },
+      );
 
       if (!res.ok) {
-        console.error("Failed to upload workspace image");
+        console.error("Failed to save business profile");
         return;
       }
 
-      const json = (await res.json()) as GetWorkspaceResponse;
-      const ws = json.workspace;
+      const json = (await res.json()) as BusinessProfileResponse;
+      const profile = json.businessProfile;
 
-      setImageUrl(ws.image_url ?? null);
-      setInitialImageUrl(ws.image_url ?? null);
+      if (profile) {
+        const mapped: BizFormState = {
+          tagline: profile.tagline ?? "",
+          isOperating:
+            profile.is_operating === true
+              ? "yes"
+              : profile.is_operating === false
+              ? "no"
+              : "",
+          industry: profile.industry ?? "",
+          companyStage: profile.company_stage ?? "",
+          problemShort: profile.problem_short ?? "",
+          problemLong: profile.problem_long ?? "",
+          solutionAndUniqueness: profile.solution_and_uniqueness ?? "",
+          teamAndRoles: profile.team_and_roles ?? "",
+          financialProjections: profile.financial_projections ?? "",
+          risksAndMitigation: profile.risks_and_mitigation ?? "",
+          successMetrics: profile.success_metrics ?? "",
+          growthPartnerships: profile.growth_partnerships ?? "",
+        };
+        setBiz(mapped);
+        setBizInitial(mapped);
+      } else {
+        setBizInitial(biz);
+      }
     } catch (error) {
-      console.error("Error while uploading workspace image", error);
+      console.error("Error while saving business profile", error);
     } finally {
-      setSaving(false);
-      event.target.value = "";
+      setBizSaving(false);
     }
+  };
+
+  const handleBusinessCancel = () => {
+    setBiz(bizInitial);
   };
 
   const renderSidebar = () => {
@@ -477,7 +627,7 @@ export default function WorkspaceSettingsPage() {
           borderRight: "1px solid #E1E6F5",
           pr: 3,
           mr: 4,
-          pt: 4,
+          pt: 4
         }}
       >
         <Typography
@@ -511,12 +661,12 @@ export default function WorkspaceSettingsPage() {
   };
 
   const renderGeneralTab = () => {
-    const disabled = isSaveDisabled;
+    const disabled = isGeneralSaveDisabled;
 
     return (
       <Box
         component="form"
-        onSubmit={handleSubmit}
+        onSubmit={handleGeneralSubmit}
         sx={{
           flex: 1,
           flexDirection: "column",
@@ -570,11 +720,11 @@ export default function WorkspaceSettingsPage() {
               }}
             >
               {imageUrl ? (
-                <Box
-                  component="img"
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
                   src={imageUrl}
                   alt={workspaceName || "Workspace image"}
-                  sx={{
+                  style={{
                     width: "100%",
                     height: "100%",
                     objectFit: "cover",
@@ -605,8 +755,8 @@ export default function WorkspaceSettingsPage() {
 
             <Button
               disableRipple
+              component="label"
               variant="text"
-              onClick={handleUploadClick}
               sx={{
                 px: 0,
                 minWidth: "auto",
@@ -614,18 +764,47 @@ export default function WorkspaceSettingsPage() {
                 fontSize: 14,
                 fontWeight: 500,
                 color: "#4C6AD2",
+                cursor: "pointer",
               }}
             >
               Upload new
-            </Button>
+              <input
+                type="file"
+                accept="image/*"
+                hidden
+                onChange={async (event) => {
+                  if (!workspaceId) return;
+                  const file = event.target.files?.[0];
+                  if (!file) return;
 
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              style={{ display: "none" }}
-              onChange={handleImageInputChange}
-            />
+                  const formData = new FormData();
+                  formData.append("file", file);
+
+                  try {
+                    const res = await fetch(
+                      `/api/workspaces/${workspaceId}/image`,
+                      {
+                        method: "POST",
+                        body: formData,
+                      },
+                    );
+
+                    if (!res.ok) {
+                      console.error("Failed to upload workspace image");
+                      return;
+                    }
+
+                    const json = (await res.json()) as GetWorkspaceResponse;
+                    const ws = json.workspace;
+                    setImageUrl(ws.image_url ?? null);
+                  } catch (error) {
+                    console.error("Error uploading workspace image", error);
+                  } finally {
+                    event.target.value = "";
+                  }
+                }}
+              />
+            </Button>
           </Box>
 
           <Box
@@ -675,16 +854,15 @@ export default function WorkspaceSettingsPage() {
             justifyContent: "center",
             gap: 3,
             width: "100%",
-            maxWidth: 980,
           }}
         >
           <Button
             type="button"
-            onClick={handleCancelChanges}
-            disabled={loading || saving || !isDirty}
+            onClick={handleGeneralCancel}
+            disabled={workspaceLoading || workspaceSaving || !isGeneralDirty}
             sx={{
               width: "50%",
-              borderRadius: 2,
+              borderRadius: "3px",
               textTransform: "none",
               fontWeight: 600,
               fontSize: 15,
@@ -709,7 +887,411 @@ export default function WorkspaceSettingsPage() {
             disabled={disabled}
             sx={{
               width: "50%",
-              borderRadius: 2,
+              borderRadius: "3px",
+              textTransform: "none",
+              fontWeight: 600,
+              fontSize: 15,
+              py: 1.3,
+              backgroundImage:
+                "linear-gradient(90deg, #4C6AD2 0%, #7B4FD6 100%)",
+              color: "#FFFFFF",
+              boxShadow: "none",
+              "&.Mui-disabled": {
+                backgroundImage: "none",
+                backgroundColor: "#E5E7EB",
+                color: "#9CA3AF",
+              },
+              "&:hover": {
+                boxShadow: "none",
+                opacity: 0.96,
+                backgroundImage:
+                  "linear-gradient(90deg, #4C6AD2 0%, #7B4FD6 100%)",
+              },
+            }}
+          >
+            Save
+          </Button>
+        </Box>
+      </Box>
+    );
+  };
+
+  const renderBusinessTab = () => {
+    const inputBaseSx = {
+      borderRadius: 2.5,
+      bgcolor: "#FFFFFF",
+      "& .MuiOutlinedInput-notchedOutline": {
+        borderColor: "#D3DBEF",
+      },
+      "&:hover .MuiOutlinedInput-notchedOutline": {
+        borderColor: "#C3CDE8",
+      },
+      "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+        borderColor: "#8A9FE4",
+      },
+      fontSize: 14.5,
+    };
+
+    const multilineFieldSx = {
+      ...inputBaseSx,
+      alignItems: "flex-start",
+      "& textarea": {
+        fontSize: 14.5,
+      },
+    };
+
+    const selectBaseSx = {
+      ...inputBaseSx,
+      "& .MuiSelect-select": {
+        fontSize: 14.5,
+        py: 1.3,
+      },
+    };
+
+    const magicIconAdornment = (
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          pr: 1.2,
+          color: "#8A9FE4",
+          cursor: "pointer",
+        }}
+      >
+        <AutoAwesomeOutlinedIcon sx={{ fontSize: 20 }} />
+      </Box>
+    );
+
+    const disabled = isBusinessSaveDisabled;
+
+    return (
+      <Box
+        component="form"
+        onSubmit={handleBusinessSubmit}
+        sx={{
+          flex: 1,
+          flexDirection: "column",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          gap: 2,
+          mt: 4
+        }}
+      >
+        <Box
+          sx={{
+            width: "100%",
+            maxWidth: 980,
+            borderRadius: 4,
+            border: "1px solid #E1E6F5",
+            bgcolor: "#F9FAFF",
+            px: 6,
+            pt: 4,
+            pb: 5,
+          }}
+        >
+          <Typography
+            sx={{
+              fontSize: 20,
+              fontWeight: 600,
+              mb: 3,
+            }}
+          >
+            Business activities
+          </Typography>
+
+          <Box mb={3}>
+            <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
+              Is this company currently in operation?
+            </Typography>
+            <RadioGroup
+              row
+              value={biz.isOperating}
+              onChange={(_, value) => updateBizField("isOperating", value)}
+            >
+              <FormControlLabel
+                value="yes"
+                control={<Radio size="small" />}
+                label="Yes"
+              />
+              <FormControlLabel
+                value="no"
+                control={<Radio size="small" />}
+                label="No"
+              />
+            </RadioGroup>
+          </Box>
+
+          <Box mb={3}>
+            <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
+              Select an industry in which your company is operated
+            </Typography>
+            <Select
+              fullWidth
+              displayEmpty
+              value={biz.industry}
+              onChange={handleIndustryChange}
+              sx={selectBaseSx}
+              renderValue={(selected) => (selected ? selected : "Select")}
+            >
+              <MenuItem disabled value="">
+                <Typography color="text.secondary">Select</Typography>
+              </MenuItem>
+              <MenuItem value="Business Software / SaaS">
+                Business Software / SaaS
+              </MenuItem>
+              <MenuItem value="E-commerce">E-commerce</MenuItem>
+              <MenuItem value="FinTech">FinTech</MenuItem>
+              <MenuItem value="Health & Wellness">Health &amp; Wellness</MenuItem>
+              <MenuItem value="Other">Other</MenuItem>
+            </Select>
+          </Box>
+
+          <Box mb={3}>
+            <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
+              Company stage
+            </Typography>
+            <Select
+              fullWidth
+              displayEmpty
+              value={biz.companyStage}
+              onChange={handleStageChange}
+              sx={selectBaseSx}
+              renderValue={(selected) => (selected ? selected : "Select")}
+            >
+              <MenuItem disabled value="">
+                <Typography color="text.secondary">Select</Typography>
+              </MenuItem>
+              <MenuItem value="Idea / Pre-seed">Idea / Pre-seed</MenuItem>
+              <MenuItem value="Early Growth (Seed to Series A)">
+                Early Growth (Seed to Series A)
+              </MenuItem>
+              <MenuItem value="Scale-up">Scale-up</MenuItem>
+              <MenuItem value="Established">Established</MenuItem>
+            </Select>
+          </Box>
+
+          <Box mb={3}>
+            <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
+              What problem do you solve, and for whom
+            </Typography>
+            <Select
+              fullWidth
+              displayEmpty
+              value={biz.problemShort}
+              onChange={handleProblemShortChange}
+              sx={selectBaseSx}
+              renderValue={(selected) => (selected ? selected : "Select")}
+            >
+              <MenuItem disabled value="">
+                <Typography color="text.secondary">Select</Typography>
+              </MenuItem>
+              <MenuItem value="Founders who need structured business plans">
+                Founders who need structured business plans
+              </MenuItem>
+              <MenuItem value="Small businesses needing funding-ready docs">
+                Small businesses needing funding-ready docs
+              </MenuItem>
+              <MenuItem value="Consultants serving SME clients">
+                Consultants serving SME clients
+              </MenuItem>
+              <MenuItem value="Other">Other</MenuItem>
+            </Select>
+          </Box>
+
+          <Box mb={3}>
+            <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
+              What problem do you solve, and for whom
+            </Typography>
+            <TextField
+              fullWidth
+              multiline
+              minRows={3}
+              placeholder="Describe"
+              value={biz.problemLong}
+              onChange={(e) =>
+                updateBizField("problemLong", e.target.value)
+              }
+              InputProps={{
+                sx: multilineFieldSx,
+                endAdornment: magicIconAdornment,
+              }}
+            />
+          </Box>
+
+          <Box mb={3}>
+            <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
+              What&apos;s your solution, and what makes it unique?
+            </Typography>
+            <TextField
+              fullWidth
+              multiline
+              minRows={3}
+              placeholder="Describe"
+              value={biz.solutionAndUniqueness}
+              onChange={(e) =>
+                updateBizField(
+                  "solutionAndUniqueness",
+                  e.target.value,
+                )
+              }
+              InputProps={{
+                sx: multilineFieldSx,
+                endAdornment: magicIconAdornment,
+              }}
+            />
+          </Box>
+
+          <Box mb={3}>
+            <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
+              Who&apos;s on your team, and what are their roles?
+            </Typography>
+            <TextField
+              fullWidth
+              multiline
+              minRows={3}
+              placeholder="Describe"
+              value={biz.teamAndRoles}
+              onChange={(e) =>
+                updateBizField("teamAndRoles", e.target.value)
+              }
+              InputProps={{
+                sx: multilineFieldSx,
+                endAdornment: magicIconAdornment,
+              }}
+            />
+          </Box>
+
+          <Box mb={3}>
+            <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
+              What are your 3–5 year financial projections?
+            </Typography>
+            <TextField
+              fullWidth
+              multiline
+              minRows={3}
+              placeholder="Describe"
+              value={biz.financialProjections}
+              onChange={(e) =>
+                updateBizField(
+                  "financialProjections",
+                  e.target.value,
+                )
+              }
+              InputProps={{
+                sx: multilineFieldSx,
+                endAdornment: magicIconAdornment,
+              }}
+            />
+          </Box>
+
+          <Box mb={3}>
+            <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
+              What risks do you face, and how will you manage them?
+            </Typography>
+            <TextField
+              fullWidth
+              multiline
+              minRows={3}
+              placeholder="Describe"
+              value={biz.risksAndMitigation}
+              onChange={(e) =>
+                updateBizField(
+                  "risksAndMitigation",
+                  e.target.value,
+                )
+              }
+              InputProps={{
+                sx: multilineFieldSx,
+                endAdornment: magicIconAdornment,
+              }}
+            />
+          </Box>
+
+          <Box mb={3}>
+            <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
+              How will you measure success?
+            </Typography>
+            <TextField
+              fullWidth
+              multiline
+              minRows={3}
+              placeholder="Describe"
+              value={biz.successMetrics}
+              onChange={(e) =>
+                updateBizField("successMetrics", e.target.value)
+              }
+              InputProps={{
+                sx: multilineFieldSx,
+                endAdornment: magicIconAdornment,
+              }}
+            />
+          </Box>
+
+          <Box mb={1}>
+            <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
+              What partnerships will help your business grow?
+            </Typography>
+            <TextField
+              fullWidth
+              multiline
+              minRows={3}
+              placeholder="Describe"
+              value={biz.growthPartnerships}
+              onChange={(e) =>
+                updateBizField(
+                  "growthPartnerships",
+                  e.target.value,
+                )
+              }
+              InputProps={{
+                sx: multilineFieldSx,
+                endAdornment: magicIconAdornment,
+              }}
+            />
+          </Box>
+        </Box>
+
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "center",
+            gap: 3,
+            width: "100%",
+          }}
+        >
+          <Button
+            type="button"
+            onClick={handleBusinessCancel}
+            disabled={bizLoading || bizSaving || !isBusinessDirty}
+            sx={{
+              width: "50%",
+              borderRadius: "3px",
+              textTransform: "none",
+              fontWeight: 600,
+              fontSize: 15,
+              border: "1px solid #F97373",
+              color: "#DC2626",
+              bgcolor: "#FFFFFF",
+              py: 1.3,
+              "&:hover": {
+                bgcolor: "#FFF5F5",
+              },
+              "&.Mui-disabled": {
+                borderColor: "#F3F4F6",
+                color: "#9CA3AF",
+              },
+            }}
+          >
+            Cancel Changes
+          </Button>
+
+          <Button
+            type="submit"
+            disabled={disabled}
+            sx={{
+              width: "50%",
+              borderRadius: "3px",
               textTransform: "none",
               fontWeight: 600,
               fontSize: 15,
@@ -740,11 +1322,10 @@ export default function WorkspaceSettingsPage() {
 
   const renderSecondaryContent = () => {
     if (settingsTab === "general") return renderGeneralTab();
+    if (settingsTab === "business") return renderBusinessTab();
 
     const label =
-      settingsTab === "business"
-        ? "Business activities"
-        : settingsTab === "members"
+      settingsTab === "members"
         ? "Members"
         : "AI Library";
 
