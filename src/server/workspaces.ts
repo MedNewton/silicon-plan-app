@@ -10,11 +10,74 @@ import type {
   UpsertWorkspaceBusinessProfileParams,
   UserId,
   WorkspaceId,
+  WorkspaceRole,
+  WorkspaceMemberStatus,
+  WorkspaceMemberId,
+  RemoveWorkspaceMemberParams,
 } from "@/types/workspaces";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  clerkClient as getClerkClient,
+  type User,
+} from "@clerk/nextjs/server";
 
 type Supa = SupabaseClient<SupabaseDb>;
 type Tables = SupabaseDb["public"]["Tables"];
+
+// ========== SMALL HELPERS ==========
+
+function mapWorkspaceRow(row: unknown): Workspace {
+  const r = row as Workspace;
+  return {
+    id: r.id,
+    owner_user_id: r.owner_user_id,
+    name: r.name,
+    image_url: r.image_url,
+    is_archived: r.is_archived,
+    created_at: r.created_at,
+    updated_at: r.updated_at,
+  };
+}
+
+function mapWorkspaceMemberRow(row: unknown): WorkspaceMember {
+  const r = row as WorkspaceMember;
+  return {
+    id: r.id,
+    workspace_id: r.workspace_id,
+    user_id: r.user_id,
+    role: r.role,
+    status: r.status,
+    invited_email: r.invited_email,
+    added_by_user_id: r.added_by_user_id,
+    created_at: r.created_at,
+    updated_at: r.updated_at,
+  };
+}
+
+function mapWorkspaceBusinessProfileRow(
+  row: unknown,
+): WorkspaceBusinessProfile {
+  const r = row as WorkspaceBusinessProfile;
+  return {
+    id: r.id,
+    workspace_id: r.workspace_id,
+    tagline: r.tagline,
+    is_operating: r.is_operating,
+    industry: r.industry,
+    company_stage: r.company_stage,
+    problem_short: r.problem_short,
+    problem_long: r.problem_long,
+    solution_and_uniqueness: r.solution_and_uniqueness,
+    team_and_roles: r.team_and_roles,
+    financial_projections: r.financial_projections,
+    risks_and_mitigation: r.risks_and_mitigation,
+    success_metrics: r.success_metrics,
+    growth_partnerships: r.growth_partnerships,
+    raw_form_data: r.raw_form_data,
+    created_at: r.created_at,
+    updated_at: r.updated_at,
+  };
+}
 
 async function userHasWorkspaceAccess(
   client: Supa,
@@ -48,6 +111,7 @@ async function ensureUserHasWorkspaceAccess(
   }
 }
 
+// ========== CREATE / LIST / DETAILS ==========
 
 export async function createWorkspace(
   params: CreateWorkspaceParams,
@@ -68,11 +132,11 @@ export async function createWorkspace(
   };
 
   const {
-    data: workspace,
+    data: workspaceRow,
     error: workspaceError,
   } = await client.from("workspaces").insert(insertPayload).select("*").single();
 
-  if (workspaceError || !workspace) {
+  if (workspaceError || !workspaceRow) {
     throw new Error(
       `Failed to create workspace: ${
         workspaceError?.message ?? "Unknown error"
@@ -80,10 +144,11 @@ export async function createWorkspace(
     );
   }
 
-  const typedWorkspace = workspace as Workspace;
+  const workspace = mapWorkspaceRow(workspaceRow);
+  const workspaceId: WorkspaceId = workspace.id;
 
   const memberPayload: Tables["workspace_members"]["Insert"] = {
-    workspace_id: typedWorkspace.id,
+    workspace_id: workspaceId,
     user_id: userId,
     role: "owner",
     status: "active",
@@ -102,7 +167,7 @@ export async function createWorkspace(
     );
   }
 
-  return typedWorkspace;
+  return workspace;
 }
 
 export async function getWorkspacesForUser(
@@ -132,7 +197,7 @@ export async function getWorkspacesForUser(
   const workspaceIds = membershipRows.map((row) => row.workspace_id);
 
   const {
-    data: workspaces,
+    data: workspacesData,
     error: workspacesError,
   } = await client
     .from("workspaces")
@@ -140,7 +205,7 @@ export async function getWorkspacesForUser(
     .in("id", workspaceIds)
     .order("created_at", { ascending: false });
 
-  if (workspacesError || !workspaces) {
+  if (workspacesError || !workspacesData) {
     throw new Error(
       `Failed to load workspaces: ${
         workspacesError?.message ?? "Unknown error"
@@ -148,7 +213,7 @@ export async function getWorkspacesForUser(
     );
   }
 
-  return workspaces as Workspace[];
+  return workspacesData.map((row) => mapWorkspaceRow(row));
 }
 
 export async function getUserWorkspaces({
@@ -171,7 +236,7 @@ export async function getWorkspaceWithDetails(
   }
 
   const {
-    data: workspace,
+    data: workspaceRow,
     error: workspaceError,
   } = await client
     .from("workspaces")
@@ -179,7 +244,7 @@ export async function getWorkspaceWithDetails(
     .eq("id", workspaceId)
     .single();
 
-  if (workspaceError || !workspace) {
+  if (workspaceError || !workspaceRow) {
     throw new Error(
       `Failed to load workspace: ${
         workspaceError?.message ?? "Unknown error"
@@ -187,8 +252,10 @@ export async function getWorkspaceWithDetails(
     );
   }
 
+  const workspace = mapWorkspaceRow(workspaceRow);
+
   const {
-    data: businessProfile,
+    data: businessProfileRow,
     error: profileError,
   } = await client
     .from("workspace_business_profile")
@@ -202,8 +269,13 @@ export async function getWorkspaceWithDetails(
     );
   }
 
+  const businessProfile =
+    businessProfileRow == null
+      ? null
+      : mapWorkspaceBusinessProfileRow(businessProfileRow);
+
   const {
-    data: members,
+    data: membersRows,
     error: membersError,
   } = await client
     .from("workspace_members")
@@ -211,7 +283,7 @@ export async function getWorkspaceWithDetails(
     .eq("workspace_id", workspaceId)
     .eq("status", "active");
 
-  if (membersError || !members) {
+  if (membersError || !membersRows) {
     throw new Error(
       `Failed to load workspace members: ${
         membersError?.message ?? "Unknown error"
@@ -219,12 +291,16 @@ export async function getWorkspaceWithDetails(
     );
   }
 
+  const members = membersRows.map((row) => mapWorkspaceMemberRow(row));
+
   return {
-    workspace: workspace as Workspace,
-    businessProfile: (businessProfile as WorkspaceBusinessProfile | null) ?? null,
-    members: members as WorkspaceMember[],
+    workspace,
+    businessProfile,
+    members,
   };
 }
+
+// ========== BUSINESS PROFILE ==========
 
 export async function upsertWorkspaceBusinessProfile(
   params: UpsertWorkspaceBusinessProfileParams & { userId: UserId },
@@ -251,7 +327,9 @@ export async function upsertWorkspaceBusinessProfile(
 
   await ensureUserHasWorkspaceAccess(client, workspaceId, userId);
 
-  const payload: Tables["workspace_business_profile"]["Insert"] = {
+  type Insert = Tables["workspace_business_profile"]["Insert"];
+
+  const payload: Insert = {
     workspace_id: workspaceId,
   };
 
@@ -259,7 +337,6 @@ export async function upsertWorkspaceBusinessProfile(
   if (isOperating !== undefined) payload.is_operating = isOperating;
   if (industry !== undefined) payload.industry = industry;
   if (companyStage !== undefined) payload.company_stage = companyStage;
-
   if (problemShort !== undefined) payload.problem_short = problemShort;
   if (problemLong !== undefined) payload.problem_long = problemLong;
   if (solutionAndUniqueness !== undefined) {
@@ -282,10 +359,7 @@ export async function upsertWorkspaceBusinessProfile(
     payload.raw_form_data = rawFormData;
   }
 
-  const {
-    data,
-    error,
-  } = await client
+  const { data, error } = await client
     .from("workspace_business_profile")
     .upsert(payload, { onConflict: "workspace_id" })
     .select("*")
@@ -299,8 +373,10 @@ export async function upsertWorkspaceBusinessProfile(
     );
   }
 
-  return data as WorkspaceBusinessProfile;
+  return mapWorkspaceBusinessProfileRow(data);
 }
+
+// ========== GENERAL UPDATE ==========
 
 export async function updateWorkspaceGeneral(params: {
   userId: UserId;
@@ -341,5 +417,202 @@ export async function updateWorkspaceGeneral(params: {
     );
   }
 
-  return data as Workspace;
+  return mapWorkspaceRow(data);
+}
+
+// ========== MEMBERS (SETTINGS TAB) ==========
+
+export type WorkspaceMembersForSettingsResult = {
+  currentUserRole: WorkspaceRole | null;
+  members: {
+    userId: UserId;
+    name: string | null;
+    email: string | null;
+    role: WorkspaceRole;
+    isOwner: boolean;
+  }[];
+};
+
+export async function getWorkspaceMembersForSettings(params: {
+  workspaceId: WorkspaceId;
+  userId: UserId;
+}): Promise<WorkspaceMembersForSettingsResult> {
+  const { workspaceId, userId } = params;
+  const client = getSupabaseClient();
+
+  await ensureUserHasWorkspaceAccess(client, workspaceId, userId);
+
+  const {
+    data: memberRows,
+    error: membersError,
+  } = await client
+    .from("workspace_members")
+    .select("*")
+    .eq("workspace_id", workspaceId)
+    .eq("status", "active")
+    .order("created_at", { ascending: true });
+
+  if (membersError) {
+    throw new Error(
+      `Failed to load workspace members: ${
+        membersError.message ?? "Unknown error"
+      }`,
+    );
+  }
+
+  const rows: WorkspaceMember[] = (memberRows ?? []).map((row) =>
+    mapWorkspaceMemberRow(row),
+  );
+
+  if (rows.length === 0) {
+    return {
+      currentUserRole: null,
+      members: [],
+    };
+  }
+
+  const currentMember =
+    rows.find((m) => m.user_id === userId && m.status === "active") ?? null;
+
+  const currentUserRole: WorkspaceRole | null = currentMember
+    ? currentMember.role
+    : null;
+
+  // ---- Fetch profile info from Clerk ----
+  const uniqueUserIds = Array.from(
+    new Set<UserId>(rows.map((m) => m.user_id)),
+  );
+
+  const userInfoById = new Map<
+    UserId,
+    { name: string | null; email: string | null }
+  >();
+
+  try {
+    // In your installed Clerk version, clerkClient is a function returning the real client
+    const clerk = await getClerkClient();
+    const usersResponse = await clerk.users.getUserList({
+      userId: uniqueUserIds,
+    });
+
+    const clerkUsers = usersResponse.data;
+
+    for (const u of clerkUsers) {
+      const hasName = Boolean(u.firstName ?? u.lastName);
+      const fullName = hasName
+        ? [u.firstName, u.lastName].filter(Boolean).join(" ")
+        : null;
+
+      const primaryEmail =
+        u.emailAddresses.find(
+          (e) => e.id === u.primaryEmailAddressId,
+        )?.emailAddress ??
+        u.emailAddresses[0]?.emailAddress ??
+        null;
+
+      userInfoById.set(u.id, {
+        name: fullName,
+        email: primaryEmail,
+      });
+    }
+  } catch (error: unknown) {
+    // If Clerk lookup fails, we just fall back to Supabase data
+    console.error("Failed to enrich workspace members from Clerk", error);
+  }
+
+  const mappedMembers = rows.map((m) => {
+    const enriched = userInfoById.get(m.user_id) ?? null;
+
+    return {
+      userId: m.user_id,
+      name: enriched?.name ?? null,
+      email: enriched?.email ?? m.invited_email,
+      role: m.role,
+      isOwner: m.role === "owner",
+    };
+  });
+
+  return {
+    currentUserRole,
+    members: mappedMembers,
+  };
+}
+
+// ========== REMOVE MEMBER ==========
+
+export async function removeWorkspaceMemberFromWorkspace(params: {
+  workspaceId: WorkspaceId;
+  target: RemoveWorkspaceMemberParams;
+  requesterUserId: UserId;
+}): Promise<void> {
+  const { workspaceId, target, requesterUserId } = params;
+  const { userId: targetUserId } = target;
+
+  const client = getSupabaseClient();
+
+  const {
+    data: callerRow,
+    error: callerError,
+  } = await client
+    .from("workspace_members")
+    .select("*")
+    .eq("workspace_id", workspaceId)
+    .eq("user_id", requesterUserId)
+    .eq("status", "active")
+    .single();
+
+  if (callerError || !callerRow) {
+    throw new Error("You are not a member of this workspace.");
+  }
+
+  const caller = mapWorkspaceMemberRow(callerRow);
+  const callerRole: WorkspaceRole = caller.role;
+
+  const {
+    data: targetRow,
+    error: targetError,
+  } = await client
+    .from("workspace_members")
+    .select("*")
+    .eq("workspace_id", workspaceId)
+    .eq("user_id", targetUserId)
+    .eq("status", "active")
+    .single();
+
+  if (targetError || !targetRow) {
+    throw new Error("Workspace member not found.");
+  }
+
+  const targetMember = mapWorkspaceMemberRow(targetRow);
+  const targetRole: WorkspaceRole = targetMember.role;
+
+  if (targetRole === "owner") {
+    throw new Error("Workspace owner cannot be removed.");
+  }
+
+  if (targetRole === "admin" && callerRole !== "owner") {
+    throw new Error("Only the owner can remove an admin.");
+  }
+
+  if (
+    (targetRole === "editor" || targetRole === "viewer") &&
+    callerRole !== "owner" &&
+    callerRole !== "admin"
+  ) {
+    throw new Error("Only owner or admin can remove members.");
+  }
+
+  const { error: deleteError } = await client
+    .from("workspace_members")
+    .delete()
+    .eq("workspace_id", workspaceId)
+    .eq("user_id", targetUserId);
+
+  if (deleteError) {
+    throw new Error(
+      `Failed to remove workspace member: ${
+        deleteError.message ?? "Unknown error"
+      }`,
+    );
+  }
 }
