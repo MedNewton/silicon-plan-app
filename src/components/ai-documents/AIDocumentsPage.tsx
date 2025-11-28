@@ -1,7 +1,12 @@
 // src/components/ai-documents/AIDocumentsPage.tsx
 "use client";
 
-import { useState, type FormEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import {
   Box,
   Button,
@@ -23,6 +28,9 @@ import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import AddCircleOutlineRoundedIcon from "@mui/icons-material/AddCircleOutlineRounded";
 import BusinessCenterOutlinedIcon from "@mui/icons-material/BusinessCenterOutlined";
+import ShowChartOutlinedIcon from "@mui/icons-material/ShowChartOutlined";
+import ChatBubbleOutlineOutlinedIcon from "@mui/icons-material/ChatBubbleOutlineOutlined";
+import AppsOutlinedIcon from "@mui/icons-material/AppsOutlined";
 
 import type { Workspace } from "@/types/workspaces";
 
@@ -40,6 +48,10 @@ type CreateWorkspaceResponse = {
   workspace: Workspace;
 };
 
+type ListWorkspacesResponse = {
+  workspaces: Workspace[];
+};
+
 export default function AIDocumentsPage() {
   const theme = useTheme();
   const router = useRouter();
@@ -54,7 +66,31 @@ export default function AIDocumentsPage() {
   const [workspaceName, setWorkspaceName] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [loadingWorkspaces, setLoadingWorkspaces] = useState(false);
+
   const isCreateDisabled = workspaceName.trim().length === 0 || isSubmitting;
+
+  // ------- Load workspaces for "My Workspaces" tab -------
+  useEffect(() => {
+    const loadWorkspaces = async () => {
+      try {
+        setLoadingWorkspaces(true);
+        const res = await fetch("/api/workspaces");
+        if (!res.ok) {
+          throw new Error("Failed to load workspaces");
+        }
+        const data = (await res.json()) as ListWorkspacesResponse;
+        setWorkspaces(data.workspaces ?? []);
+      } catch (error) {
+        console.error("Failed to load workspaces", error);
+      } finally {
+        setLoadingWorkspaces(false);
+      }
+    };
+
+    void loadWorkspaces();
+  }, []);
 
   const handleCreateWorkspace = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -77,12 +113,26 @@ export default function AIDocumentsPage() {
 
       const data = (await response.json()) as CreateWorkspaceResponse;
 
-      // ✅ go to business-setup step for this workspace
+      // go to business-setup step for this workspace
       router.push(`/workspaces/${data.workspace.id}/business-setup`);
     } catch (error) {
       console.error(error);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // Small helper to format created_at
+  const formatDate = (iso?: string | null) => {
+    if (!iso) return "";
+    try {
+      return new Intl.DateTimeFormat("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      }).format(new Date(iso));
+    } catch {
+      return "";
     }
   };
 
@@ -251,6 +301,8 @@ export default function AIDocumentsPage() {
       },
     };
 
+    const workspacesCount = workspaces.length;
+
     return (
       <Box
         sx={{
@@ -299,7 +351,7 @@ export default function AIDocumentsPage() {
             }}
           >
             <BusinessCenterOutlinedIcon sx={{ fontSize: 20, mr: 0.5 }} />
-            My Workspaces (0)
+            {`My Workspaces (${workspacesCount})`}
           </Button>
         </Stack>
       </Box>
@@ -448,20 +500,233 @@ export default function AIDocumentsPage() {
     </Box>
   );
 
-  const renderMyWorkspacesPlaceholder = () => (
-    <Box
-      sx={{
-        flex: 1,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        color: theme.palette.text.secondary,
-        fontSize: 14,
-      }}
-    >
-      My Workspaces will appear here once we implement the list view.
-    </Box>
-  );
+  const renderMyWorkspacesSection = () => {
+    if (loadingWorkspaces) {
+      return (
+        <Box
+          sx={{
+            flex: 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: theme.palette.text.secondary,
+            fontSize: 14,
+          }}
+        >
+          Loading workspaces…
+        </Box>
+      );
+    }
+
+    if (workspaces.length === 0) {
+      return (
+        <Box
+          sx={{
+            flex: 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: theme.palette.text.secondary,
+            fontSize: 14,
+          }}
+        >
+          You don&apos;t have any workspaces yet. Create one to get started.
+        </Box>
+      );
+    }
+
+    return (
+      <Box
+        sx={{
+          flex: 1,
+          display: "flex",
+          justifyContent: "center",
+          pt: 6,
+          pb: 6,
+        }}
+      >
+        <Box
+          sx={{
+            width: "100%",
+            maxWidth: 900,
+          }}
+        >
+          {workspaces.map((workspace, index) => {
+            const createdAt =
+              // adapt to whatever your Workspace type uses
+              workspace.created_at ??
+              null as string | null;
+
+            const dateLabel = createdAt ? formatDate(createdAt) : "";
+
+            const isFirst = index % 2 === 0;
+
+            const iconBg = isFirst
+              ? "linear-gradient(180deg, #E4ECFF 0%, #BFCBEB 100%)"
+              : "linear-gradient(180deg, #E7E2FF 0%, #CBBEF5 100%)";
+
+            return (
+              <Box
+                key={workspace.id}
+                sx={{
+                  borderRadius: 5,
+                  border: "1px solid #E1E6F5",
+                  bgcolor: "#FBFCFF",
+                  display: "flex",
+                  alignItems: "stretch",
+                  justifyContent: "space-between",
+                  px: 5,
+                  py: 4,
+                  mb: 4,
+                }}
+              >
+                {/* Left: icon + text */}
+                <Stack direction="row" spacing={3} alignItems="center">
+                  <Box
+                    sx={{
+                      width: 120,
+                      height: 120,
+                      borderRadius: 4,
+                      background: iconBg,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {/* Decorative building shape placeholder */}
+                    <Box
+                      sx={{
+                        width: 56,
+                        height: 56,
+                        borderRadius: 3,
+                        bgcolor: "#FFFFFF",
+                        boxShadow: "0 10px 25px rgba(15,23,42,0.12)",
+                      }}
+                    />
+                  </Box>
+
+                  <Box sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 1,
+                  }}>
+                    <Typography
+                      sx={{
+                        fontSize: 20,
+                        fontWeight: 700,
+                        mb: 0.5,
+                      }}
+                    >
+                      {workspace.name}
+                    </Typography>
+                    {dateLabel && (
+                      <Typography
+                        sx={{
+                          fontSize: 14,
+                          color: theme.palette.text.secondary,
+                        }}
+                      >
+                        Created | {dateLabel}
+                      </Typography>
+                    )}
+                    <Stack direction="row" spacing={1.5}>
+                    <Box
+                      sx={{
+                        width: 48,
+                        height: 48,
+                        borderRadius: 2,
+                        border: "1px solid #CBD5F1",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "#4C6AD2",
+                        bgcolor: "#F6F8FF",
+                      }}
+                    >
+                      <DescriptionOutlinedIcon sx={{ fontSize: 22 }} />
+                    </Box>
+                    <Box
+                      sx={{
+                        width: 48,
+                        height: 48,
+                        borderRadius: 2,
+                        border: "1px solid #CBD5F1",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "#4C6AD2",
+                        bgcolor: "#F6F8FF",
+                      }}
+                    >
+                      <ShowChartOutlinedIcon sx={{ fontSize: 22 }} />
+                    </Box>
+                    <Box
+                      sx={{
+                        width: 48,
+                        height: 48,
+                        borderRadius: 2,
+                        border: "1px solid #CBD5F1",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "#4C6AD2",
+                        bgcolor: "#F6F8FF",
+                      }}
+                    >
+                      <ChatBubbleOutlineOutlinedIcon sx={{ fontSize: 22 }} />
+                    </Box>
+                    <Box
+                      sx={{
+                        width: 48,
+                        height: 48,
+                        borderRadius: 2,
+                        border: "1px solid #CBD5F1",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "#4C6AD2",
+                        bgcolor: "#F6F8FF",
+                      }}
+                    >
+                      <AppsOutlinedIcon sx={{ fontSize: 22 }} />
+                    </Box>
+                  </Stack>
+                  </Box>
+                  
+                </Stack>
+
+                {/* Right: icons + Edit button */}
+                <Stack height="100%" alignItems="start">
+                  <Button
+                    variant="contained"
+                    onClick={() =>
+                      router.push(`/workspaces/${workspace.id}/business-setup`)
+                    }
+                    sx={{
+                      textTransform: "none",
+                      borderRadius: 999,
+                      px: 3,
+                      py: 1,
+                      fontSize: 14,
+                      fontWeight: 600,
+                      bgcolor: "#334E96",
+                      boxShadow: "none",
+                      "&:hover": {
+                        bgcolor: "#2C437F",
+                        boxShadow: "none",
+                      },
+                    }}
+                  >
+                    Edit Workspace
+                  </Button>
+                </Stack>
+              </Box>
+            );
+          })}
+        </Box>
+      </Box>
+    );
+  };
 
   // ---------- Layout ----------
 
@@ -488,7 +753,7 @@ export default function AIDocumentsPage() {
 
         {activeTab === "create"
           ? renderCreateWorkspaceCard()
-          : renderMyWorkspacesPlaceholder()}
+          : renderMyWorkspacesSection()}
       </Box>
     </Box>
   );

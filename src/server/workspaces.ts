@@ -145,11 +145,22 @@ export async function getWorkspacesForUser(
 
   if (workspacesError || !workspaces) {
     throw new Error(
-      `Failed to load workspaces: ${workspacesError?.message ?? "Unknown error"}`,
+      `Failed to load workspaces: ${
+        workspacesError?.message ?? "Unknown error"
+      }`,
     );
   }
 
   return workspaces as Workspace[];
+}
+
+// Small wrapper to match the API route call signature
+export async function getUserWorkspaces({
+  userId,
+}: {
+  userId: UserId;
+}): Promise<Workspace[]> {
+  return getWorkspacesForUser(userId);
 }
 
 export async function getWorkspaceWithDetails(

@@ -1,10 +1,35 @@
 // src/app/api/workspaces/route.ts
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
-import { createWorkspace } from "@/server/workspaces";
+import { createWorkspace, getUserWorkspaces } from "@/server/workspaces";
 
 export const dynamic = "force-dynamic";
 
+// GET /api/workspaces  -> list current user's workspaces
+export async function GET() {
+  try {
+    const user = await currentUser();
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "Not authenticated" },
+        { status: 401 },
+      );
+    }
+
+    const workspaces = await getUserWorkspaces({ userId: user.id });
+
+    return NextResponse.json({ workspaces }, { status: 200 });
+  } catch (error) {
+    console.error("Error in GET /api/workspaces:", error);
+    return NextResponse.json(
+      { error: "Failed to load workspaces" },
+      { status: 500 },
+    );
+  }
+}
+
+// POST /api/workspaces  -> create a new workspace
 export async function POST(request: Request) {
   try {
     const user = await currentUser();
@@ -16,7 +41,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const body = await request.json().catch(() => null) as
+    const body = (await request.json().catch(() => null)) as
       | { name?: string }
       | null;
 
@@ -35,7 +60,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ workspace }, { status: 201 });
   } catch (error) {
-    console.error("Error in /api/workspaces:", error);
+    console.error("Error in POST /api/workspaces:", error);
     return NextResponse.json(
       { error: "Failed to create workspace" },
       { status: 500 },
