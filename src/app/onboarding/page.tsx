@@ -127,7 +127,6 @@ export default function OnboardingPage() {
     void markOnboardingCompleted();
   };
 
-  // while Clerk user is loading we just render an empty shell (no flicker)
   if (!isLoaded || !user || onboardingCompleted) {
     return null;
   }
@@ -140,33 +139,50 @@ export default function OnboardingPage() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        px: 2,
+        px: { xs: 2, md: 4 },
+        py: 8,
       }}
     >
       <Box
         sx={{
-          maxWidth: 1100,
+          maxWidth: 1120,
           width: "100%",
           textAlign: "center",
         }}
       >
-        <Box
-          sx={{
-            width: 96,
-            height: 4,
-            borderRadius: 999,
-            mx: "auto",
-            mb: 4,
-            background:
-              "linear-gradient(90deg, rgba(101,71,165,0.3) 0%, rgba(63,109,221,0.9) 100%)",
-          }}
-        />
+        {/* top step segments */}
+        <Stack
+          direction="row"
+          justifyContent="center"
+          alignItems="center"
+          spacing={1}
+          sx={{ mb: 5 }}
+        >
+          {STEPS.map((step, index) => (
+            <Box
+              key={step.id}
+              sx={{
+                width: 40,
+                height: 4,
+                borderRadius: 999,
+                transition: "all 0.2s ease",
+                background:
+                  index === activeStepIndex
+                    ? "linear-gradient(90deg, #6547A5 0%, #3F6DDD 100%)"
+                    : "rgba(211,219,239,1)",
+              }}
+            />
+          ))}
+        </Stack>
 
         <Typography
           sx={{
             fontWeight: 700,
-            fontSize: { xs: 24, md: 32 },
+            fontSize: { xs: 24, md: 28 },
             mb: 2,
+            width: "75%",
+            textAlign: "center",
+            mx: "auto",
           }}
         >
           {activeStep?.title ?? ""}
@@ -189,7 +205,6 @@ export default function OnboardingPage() {
             mx: "auto",
             fontSize: { xs: 14, md: 16 },
             color: theme.palette.text.secondary,
-            mb: 5,
           }}
         >
           {activeStep?.description ?? ""}
@@ -197,13 +212,10 @@ export default function OnboardingPage() {
 
         <Box
           sx={{
-            borderRadius: 4,
-            border: "1px solid rgba(211,219,239,1)",
             overflow: "hidden",
             mx: "auto",
-            maxWidth: 1000,
+            maxWidth: 800,
             mb: 5,
-            bgcolor: "#FFFFFF",
           }}
         >
           <Box
@@ -217,7 +229,7 @@ export default function OnboardingPage() {
               src={activeStep?.image ?? ""}
               alt={activeStep?.subtitle ?? ""}
               fill
-              style={{ objectFit: "cover" }}
+              style={{ objectFit: "contain" }}
               sizes="(max-width: 1200px) 100vw, 1000px"
               priority={activeStepIndex === 0}
             />
@@ -231,29 +243,40 @@ export default function OnboardingPage() {
           spacing={2}
         >
           <Button
-            variant="outlined"
+            variant="contained"
             onClick={handleSkip}
             disabled={completing}
             sx={{
-              minWidth: 160,
+              minWidth: 180,
               borderRadius: 999,
               textTransform: "none",
               fontWeight: 600,
-              borderColor: "rgba(211,219,239,1)",
-              color: theme.palette.text.primary,
-              bgcolor: "#FFFFFF",
+              fontSize: 16,
+              color: "#FFFFFF",
+              backgroundImage: theme.palette.ctaGradient,
+              px: 4,
+              py: 1.4,
+              boxShadow: "none",
+              "&:hover": {
+                boxShadow: "none",
+                opacity: 0.96,
+                backgroundImage: theme.palette.ctaGradient,
+              },
             }}
           >
             Getting Started
           </Button>
+
           <Button
+            variant="contained"
             onClick={handleNext}
             disabled={completing}
             sx={{
-              minWidth: 160,
+              minWidth: 180,
               borderRadius: 999,
               textTransform: "none",
               fontWeight: 600,
+              fontSize: 16,
               color: "#FFFFFF",
               backgroundImage: theme.palette.ctaGradient,
               px: 4,
@@ -268,24 +291,6 @@ export default function OnboardingPage() {
           >
             Next
           </Button>
-        </Stack>
-
-        <Stack direction="row" justifyContent="center" spacing={1} mt={3}>
-          {STEPS.map((step, index) => (
-            <Box
-              key={step.id}
-              sx={{
-                width: index === activeStepIndex ? 24 : 8,
-                height: 8,
-                borderRadius: 999,
-                transition: "all 0.2s ease",
-                backgroundColor:
-                  index === activeStepIndex
-                    ? "rgba(63,109,221,1)"
-                    : "rgba(211,219,239,1)",
-              }}
-            />
-          ))}
         </Stack>
       </Box>
     </Box>
