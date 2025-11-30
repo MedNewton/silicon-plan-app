@@ -1,4 +1,4 @@
-// src/components/workspaceSettings/SettingsSidebar.tsx
+// src/components/ai-documents/AIDocumentsSideBar.tsx
 "use client";
 
 import {
@@ -7,7 +7,6 @@ import {
   useTheme,
 } from "@mui/material";
 import type { ReactElement, ReactNode } from "react";
-import { useRouter } from "next/navigation";
 
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import PersonOutlineOutlinedIcon from "@mui/icons-material/PersonOutlineOutlined";
@@ -24,17 +23,16 @@ export type NavKey =
   | "learning"
   | "settings";
 
-export type SettingsSidebarProps = Readonly<{
+export type AIDocumentsSideBarProps = Readonly<{
   activeNav: NavKey;
   onNavChange: (key: NavKey) => void;
 }>;
 
-export default function SettingsSidebar({
+export default function AIDocumentsSideBar({
   activeNav,
   onNavChange,
-}: SettingsSidebarProps): ReactElement {
+}: AIDocumentsSideBarProps): ReactElement {
   const theme = useTheme();
-  const router = useRouter();
 
   const itemBaseStyles = {
     height: 64,
@@ -48,13 +46,6 @@ export default function SettingsSidebar({
     borderRadius: 0,
   } as const;
 
-  const handleNavClick = (key: NavKey) => {
-    if (key === "ai-documents") {
-      router.push("/?tab=create");
-    }
-    onNavChange(key);
-  };
-
   const makeItem = (
     key: NavKey,
     label: string,
@@ -64,7 +55,7 @@ export default function SettingsSidebar({
     return (
       <Box
         key={key}
-        onClick={() => handleNavClick(key)}
+        onClick={() => onNavChange(key)}
         sx={{
           ...itemBaseStyles,
           color: isActive
@@ -159,7 +150,7 @@ export default function SettingsSidebar({
         }}
       >
         <Box
-          onClick={() => handleNavClick("settings")}
+          onClick={() => onNavChange("settings")}
           sx={{
             display: "flex",
             alignItems: "center",
