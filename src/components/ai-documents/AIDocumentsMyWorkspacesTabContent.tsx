@@ -242,8 +242,32 @@ export default function AIDocumentMyWorkspacesTabContent({
                 </Box>
               </Stack>
 
-              <Stack height="100%" alignItems="start">
+              <Stack height="100%" alignItems="start" gap={1}>
                 <Button
+                fullWidth
+                  variant="contained"
+                  onClick={() =>
+                    router.push(`/workspaces/${workspace.id}/manage/business-plan`)
+                  }
+                  sx={{
+                    textTransform: "none",
+                    borderRadius: 999,
+                    px: 3,
+                    py: 1,
+                    fontSize: 14,
+                    fontWeight: 600,
+                    bgcolor: "#334E96",
+                    boxShadow: "none",
+                    "&:hover": {
+                      bgcolor: "#2C437F",
+                      boxShadow: "none",
+                    },
+                  }}
+                >
+                  Manage Workspace
+                </Button>
+                <Button
+                fullWidth
                   variant="contained"
                   onClick={() =>
                     router.push(`/workspaces/${workspace.id}/settings`)
