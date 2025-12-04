@@ -18,40 +18,188 @@ import {
 import UploadFileOutlinedIcon from "@mui/icons-material/UploadFileOutlined";
 import CloseOutlinedIcon from "@mui/icons-material/CloseOutlined";
 
-import theme from "@/theme/theme";
+import { useParams } from "next/navigation";
+import { toast } from "react-toastify";
 
 type AILibraryModalTab = "upload" | "notes";
+
+type ApiErrorResponse = {
+  error?: string;
+};
 
 export type AILibraryModalProps = Readonly<{
   open: boolean;
   initialTab?: AILibraryModalTab;
+  workspaceId?: string; // optional, fallback to route param
   onClose: () => void;
+  onDocumentCreated?: () => void;
+  onKnowledgeCreated?: () => void;
 }>;
 
 const AILibraryModal: FC<AILibraryModalProps> = ({
   open,
   initialTab = "upload",
+  workspaceId,
   onClose,
+  onDocumentCreated,
+  onKnowledgeCreated,
 }) => {
+  const params = useParams<{ workspaceId?: string }>();
+
+  const routeWorkspaceIdRaw = params?.workspaceId;
+  const routeWorkspaceId =
+    typeof routeWorkspaceIdRaw === "string"
+      ? routeWorkspaceIdRaw
+      : Array.isArray(routeWorkspaceIdRaw)
+        ? routeWorkspaceIdRaw[0]
+        : "";
+
+  // Single source of truth inside the modal:
+  const effectiveWorkspaceId = workspaceId ?? routeWorkspaceId ?? "";
+
   const [activeTab, setActiveTab] = useState<AILibraryModalTab>(initialTab);
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [notesTitle, setNotesTitle] = useState<string>("");
   const [notesDescription, setNotesDescription] = useState<string>("");
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   useEffect(() => {
     if (!open) return;
     setActiveTab(initialTab);
   }, [open, initialTab]);
 
-  const handleClose = () => {
+  const resetState = () => {
     setSelectedFileName(null);
+    setSelectedFile(null);
     setNotesTitle("");
     setNotesDescription("");
+    setIsSubmitting(false);
+  };
+
+  const handleClose = () => {
+    if (isSubmitting) return;
+    resetState();
     onClose();
   };
 
-  const handleUploadClick = () => {
-    handleClose();
+  const makeKeyNameFromTitle = (title: string): string => {
+    const base = title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/gi, "_")
+      .replace(/^_+|_+$/g, "");
+
+    return base || "custom_note";
+  };
+
+  const handlePrimaryAction = async () => {
+    if (isSubmitting) return;
+
+    if (!effectiveWorkspaceId) {
+      console.warn(
+        "AILibraryModal: effectiveWorkspaceId is missing (prop + route param both empty).",
+      );
+      toast.error("Workspace is missing. Please refresh and try again.");
+      return;
+    }
+
+    if (activeTab === "upload") {
+      // ------ Document upload ------
+      if (!selectedFile) {
+        toast.error("Please select a file to upload.");
+        return;
+      }
+
+      try {
+        setIsSubmitting(true);
+
+        const formData = new FormData();
+        formData.append("file", selectedFile);
+        formData.append("name", selectedFile.name);
+
+        const res = await fetch(
+          `/api/workspaces/${effectiveWorkspaceId}/ai-library/documents`,
+          {
+            method: "POST",
+            body: formData,
+          },
+        );
+
+        if (!res.ok) {
+          let message = "Failed to upload document.";
+          try {
+            const data = (await res.json()) as ApiErrorResponse;
+            if (data.error) message = data.error;
+          } catch {
+            // ignore parse errors
+          }
+          toast.error(message);
+          return;
+        }
+
+        toast.success("Document added to AI library.");
+        if (onDocumentCreated) onDocumentCreated();
+        handleClose();
+      } catch (error) {
+        console.error("Error uploading document", error);
+        toast.error("Something went wrong while uploading the document.");
+      } finally {
+        setIsSubmitting(false);
+      }
+
+      return;
+    }
+
+    // ------ Notes / knowledge ------
+    const title = notesTitle.trim();
+    const description = notesDescription.trim();
+
+    if (!title || !description) {
+      toast.error("Please fill in both title and description.");
+      return;
+    }
+
+    const keyName = makeKeyNameFromTitle(title);
+    const label = title;
+    const value = description;
+
+    try {
+      setIsSubmitting(true);
+
+      const res = await fetch(
+        `/api/workspaces/${effectiveWorkspaceId}/ai-library/knowledge`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            keyName,
+            label,
+            value,
+          }),
+        },
+      );
+
+      if (!res.ok) {
+        let message = "Failed to save knowledge.";
+        try {
+          const data = (await res.json()) as ApiErrorResponse;
+          if (data.error) message = data.error;
+        } catch {
+          // ignore parse errors
+        }
+        toast.error(message);
+        return;
+      }
+
+      toast.success("Knowledge added to AI library.");
+      if (onKnowledgeCreated) onKnowledgeCreated();
+      handleClose();
+    } catch (error) {
+      console.error("Error saving knowledge", error);
+      toast.error("Something went wrong while saving the knowledge entry.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const renderTabs = () => (
@@ -136,7 +284,9 @@ const AILibraryModal: FC<AILibraryModalProps> = ({
           cursor: "pointer",
         }}
       >
-        <UploadFileOutlinedIcon sx={{ fontSize: 36, mb: 1.5, color: "#4B5563" }} />
+        <UploadFileOutlinedIcon
+          sx={{ fontSize: 36, mb: 1.5, color: "#4B5563" }}
+        />
 
         <Typography
           sx={{
@@ -170,8 +320,10 @@ const AILibraryModal: FC<AILibraryModalProps> = ({
         <input
           type="file"
           hidden
+          accept=".pdf,.txt,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.csv"
           onChange={(event) => {
-            const file = event.target.files?.[0];
+            const file = event.target.files?.[0] ?? null;
+            setSelectedFile(file);
             if (file) {
               setSelectedFileName(file.name);
             } else {
@@ -239,7 +391,7 @@ const AILibraryModal: FC<AILibraryModalProps> = ({
             mb: 0.5,
           }}
         >
-          Descriptions
+          Description
         </Typography>
         <TextField
           fullWidth
@@ -269,6 +421,8 @@ const AILibraryModal: FC<AILibraryModalProps> = ({
       </Box>
     </Box>
   );
+
+  const primaryLabel = activeTab === "upload" ? "Upload" : "Save";
 
   return (
     <Dialog
@@ -302,6 +456,7 @@ const AILibraryModal: FC<AILibraryModalProps> = ({
 
         <IconButton
           onClick={handleClose}
+          disabled={isSubmitting}
           sx={{
             width: 32,
             height: 32,
@@ -338,6 +493,7 @@ const AILibraryModal: FC<AILibraryModalProps> = ({
         <Button
           type="button"
           onClick={handleClose}
+          disabled={isSubmitting}
           sx={{
             flex: 1,
             maxWidth: 420,
@@ -359,7 +515,8 @@ const AILibraryModal: FC<AILibraryModalProps> = ({
 
         <Button
           type="button"
-          onClick={handleUploadClick}
+          onClick={handlePrimaryAction}
+          disabled={isSubmitting}
           sx={{
             flex: 1,
             maxWidth: 420,
@@ -372,6 +529,9 @@ const AILibraryModal: FC<AILibraryModalProps> = ({
               "linear-gradient(90deg, #4C6AD2 0%, #7B4FD6 100%)",
             color: "#FFFFFF",
             boxShadow: "none",
+            "&.Mui-disabled": {
+              opacity: 0.7,
+            },
             "&:hover": {
               boxShadow: "none",
               opacity: 0.96,
@@ -380,7 +540,7 @@ const AILibraryModal: FC<AILibraryModalProps> = ({
             },
           }}
         >
-          Upload
+          {primaryLabel}
         </Button>
       </DialogActions>
     </Dialog>

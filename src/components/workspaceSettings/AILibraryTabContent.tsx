@@ -1,7 +1,7 @@
 // src/components/workspaceSettings/AILibraryTabContent.tsx
 "use client";
 
-import { useState, type FC } from "react";
+import { useCallback, useEffect, useState, type FC } from "react";
 import {
   Box,
   Button,
@@ -23,12 +23,20 @@ import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 
+import { useParams } from "next/navigation";
+import { toast } from "react-toastify";
+
 import theme from "@/theme/theme";
 import AILibraryModal from "@/components/workspaceSettings/modals/AILibraryModal";
+import type {
+  WorkspaceAiDocument,
+  WorkspaceAiDocumentStatus,
+  WorkspaceAiKnowledge,
+} from "@/types/workspaces";
 
 type AILibrarySubTab = "documents" | "knowledge";
 
-type DocumentStatus = "processing" | "uploaded";
+type DocumentStatus = WorkspaceAiDocumentStatus;
 
 type DocumentRow = {
   id: string;
@@ -45,117 +53,229 @@ type KnowledgeEntry = {
 };
 
 export type AILibraryTabContentProps = Readonly<{
+  workspaceId?: string; // optional, we will fall back to route param
   workspaceName?: string;
 }>;
 
-const initialDocuments: DocumentRow[] = [
-  {
-    id: "1",
-    name: "Business Draft",
-    type: "PDF",
-    uploadedAt: "12 June 2024",
-    status: "processing",
-  },
-  {
-    id: "2",
-    name: "Business Draft",
-    type: "XLX",
-    uploadedAt: "12 June 2024",
-    status: "uploaded",
-  },
-  {
-    id: "3",
-    name: "Business Draft",
-    type: "PPTX",
-    uploadedAt: "12 June 2024",
-    status: "uploaded",
-  },
-  {
-    id: "4",
-    name: "Custom Notes",
-    type: "PPTX",
-    uploadedAt: "12 June 2024",
-    status: "uploaded",
-  },
-  {
-    id: "5",
-    name: "Business Draft",
-    type: "TXT",
-    uploadedAt: "12 June 2024",
-    status: "uploaded",
-  },
-];
+const formatUploadedDate = (iso: string | null): string => {
+  if (!iso) return "";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+};
 
-const initialKnowledge: KnowledgeEntry[] = [
-  {
-    id: "k1",
-    label: "Industry",
-    value: "Business Software / SaaS",
-  },
-  {
-    id: "k2",
-    label: "Company Stage",
-    value: "Early Growth (Seed to Series A)",
-  },
-  {
-    id: "k3",
-    label: "Problem You Solve",
-    value:
-      "Founders and small businesses struggle to structure and present professional business plans quickly.",
-  },
-  {
-    id: "k4",
-    label: "Solution and Uniqueness",
-    value:
-      "SiliconPlan provides a guided, AI-powered platform that automates business plan creation, pitch deck design, and startup valuation. It combines text generation with built-in templates and a marketplace of certified consultants.",
-  },
-  {
-    id: "k5",
-    label: "3–5 Year Financial Projections",
-    value:
-      "- Year 1 Revenue: €180,000\n- Year 3 Revenue: €1.2M\n- Year 5 Revenue: €3.5M\n- EBITDA Margin Target: 28% by Year 5",
-  },
-  {
-    id: "k6",
-    label: "Main Risks and Mitigation",
-    value:
-      "- Risk: High competition in AI document tools.\n- Mitigation: Focus on niche — startup incubators and accelerators.\n- Risk: AI quality inconsistency.\n- Mitigation: Human consultant marketplace integration.",
-  },
-];
+const deriveDocumentType = (doc: WorkspaceAiDocument): string => {
+  if (doc.file_type) {
+    return doc.file_type.toUpperCase();
+  }
 
-const AILibraryTabContent: FC<AILibraryTabContentProps> = ({ workspaceName }) => {
-  const [activeSubTab, setActiveSubTab] = useState<AILibrarySubTab>("documents");
-  const [documents, setDocuments] = useState<DocumentRow[]>(initialDocuments);
-  const [knowledgeEntries, setKnowledgeEntries] =
-    useState<KnowledgeEntry[]>(initialKnowledge);
+  const path = doc.storage_path ?? "";
+  const match = /\.([a-zA-Z0-9]+)$/.exec(path);
+  if (match?.[1]) {
+    return match[1].toUpperCase();
+  }
+
+  return "FILE";
+};
+
+const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
+  workspaceId,
+  workspaceName,
+}) => {
+  const params = useParams<{ workspaceId?: string }>();
+
+  const routeWorkspaceIdRaw = params?.workspaceId;
+  const routeWorkspaceId =
+    typeof routeWorkspaceIdRaw === "string"
+      ? routeWorkspaceIdRaw
+      : Array.isArray(routeWorkspaceIdRaw)
+        ? routeWorkspaceIdRaw[0]
+        : "";
+
+  // This is the ONLY ID we use everywhere:
+  const effectiveWorkspaceId = workspaceId ?? routeWorkspaceId ?? "";
+
+  const [activeSubTab, setActiveSubTab] =
+    useState<AILibrarySubTab>("documents");
+
+  const [documents, setDocuments] = useState<DocumentRow[]>([]);
+  const [documentsLoading, setDocumentsLoading] = useState<boolean>(false);
+
+  const [knowledgeEntries, setKnowledgeEntries] = useState<KnowledgeEntry[]>(
+    [],
+  );
+  const [knowledgeLoading, setKnowledgeLoading] = useState<boolean>(false);
+
   const [rowsPerPage, setRowsPerPage] = useState<number>(10);
+  const [currentPage, setCurrentPage] = useState<number>(0);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [modalInitialTab, setModalInitialTab] = useState<"upload" | "notes">(
     "upload",
   );
 
-  const handleRowsPerPageChange = (event: SelectChangeEvent<number>) => {
+  const fetchDocuments = useCallback(async (): Promise<void> => {
+    if (!effectiveWorkspaceId) return;
+
+    try {
+      setDocumentsLoading(true);
+
+      const res = await fetch(
+        `/api/workspaces/${effectiveWorkspaceId}/ai-library/documents`,
+      );
+
+      if (!res.ok) {
+        toast.error("Failed to load documents.");
+        return;
+      }
+
+      const data = (await res.json()) as { documents: WorkspaceAiDocument[] };
+
+      const mapped: DocumentRow[] = data.documents.map((doc) => ({
+        id: doc.id,
+        name: doc.name,
+        type: deriveDocumentType(doc),
+        uploadedAt: formatUploadedDate(doc.created_at ?? null),
+        status: doc.status,
+      }));
+
+      setDocuments(mapped);
+      setCurrentPage(0);
+    } catch (error) {
+      console.error("Error loading documents", error);
+      toast.error("Something went wrong while loading documents.");
+    } finally {
+      setDocumentsLoading(false);
+    }
+  }, [effectiveWorkspaceId]);
+
+  const fetchKnowledge = useCallback(async (): Promise<void> => {
+    if (!effectiveWorkspaceId) return;
+
+    try {
+      setKnowledgeLoading(true);
+
+      const res = await fetch(
+        `/api/workspaces/${effectiveWorkspaceId}/ai-library/knowledge`,
+      );
+
+      if (!res.ok) {
+        toast.error("Failed to load AI knowledge.");
+        return;
+      }
+
+      const data = (await res.json()) as {
+        knowledge: WorkspaceAiKnowledge[];
+      };
+
+      const mapped: KnowledgeEntry[] = data.knowledge.map((k) => ({
+        id: k.id,
+        label: k.label,
+        value: k.value,
+      }));
+
+      setKnowledgeEntries(mapped);
+    } catch (error) {
+      console.error("Error loading AI knowledge", error);
+      toast.error("Something went wrong while loading AI knowledge.");
+    } finally {
+      setKnowledgeLoading(false);
+    }
+  }, [effectiveWorkspaceId]);
+
+  useEffect(() => {
+    if (!effectiveWorkspaceId) {
+      console.warn(
+        "AILibraryTabContent: no effectiveWorkspaceId (prop or route param).",
+      );
+      return;
+    }
+    void fetchDocuments();
+    void fetchKnowledge();
+  }, [effectiveWorkspaceId, fetchDocuments, fetchKnowledge]);
+
+  const handleRowsPerPageChange = (
+    event: SelectChangeEvent<number>,
+  ): void => {
     const value = Number(event.target.value);
     setRowsPerPage(value);
+    setCurrentPage(0);
   };
 
-  const handleDeleteDocument = (id: string) => {
-    setDocuments((prev) => prev.filter((doc) => doc.id !== id));
+  const handleDeleteDocument = async (id: string): Promise<void> => {
+    if (!effectiveWorkspaceId) return;
+
+    try {
+      const res = await fetch(
+        `/api/workspaces/${effectiveWorkspaceId}/ai-library/documents/${id}`,
+        {
+          method: "DELETE",
+        },
+      );
+
+      if (!res.ok && res.status !== 204) {
+        toast.error("Failed to delete document.");
+        return;
+      }
+
+      setDocuments((prev) => prev.filter((doc) => doc.id !== id));
+      toast.success("Document deleted.");
+    } catch (error) {
+      console.error("Error deleting document", error);
+      toast.error("Something went wrong while deleting the document.");
+    }
   };
 
-  const handleDeleteKnowledge = (id: string) => {
-    setKnowledgeEntries((prev) => prev.filter((item) => item.id !== id));
+  const handleDeleteKnowledge = async (id: string): Promise<void> => {
+    if (!effectiveWorkspaceId) return;
+
+    try {
+      const res = await fetch(
+        `/api/workspaces/${effectiveWorkspaceId}/ai-library/knowledge/${id}`,
+        {
+          method: "DELETE",
+        },
+      );
+
+      if (!res.ok && res.status !== 204) {
+        toast.error("Failed to delete knowledge item.");
+        return;
+      }
+
+      setKnowledgeEntries((prev) => prev.filter((item) => item.id !== id));
+      toast.success("Knowledge item deleted.");
+    } catch (error) {
+      console.error("Error deleting knowledge item", error);
+      toast.error("Something went wrong while deleting the knowledge item.");
+    }
   };
 
-  const openUploadModal = () => {
+  const openUploadModal = (): void => {
     setModalInitialTab("upload");
     setModalOpen(true);
   };
 
-  const openNotesModal = () => {
+  const openNotesModal = (): void => {
     setModalInitialTab("notes");
     setModalOpen(true);
+  };
+
+  const handleNextPage = (): void => {
+    const totalDocuments = documents.length;
+    const totalPages = Math.max(
+      Math.ceil(totalDocuments / rowsPerPage),
+      1,
+    );
+
+    setCurrentPage((prev) => Math.min(prev + 1, totalPages - 1));
+  };
+
+  const handlePreviousPage = (): void => {
+    setCurrentPage((prev) => Math.max(prev - 1, 0));
   };
 
   const renderStatus = (status: DocumentStatus) => {
@@ -177,32 +297,47 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({ workspaceName }) =>
       );
     }
 
+    if (status === "uploaded") {
+      return (
+        <Chip
+          icon={<CheckCircleOutlineOutlinedIcon sx={{ fontSize: 16 }} />}
+          label="Uploaded"
+          size="small"
+          sx={{
+            borderRadius: 999,
+            bgcolor: "#E6F6EA",
+            color: "#15803D",
+            "& .MuiChip-icon": {
+              color: "#15803D",
+            },
+          }}
+        />
+      );
+    }
+
     return (
       <Chip
-        icon={<CheckCircleOutlineOutlinedIcon sx={{ fontSize: 16 }} />}
-        label="Uploaded"
+        label={status}
         size="small"
         sx={{
           borderRadius: 999,
-          bgcolor: "#E6F6EA",
-          color: "#15803D",
-          "& .MuiChip-icon": {
-            color: "#15803D",
-          },
+          bgcolor: "#E5E7EB",
+          color: "#374151",
         }}
       />
     );
   };
 
   const renderTypeBadge = (type: string) => {
+    const upper = type.toUpperCase();
     let bg = "#F97373";
     const color = "#FFFFFF";
 
-    if (type === "XLX") {
+    if (upper === "XLS" || upper === "XLSX" || upper === "CSV") {
       bg = "#22C55E";
-    } else if (type === "PPTX") {
+    } else if (upper === "PPT" || upper === "PPTX") {
       bg = "#F97316";
-    } else if (type === "TXT") {
+    } else if (upper === "TXT") {
       bg = "#6B7280";
     }
 
@@ -221,239 +356,309 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({ workspaceName }) =>
           color,
         }}
       >
-        {type}
+        {upper}
       </Box>
     );
   };
 
-  const renderDocumentsView = () => (
-    <Box
-      sx={{
-        width: "100%",
-        maxWidth: 980,
-        borderRadius: 4,
-        border: "1px solid #E1E6F5",
-        bgcolor: "#F9FAFF",
-        px: 6,
-        pt: 4,
-        pb: 5,
-      }}
-    >
+  const renderDocumentsView = () => {
+    const totalDocuments = documents.length;
+    const totalPages =
+      totalDocuments === 0
+        ? 1
+        : Math.max(Math.ceil(totalDocuments / rowsPerPage), 1);
+
+    const clampedPage =
+      totalDocuments === 0 ? 0 : Math.min(currentPage, totalPages - 1);
+
+    const startIndex =
+      totalDocuments === 0 ? 0 : clampedPage * rowsPerPage;
+    const endIndex =
+      totalDocuments === 0
+        ? 0
+        : Math.min(startIndex + rowsPerPage, totalDocuments);
+
+    const paginatedDocuments = documents.slice(startIndex, endIndex);
+
+    return (
       <Box
         sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          mb: 1.5,
-        }}
-      >
-        <Box>
-          <Typography sx={{ fontSize: 20, fontWeight: 600, mb: 0.5 }}>
-            Documents library
-          </Typography>
-          <Typography sx={{ fontSize: 13, color: "text.secondary" }}>
-            All documents uploaded to your AI knowledge base
-          </Typography>
-        </Box>
-
-        <Button
-          disableRipple
-          onClick={openUploadModal}
-          sx={{
-            borderRadius: 2,
-            textTransform: "none",
-            fontWeight: 600,
-            fontSize: 14,
-            px: 3,
-            py: 0.9,
-            color: theme.palette.grey[600],
-            border: `1px solid ${theme.palette.grey[600]}`,
-            boxShadow: "none",
-            "&:hover": {
-              boxShadow: "none",
-              opacity: 0.96,
-              backgroundImage: "linear-gradient(90deg, #4C6AD2 0%, #7B4FD6 100%)",
-              color: theme.palette.background.default,
-              borderColor: theme.palette.background.default,
-            },
-          }}
-        >
-          Add Document
-        </Button>
-      </Box>
-
-      <Box
-        sx={{
-          mt: 3,
-          borderRadius: 3,
+          width: "100%",
+          maxWidth: 980,
+          borderRadius: 4,
           border: "1px solid #E1E6F5",
-          overflow: "hidden",
-          bgcolor: "#FFFFFF",
+          bgcolor: "#F9FAFF",
+          px: 6,
+          pt: 4,
+          pb: 5,
         }}
       >
         <Box
           sx={{
-            display: "grid",
-            gridTemplateColumns: "3fr 1.1fr 1.6fr 1.5fr 1fr",
-            px: 3,
-            py: 1.5,
-            bgcolor: "#F5F7FF",
-            borderBottom: "1px solid #E1E6F5",
-            fontSize: 12,
-            fontWeight: 600,
-            color: "#6B7280",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            mb: 1.5,
           }}
         >
-          <Box>Document name</Box>
-          <Box>Type</Box>
-          <Box
+          <Box>
+            <Typography sx={{ fontSize: 20, fontWeight: 600, mb: 0.5 }}>
+              Documents library
+            </Typography>
+            <Typography sx={{ fontSize: 13, color: "text.secondary" }}>
+              All documents uploaded to your AI knowledge base
+            </Typography>
+          </Box>
+
+          <Button
+            disableRipple
+            onClick={openUploadModal}
             sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 0.5,
+              borderRadius: 2,
+              textTransform: "none",
+              fontWeight: 600,
+              fontSize: 14,
+              px: 3,
+              py: 0.9,
+              color: theme.palette.grey[600],
+              border: `1px solid ${theme.palette.grey[600]}`,
+              boxShadow: "none",
+              "&:hover": {
+                boxShadow: "none",
+                opacity: 0.96,
+                backgroundImage:
+                  "linear-gradient(90deg, #4C6AD2 0%, #7B4FD6 100%)",
+                color: theme.palette.background.default,
+                borderColor: theme.palette.background.default,
+              },
             }}
           >
-            Uploaded
-            <ArrowDropDownIcon sx={{ fontSize: 18 }} />
-          </Box>
-          <Box>Status</Box>
-          <Box textAlign="right">Actions</Box>
+            Add Document
+          </Button>
         </Box>
 
-        {documents.map((doc) => (
+        <Box
+          sx={{
+            mt: 3,
+            borderRadius: 3,
+            border: "1px solid #E1E6F5",
+            overflow: "hidden",
+            bgcolor: "#FFFFFF",
+          }}
+        >
           <Box
-            key={doc.id}
             sx={{
               display: "grid",
               gridTemplateColumns: "3fr 1.1fr 1.6fr 1.5fr 1fr",
               px: 3,
-              py: 1.4,
-              alignItems: "center",
-              borderBottom: "1px solid #EDF0FB",
+              py: 1.5,
+              bgcolor: "#F5F7FF",
+              borderBottom: "1px solid #E1E6F5",
+              fontSize: 12,
+              fontWeight: 600,
+              color: "#6B7280",
             }}
           >
-            <Stack direction="row" spacing={1.5} alignItems="center">
-              {renderTypeBadge(doc.type)}
-              <Typography sx={{ fontSize: 14.5, fontWeight: 500 }}>
-                {doc.name}
+            <Box>Document name</Box>
+            <Box>Type</Box>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 0.5,
+              }}
+            >
+              Uploaded
+              <ArrowDropDownIcon sx={{ fontSize: 18 }} />
+            </Box>
+            <Box>Status</Box>
+            <Box textAlign="right">Actions</Box>
+          </Box>
+
+          {documentsLoading && (
+            <Box
+              sx={{
+                px: 3,
+                py: 2,
+              }}
+            >
+              <Typography
+                sx={{ fontSize: 13.5, color: "text.secondary" }}
+              >
+                Loading documents...
               </Typography>
-            </Stack>
+            </Box>
+          )}
 
-            <Typography sx={{ fontSize: 13.5, color: "text.secondary" }}>
-              {doc.type}
-            </Typography>
+          {!documentsLoading && totalDocuments === 0 && (
+            <Box
+              sx={{
+                px: 3,
+                py: 3,
+              }}
+            >
+              <Typography
+                sx={{ fontSize: 13.5, color: "text.secondary" }}
+              >
+                No documents in your AI library yet. Upload your first
+                document to get started.
+              </Typography>
+            </Box>
+          )}
 
-            <Typography sx={{ fontSize: 13.5, color: "text.secondary" }}>
-              {doc.uploadedAt}
-            </Typography>
-
-            <Box>{renderStatus(doc.status)}</Box>
-
-            <Box textAlign="right">
-              <Button
-                disableRipple
-                onClick={() => handleDeleteDocument(doc.id)}
+          {!documentsLoading &&
+            totalDocuments > 0 &&
+            paginatedDocuments.map((doc) => (
+              <Box
+                key={doc.id}
                 sx={{
-                  minWidth: 0,
-                  borderRadius: 999,
-                  border: "1px solid #FCA5A5",
-                  color: "#DC2626",
-                  textTransform: "none",
+                  display: "grid",
+                  gridTemplateColumns: "3fr 1.1fr 1.6fr 1.5fr 1fr",
+                  px: 3,
+                  py: 1.4,
+                  alignItems: "center",
+                  borderBottom: "1px solid #EDF0FB",
+                }}
+              >
+                <Stack direction="row" spacing={1.5} alignItems="center">
+                  {renderTypeBadge(doc.type)}
+                  <Typography sx={{ fontSize: 14.5, fontWeight: 500 }}>
+                    {doc.name}
+                  </Typography>
+                </Stack>
+
+                <Typography
+                  sx={{ fontSize: 13.5, color: "text.secondary" }}
+                >
+                  {doc.type}
+                </Typography>
+
+                <Typography
+                  sx={{ fontSize: 13.5, color: "text.secondary" }}
+                >
+                  {doc.uploadedAt || "—"}
+                </Typography>
+
+                <Box>{renderStatus(doc.status)}</Box>
+
+                <Box textAlign="right">
+                  <Button
+                    disableRipple
+                    onClick={() => {
+                      void handleDeleteDocument(doc.id);
+                    }}
+                    sx={{
+                      minWidth: 0,
+                      borderRadius: 999,
+                      border: "1px solid #FCA5A5",
+                      color: "#DC2626",
+                      textTransform: "none",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      px: 2.2,
+                      py: 0.5,
+                      bgcolor: "#FFF5F5",
+                      "&:hover": {
+                        bgcolor: "#FFE4E6",
+                      },
+                    }}
+                  >
+                    Delete
+                  </Button>
+                </Box>
+              </Box>
+            ))}
+
+          <Box
+            sx={{
+              px: 3,
+              py: 1.8,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              fontSize: 12.5,
+              bgcolor: "#FFFFFF",
+            }}
+          >
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                Rows per page:
+              </Typography>
+              <Select<number>
+                value={rowsPerPage}
+                onChange={handleRowsPerPageChange}
+                size="small"
+                sx={{
+                  minWidth: 72,
                   fontSize: 13,
-                  fontWeight: 600,
-                  px: 2.2,
-                  py: 0.5,
-                  bgcolor: "#FFF5F5",
-                  "&:hover": {
-                    bgcolor: "#FFE4E6",
+                  "& .MuiOutlinedInput-notchedOutline": {
+                    borderColor: "#D3DBEF",
+                  },
+                  "&:hover .MuiOutlinedInput-notchedOutline": {
+                    borderColor: "#C3CDE8",
+                  },
+                  "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                    borderColor: "#8A9FE4",
                   },
                 }}
               >
-                Delete
-              </Button>
-            </Box>
+                <MenuItem value={5}>5</MenuItem>
+                <MenuItem value={10}>10</MenuItem>
+                <MenuItem value={25}>25</MenuItem>
+              </Select>
+            </Stack>
+
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              sx={{ color: "text.secondary" }}
+            >
+              <Typography variant="body2">
+                {totalDocuments === 0
+                  ? "0 of 0"
+                  : `${startIndex + 1}–${endIndex} of ${totalDocuments}`}
+              </Typography>
+              <IconButton
+                size="small"
+                onClick={handlePreviousPage}
+                disabled={clampedPage === 0 || totalDocuments === 0}
+                sx={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: 999,
+                  border: "1px solid #4F4F4F",
+                  bgcolor: "#FFFFFF",
+                }}
+              >
+                <ChevronLeftIcon
+                  sx={{ fontSize: 18, color: theme.palette.grey[800] }}
+                />
+              </IconButton>
+              <IconButton
+                size="small"
+                onClick={handleNextPage}
+                disabled={
+                  totalDocuments === 0 || clampedPage >= totalPages - 1
+                }
+                sx={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: 999,
+                  border: "1px solid #4E4E4E",
+                  bgcolor: "#FFFFFF",
+                }}
+              >
+                <ChevronRightIcon
+                  sx={{ fontSize: 18, color: theme.palette.grey[800] }}
+                />
+              </IconButton>
+            </Stack>
           </Box>
-        ))}
-
-        <Box
-          sx={{
-            px: 3,
-            py: 1.8,
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            fontSize: 12.5,
-            bgcolor: "#FFFFFF",
-          }}
-        >
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Typography variant="body2" sx={{ color: "text.secondary" }}>
-              Rows per page:
-            </Typography>
-            <Select
-              value={rowsPerPage}
-              onChange={handleRowsPerPageChange}
-              size="small"
-              sx={{
-                minWidth: 72,
-                fontSize: 13,
-                "& .MuiOutlinedInput-notchedOutline": {
-                  borderColor: "#D3DBEF",
-                },
-                "&:hover .MuiOutlinedInput-notchedOutline": {
-                  borderColor: "#C3CDE8",
-                },
-                "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                  borderColor: "#8A9FE4",
-                },
-              }}
-            >
-              <MenuItem value={5}>5</MenuItem>
-              <MenuItem value={10}>10</MenuItem>
-              <MenuItem value={25}>25</MenuItem>
-            </Select>
-          </Stack>
-
-          <Stack
-            direction="row"
-            spacing={1}
-            alignItems="center"
-            sx={{ color: "text.secondary" }}
-          >
-            <Typography variant="body2">1–5 of 13</Typography>
-            <IconButton
-              size="small"
-              sx={{
-                width: 30,
-                height: 30,
-                borderRadius: 999,
-                border: "1px solid #4F4F4F",
-                bgcolor: "#FFFFFF",
-              }}
-            >
-              <ChevronLeftIcon
-                sx={{ fontSize: 18, color: theme.palette.grey[800] }}
-              />
-            </IconButton>
-            <IconButton
-              size="small"
-              sx={{
-                width: 30,
-                height: 30,
-                borderRadius: 999,
-                border: "1px solid #4E4E4E",
-                bgcolor: "#FFFFFF",
-              }}
-            >
-              <ChevronRightIcon
-                sx={{ fontSize: 18, color: theme.palette.grey[800] }}
-              />
-            </IconButton>
-          </Stack>
         </Box>
       </Box>
-    </Box>
-  );
+    );
+  };
 
   const renderKnowledgeCard = (entry: KnowledgeEntry) => (
     <Box
@@ -515,7 +720,9 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({ workspaceName }) =>
 
           <IconButton
             size="small"
-            onClick={() => handleDeleteKnowledge(entry.id)}
+            onClick={() => {
+              void handleDeleteKnowledge(entry.id);
+            }}
             sx={{
               width: 28,
               height: 28,
@@ -590,7 +797,8 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({ workspaceName }) =>
             "&:hover": {
               boxShadow: "none",
               opacity: 0.96,
-              backgroundImage: "linear-gradient(90deg, #4C6AD2 0%, #7B4FD6 100%)",
+              backgroundImage:
+                "linear-gradient(90deg, #4C6AD2 0%, #7B4FD6 100%)",
               color: theme.palette.background.default,
               borderColor: theme.palette.background.default,
             },
@@ -600,13 +808,28 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({ workspaceName }) =>
         </Button>
       </Box>
 
-      <Stack spacing={2.2}>
-        {knowledgeEntries.map((entry) => renderKnowledgeCard(entry))}
-      </Stack>
+      {knowledgeLoading && (
+        <Typography sx={{ fontSize: 13.5, color: "text.secondary" }}>
+          Loading AI knowledge...
+        </Typography>
+      )}
+
+      {!knowledgeLoading && knowledgeEntries.length === 0 && (
+        <Typography sx={{ fontSize: 13.5, color: "text.secondary" }}>
+          No AI knowledge entries yet. Add notes to give your assistant
+          structured context about this business.
+        </Typography>
+      )}
+
+      {!knowledgeLoading && knowledgeEntries.length > 0 && (
+        <Stack spacing={2.2}>
+          {knowledgeEntries.map((entry) => renderKnowledgeCard(entry))}
+        </Stack>
+      )}
     </Box>
   );
 
-  const disabledFooterButtons = false;
+  const disabledFooterButtons = true;
 
   return (
     <>
@@ -783,7 +1006,14 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({ workspaceName }) =>
       <AILibraryModal
         open={modalOpen}
         initialTab={modalInitialTab}
+        workspaceId={effectiveWorkspaceId}
         onClose={() => setModalOpen(false)}
+        onDocumentCreated={() => {
+          void fetchDocuments();
+        }}
+        onKnowledgeCreated={() => {
+          void fetchKnowledge();
+        }}
       />
     </>
   );

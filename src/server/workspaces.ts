@@ -12,11 +12,16 @@ import type {
   WorkspaceId,
   WorkspaceRole,
   RemoveWorkspaceMemberParams,
+  WorkspaceAiDocument,
+  WorkspaceAiKnowledge,
+  WorkspaceAiLibraryEvent,
+  WorkspaceAiDocumentStatus,
+  CreateWorkspaceAiDocumentParams,
+  UpsertWorkspaceAiKnowledgeParams,
 } from "@/types/workspaces";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import {
-  clerkClient as getClerkClient,
-} from "@clerk/nextjs/server";
+import { clerkClient as getClerkClient } from "@clerk/nextjs/server";
+
 
 type Supa = SupabaseClient<SupabaseDb>;
 type Tables = SupabaseDb["public"]["Tables"];
@@ -707,6 +712,425 @@ export async function removeWorkspaceMemberFromWorkspace(params: {
       `Failed to remove workspace member: ${
         deleteError.message ?? "Unknown error"
       }`,
+    );
+  }
+}
+
+// ========== AI LIBRARY: SNAPSHOT (DOCS + KNOWLEDGE) ==========
+
+export type WorkspaceAiLibrarySnapshot = {
+  documents: WorkspaceAiDocument[];
+  knowledge: WorkspaceAiKnowledge[];
+};
+
+export async function getWorkspaceAiLibrarySnapshot(params: {
+  workspaceId: WorkspaceId;
+  userId: UserId;
+}): Promise<WorkspaceAiLibrarySnapshot> {
+  const { workspaceId, userId } = params;
+  const client = getSupabaseClient();
+
+  await ensureUserHasWorkspaceAccess(client, workspaceId, userId);
+
+  const [docsResult, knowledgeResult] = await Promise.all([
+    client
+      .from("workspace_ai_documents")
+      .select("*")
+      .eq("workspace_id", workspaceId)
+      .order("uploaded_at", { ascending: false }),
+    client
+      .from("workspace_ai_knowledge")
+      .select("*")
+      .eq("workspace_id", workspaceId)
+      .order("order_index", { ascending: true })
+      .order("created_at", { ascending: true }),
+  ]);
+
+  if (docsResult.error) {
+    throw new Error(
+      `Failed to load AI documents: ${docsResult.error.message ?? "Unknown error"}`,
+    );
+  }
+
+  if (knowledgeResult.error) {
+    throw new Error(
+      `Failed to load AI knowledge: ${
+        knowledgeResult.error.message ?? "Unknown error"
+      }`,
+    );
+  }
+
+  return {
+    documents: (docsResult.data ?? []) as WorkspaceAiDocument[],
+    knowledge: (knowledgeResult.data ?? []) as WorkspaceAiKnowledge[],
+  };
+}
+
+// ========== AI LIBRARY: DOCUMENTS ==========
+
+export async function createWorkspaceAiDocumentRecord(
+  params: CreateWorkspaceAiDocumentParams & {
+    userId: UserId;
+  },
+): Promise<WorkspaceAiDocument> {
+  const {
+    workspaceId,
+    userId,
+    name,
+    fileType,
+    storageBucket,
+    storagePath,
+    status,
+    aiMetadata,
+  } = params;
+
+  const trimmedName = name.trim();
+  if (!trimmedName) {
+    throw new Error("Document name cannot be empty.");
+  }
+
+  const client = getSupabaseClient();
+  await ensureUserHasWorkspaceAccess(client, workspaceId, userId);
+
+  type Insert = Tables["workspace_ai_documents"]["Insert"];
+
+  const insertPayload: Insert = {
+    workspace_id: workspaceId,
+    created_by: userId,
+    name: trimmedName,
+    file_type: fileType ?? null,
+    storage_bucket: storageBucket,
+    storage_path: storagePath,
+    status: status ?? "uploaded",
+    ai_metadata: aiMetadata ?? null,
+  };
+
+  const { data, error } = await client
+    .from("workspace_ai_documents")
+    .insert(insertPayload)
+    .select("*")
+    .single();
+
+  if (error || !data) {
+    throw new Error(
+      `Failed to create AI document record: ${error?.message ?? "Unknown error"}`,
+    );
+  }
+
+  // Best-effort event logging, do not throw if it fails
+  await logWorkspaceAiLibraryEvent({
+    workspaceId,
+    userId,
+    eventType: "document_uploaded",
+    documentId: (data as WorkspaceAiDocument).id,
+    payload: { file_type: (data as WorkspaceAiDocument).file_type },
+  }).catch((err) => {
+    console.error("Failed to log document_uploaded event", err);
+  });
+
+  return data as WorkspaceAiDocument;
+}
+
+export async function updateWorkspaceAiDocumentStatus(params: {
+  workspaceId: WorkspaceId;
+  documentId: string;
+  userId: UserId;
+  status: WorkspaceAiDocumentStatus;
+  aiMetadata?: Record<string, unknown> | null;
+}): Promise<WorkspaceAiDocument> {
+  const { workspaceId, documentId, userId, status, aiMetadata } = params;
+  const client = getSupabaseClient();
+
+  await ensureUserHasWorkspaceAccess(client, workspaceId, userId);
+
+  const updatePayload: Tables["workspace_ai_documents"]["Update"] = {
+    status,
+  };
+
+  if (aiMetadata !== undefined) {
+    updatePayload.ai_metadata = aiMetadata;
+  }
+
+  const { data, error } = await client
+    .from("workspace_ai_documents")
+    .update(updatePayload)
+    .eq("id", documentId)
+    .eq("workspace_id", workspaceId)
+    .select("*")
+    .single();
+
+  if (error || !data) {
+    throw new Error(
+      `Failed to update AI document status: ${error?.message ?? "Unknown error"}`,
+    );
+  }
+
+  return data as WorkspaceAiDocument;
+}
+
+export async function deleteWorkspaceAiDocument(params: {
+  workspaceId: WorkspaceId;
+  documentId: string;
+  userId: UserId;
+  deleteFromStorage?: boolean;
+}): Promise<void> {
+  const { workspaceId, documentId, userId, deleteFromStorage = true } = params;
+  const client = getSupabaseClient();
+
+  await ensureUserHasWorkspaceAccess(client, workspaceId, userId);
+
+  // Load the document to know bucket/path before deleting
+  const { data: docRow, error: fetchError } = await client
+    .from("workspace_ai_documents")
+    .select("*")
+    .eq("id", documentId)
+    .eq("workspace_id", workspaceId)
+    .single();
+
+  if (fetchError && fetchError.code !== "PGRST116") {
+    throw new Error(
+      `Failed to load AI document before delete: ${
+        fetchError.message ?? "Unknown error"
+      }`,
+    );
+  }
+
+  const doc = docRow as WorkspaceAiDocument | null;
+  if (!doc) {
+    // Already deleted / not found; nothing to do
+    return;
+  }
+
+  if (deleteFromStorage) {
+    const { error: storageError } = await client.storage
+      .from(doc.storage_bucket)
+      .remove([doc.storage_path]);
+
+    if (storageError) {
+      console.error(
+        "Failed to delete storage object for AI document:",
+        storageError.message,
+      );
+      // We still proceed to delete DB row to avoid dangling references
+    }
+  }
+
+  const { error: deleteError } = await client
+    .from("workspace_ai_documents")
+    .delete()
+    .eq("id", documentId)
+    .eq("workspace_id", workspaceId);
+
+  if (deleteError) {
+    throw new Error(
+      `Failed to delete AI document: ${
+        deleteError.message ?? "Unknown error"
+      }`,
+    );
+  }
+
+  // Best-effort event logging
+  await logWorkspaceAiLibraryEvent({
+    workspaceId,
+    userId,
+    eventType: "document_deleted",
+    documentId,
+    payload: { file_type: doc.file_type },
+  }).catch((err) => {
+    console.error("Failed to log document_deleted event", err);
+  });
+}
+
+// ========== AI LIBRARY: KNOWLEDGE ==========
+
+export async function createWorkspaceAiKnowledgeEntry(
+  params: UpsertWorkspaceAiKnowledgeParams & {
+    userId: UserId;
+  },
+): Promise<WorkspaceAiKnowledge> {
+  const {
+    workspaceId,
+    userId,
+    keyName,
+    label,
+    value,
+    orderIndex,
+  } = params;
+
+  const trimmedLabel = label.trim();
+  const trimmedValue = value.trim();
+
+  if (!trimmedLabel) {
+    throw new Error("Knowledge label cannot be empty.");
+  }
+  if (!trimmedValue) {
+    throw new Error("Knowledge value cannot be empty.");
+  }
+
+  const client = getSupabaseClient();
+  await ensureUserHasWorkspaceAccess(client, workspaceId, userId);
+
+  let finalOrderIndex = orderIndex;
+
+  if (finalOrderIndex === undefined) {
+    // compute next order_index
+    const { data: maxRow, error: maxError } = await client
+      .from("workspace_ai_knowledge")
+      .select("order_index")
+      .eq("workspace_id", workspaceId)
+      .order("order_index", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (maxError && maxError.code !== "PGRST116") {
+      throw new Error(
+        `Failed to compute knowledge order index: ${
+          maxError.message ?? "Unknown error"
+        }`,
+      );
+    }
+
+    finalOrderIndex =
+      maxRow && typeof maxRow.order_index === "number"
+        ? maxRow.order_index + 1
+        : 0;
+  }
+
+  type Insert = Tables["workspace_ai_knowledge"]["Insert"];
+
+  const insertPayload: Insert = {
+    workspace_id: workspaceId,
+    key_name: keyName,
+    label: trimmedLabel,
+    value: trimmedValue,
+    order_index: finalOrderIndex,
+  };
+
+  const { data, error } = await client
+    .from("workspace_ai_knowledge")
+    .insert(insertPayload)
+    .select("*")
+    .single();
+
+  if (error || !data) {
+    throw new Error(
+      `Failed to create AI knowledge entry: ${error?.message ?? "Unknown error"}`,
+    );
+  }
+
+    // Best-effort event logging
+    await logWorkspaceAiLibraryEvent({
+      workspaceId,
+      userId,
+      eventType: "knowledge_created",
+      knowledgeId: (data as WorkspaceAiKnowledge).id,
+      payload: { key_name: (data as WorkspaceAiKnowledge).key_name },
+    }).catch((err) => {
+      console.error("Failed to log knowledge_created event", err);
+    });  
+
+  return data as WorkspaceAiKnowledge;
+}
+
+export async function deleteWorkspaceAiKnowledgeEntry(params: {
+  workspaceId: WorkspaceId;
+  knowledgeId: string;
+  userId: UserId;
+}): Promise<void> {
+  const { workspaceId, knowledgeId, userId } = params;
+  const client = getSupabaseClient();
+
+  await ensureUserHasWorkspaceAccess(client, workspaceId, userId);
+
+  // Load first so we can log meaningful info
+  const { data: row, error: fetchError } = await client
+    .from("workspace_ai_knowledge")
+    .select("*")
+    .eq("id", knowledgeId)
+    .eq("workspace_id", workspaceId)
+    .single();
+
+  if (fetchError && fetchError.code !== "PGRST116") {
+    throw new Error(
+      `Failed to load AI knowledge before delete: ${
+        fetchError.message ?? "Unknown error"
+      }`,
+    );
+  }
+
+  const existing = row as WorkspaceAiKnowledge | null;
+  if (!existing) {
+    // Already removed
+    return;
+  }
+
+  const { error: deleteError } = await client
+    .from("workspace_ai_knowledge")
+    .delete()
+    .eq("id", knowledgeId)
+    .eq("workspace_id", workspaceId);
+
+  if (deleteError) {
+    throw new Error(
+      `Failed to delete AI knowledge entry: ${
+        deleteError.message ?? "Unknown error"
+      }`,
+    );
+  }
+
+  // Best-effort event logging
+  await logWorkspaceAiLibraryEvent({
+    workspaceId,
+    userId,
+    eventType: "knowledge_deleted",
+    knowledgeId,
+    payload: { key_name: existing.key_name },
+  }).catch((err) => {
+    console.error("Failed to log knowledge_deleted event", err);
+  });
+}
+
+// ========== AI LIBRARY: EVENT LOGGING (INTERNAL HELPER) ==========
+
+export async function logWorkspaceAiLibraryEvent(params: {
+  workspaceId: WorkspaceId;
+  userId?: UserId | null;
+  eventType: WorkspaceAiLibraryEvent["event_type"];
+  documentId?: string | null;
+  knowledgeId?: string | null;
+  payload?: Record<string, unknown> | null;
+}): Promise<void> {
+  const {
+    workspaceId,
+    userId = null,
+    eventType,
+    documentId = null,
+    knowledgeId = null,
+    payload = null,
+  } = params;
+
+  const client = getSupabaseClient();
+
+  type Insert = Tables["workspace_ai_library_events"]["Insert"];
+
+  const insertPayload: Insert = {
+    workspace_id: workspaceId,
+    user_id: userId,
+    event_type: eventType,
+    document_id: documentId,
+    knowledge_id: knowledgeId,
+    payload,
+  };
+
+  const { error } = await client
+    .from("workspace_ai_library_events")
+    .insert(insertPayload);
+
+  if (error) {
+    // Do NOT throw here – event logging must be best-effort only.
+    console.error(
+      "Failed to insert workspace_ai_library_event:",
+      error.message,
     );
   }
 }

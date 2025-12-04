@@ -7,6 +7,7 @@ import type {
   WorkspaceAiDocument,
   WorkspaceAiKnowledge,
   WorkspaceMemberInvite,
+  WorkspaceAiLibraryEvent,
 } from "@/types/workspaces";
 
 export type Database = {
@@ -121,9 +122,11 @@ export type Database = {
         Insert: {
           id?: string;
           workspace_id: string;
+          created_by?: string | null;
           name: string;
           file_type?: string | null;
-          storage_url: string;
+          storage_bucket: string;
+          storage_path: string;
           uploaded_at?: string;
           status?: WorkspaceAiDocument["status"];
           ai_metadata?: Record<string, unknown> | null;
@@ -133,9 +136,11 @@ export type Database = {
         Update: {
           id?: string;
           workspace_id?: string;
+          created_by?: string | null;
           name?: string;
           file_type?: string | null;
-          storage_url?: string;
+          storage_bucket?: string;
+          storage_path?: string;
           uploaded_at?: string;
           status?: WorkspaceAiDocument["status"];
           ai_metadata?: Record<string, unknown> | null;
@@ -211,6 +216,49 @@ export type Database = {
             foreignKeyName: "workspace_member_invites_workspace_id_fkey";
             columns: ["workspace_id"];
             referencedRelation: "workspaces";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      workspace_ai_library_events: {
+        Row: WorkspaceAiLibraryEvent;
+        Insert: {
+          id?: string;
+          workspace_id: string;
+          user_id?: string | null;
+          event_type: WorkspaceAiLibraryEvent["event_type"];
+          document_id?: string | null;
+          knowledge_id?: string | null;
+          payload?: Record<string, unknown> | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          workspace_id?: string;
+          user_id?: string | null;
+          event_type?: WorkspaceAiLibraryEvent["event_type"];
+          document_id?: string | null;
+          knowledge_id?: string | null;
+          payload?: Record<string, unknown> | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "workspace_ai_library_events_workspace_id_fkey";
+            columns: ["workspace_id"];
+            referencedRelation: "workspaces";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "workspace_ai_library_events_document_id_fkey";
+            columns: ["document_id"];
+            referencedRelation: "workspace_ai_documents";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "workspace_ai_library_events_knowledge_id_fkey";
+            columns: ["knowledge_id"];
+            referencedRelation: "workspace_ai_knowledge";
             referencedColumns: ["id"];
           },
         ];

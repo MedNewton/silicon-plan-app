@@ -7,6 +7,7 @@ export type WorkspaceMemberId = string;
 export type WorkspaceBusinessProfileId = string;
 export type WorkspaceAiDocumentId = string;
 export type WorkspaceAiKnowledgeId = string;
+export type WorkspaceAiLibraryEventId = string;
 
 // id for invites
 export type WorkspaceMemberInviteId = string;
@@ -25,6 +26,16 @@ export type WorkspaceAiDocumentStatus =
   | "processing"
   | "uploaded"
   | "failed";
+
+export type WorkspaceAiLibraryEventType =
+  | "document_uploaded"
+  | "document_deleted"
+  | "document_processing_started"
+  | "document_processing_completed"
+  | "document_processing_failed"
+  | "knowledge_created"
+  | "knowledge_updated"
+  | "knowledge_deleted";
 
 // ========== CORE ENTITIES (MATCH SUPABASE COLUMNS) ==========
 
@@ -77,9 +88,11 @@ export type WorkspaceBusinessProfile = {
 export type WorkspaceAiDocument = {
   id: WorkspaceAiDocumentId;
   workspace_id: WorkspaceId;
+  created_by: UserId | null;
   name: string;
   file_type: string | null;
-  storage_url: string;
+  storage_bucket: string;
+  storage_path: string;
   uploaded_at: string;
   status: WorkspaceAiDocumentStatus;
   ai_metadata: Record<string, unknown> | null;
@@ -96,6 +109,17 @@ export type WorkspaceAiKnowledge = {
   order_index: number;
   created_at: string;
   updated_at: string;
+};
+
+export type WorkspaceAiLibraryEvent = {
+  id: WorkspaceAiLibraryEventId;
+  workspace_id: WorkspaceId;
+  user_id: UserId | null;
+  event_type: WorkspaceAiLibraryEventType;
+  document_id: WorkspaceAiDocumentId | null;
+  knowledge_id: WorkspaceAiKnowledgeId | null;
+  payload: Record<string, unknown> | null;
+  created_at: string;
 };
 
 // Invite row type (matches SQL table)
@@ -172,9 +196,11 @@ export type CreateWorkspaceAiDocumentParams = {
   workspaceId: WorkspaceId;
   name: string;
   fileType?: string | null;
-  storageUrl: string;
+  storageBucket: string; // Supabase bucket name
+  storagePath: string; // path inside the bucket
   status?: WorkspaceAiDocumentStatus; // default "uploaded" if omitted
   aiMetadata?: Record<string, unknown> | null;
+  createdByUserId?: UserId | null;
 };
 
 export type UpsertWorkspaceAiKnowledgeParams = {
@@ -191,4 +217,13 @@ export type CreateWorkspaceMemberInviteParams = {
   role: WorkspaceRole;
   invitedByUserId: UserId;
   expiresAt?: string | null; // optional override, normally we compute +7 days
+};
+
+export type CreateWorkspaceAiLibraryEventParams = {
+  workspaceId: WorkspaceId;
+  userId?: UserId | null;
+  eventType: WorkspaceAiLibraryEventType;
+  documentId?: WorkspaceAiDocumentId | null;
+  knowledgeId?: WorkspaceAiKnowledgeId | null;
+  payload?: Record<string, unknown> | null;
 };
