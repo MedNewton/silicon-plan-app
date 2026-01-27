@@ -74,7 +74,7 @@ async function getWorkspaceIdFromPitchDeck(
     return null;
   }
 
-  return data.workspace_id;
+  return (data as { workspace_id: WorkspaceId }).workspace_id;
 }
 
 async function getWorkspaceIdFromSlide(
