@@ -16,6 +16,11 @@ import type {
   BusinessPlanAiMessage,
   BusinessPlanPendingChange,
   BusinessPlanSectionContent,
+  PitchDeckTemplate,
+  PitchDeck,
+  PitchDeckSlide,
+  PitchDeckSettings,
+  PitchDeckSlideContent,
 } from "@/types/workspaces";
 
 export type Database = {
@@ -482,6 +487,102 @@ export type Database = {
             foreignKeyName: "business_plan_pending_changes_message_id_fkey";
             columns: ["message_id"];
             referencedRelation: "business_plan_ai_messages";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      pitch_deck_templates: {
+        Row: PitchDeckTemplate;
+        Insert: {
+          id?: string;
+          name: string;
+          description?: string | null;
+          thumbnail_url?: string | null;
+          cover_design: PitchDeckTemplate["cover_design"];
+          slide_design: PitchDeckTemplate["slide_design"];
+          color_scheme: PitchDeckTemplate["color_scheme"];
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          description?: string | null;
+          thumbnail_url?: string | null;
+          cover_design?: PitchDeckTemplate["cover_design"];
+          slide_design?: PitchDeckTemplate["slide_design"];
+          color_scheme?: PitchDeckTemplate["color_scheme"];
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      pitch_decks: {
+        Row: PitchDeck;
+        Insert: {
+          id?: string;
+          workspace_id: string;
+          template_id?: string | null;
+          title: string;
+          settings: PitchDeckSettings;
+          created_by: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          workspace_id?: string;
+          template_id?: string | null;
+          title?: string;
+          settings?: PitchDeckSettings;
+          created_by?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "pitch_decks_workspace_id_fkey";
+            columns: ["workspace_id"];
+            referencedRelation: "workspaces";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "pitch_decks_template_id_fkey";
+            columns: ["template_id"];
+            referencedRelation: "pitch_deck_templates";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      pitch_deck_slides: {
+        Row: PitchDeckSlide;
+        Insert: {
+          id?: string;
+          pitch_deck_id: string;
+          title: string;
+          slide_type: PitchDeckSlide["slide_type"];
+          order_index?: number;
+          content: PitchDeckSlideContent;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          pitch_deck_id?: string;
+          title?: string;
+          slide_type?: PitchDeckSlide["slide_type"];
+          order_index?: number;
+          content?: PitchDeckSlideContent;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "pitch_deck_slides_pitch_deck_id_fkey";
+            columns: ["pitch_deck_id"];
+            referencedRelation: "pitch_decks";
             referencedColumns: ["id"];
           },
         ];
