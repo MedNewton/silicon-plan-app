@@ -151,7 +151,7 @@ const buildDocxSections = (chapters: BusinessPlanChapterWithSections[]) => {
     blocks.push(paragraphFromText(chapter.title ?? "", HeadingLevel.HEADING_1));
 
     (chapter.sections ?? []).forEach((section) => {
-      const content = section.content as BusinessPlanSectionContent;
+      const content = section.content;
       switch (content.type) {
         case "section_title":
           blocks.push(paragraphFromText(content.text ?? "", HeadingLevel.HEADING_2));

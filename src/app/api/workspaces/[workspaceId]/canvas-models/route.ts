@@ -99,8 +99,7 @@ export async function POST(
       return new NextResponse("Workspace id is required", { status: 400 });
     }
 
-    const body = await req.json();
-    const { title, templateType, sectionsData } = body as {
+    const { title, templateType, sectionsData } = (await req.json()) as {
       title?: string;
       templateType?: WorkspaceCanvasTemplateType;
       sectionsData?: CanvasSectionsData;

@@ -111,7 +111,7 @@ const parseTable = (text: string): { headers: string[]; rows: string[][] } => {
 
 const getSectionText = (section: BusinessPlanSection | null): string => {
   if (!section) return "";
-  const content = section.content as BusinessPlanSectionContent;
+  const content = section.content;
   if (!content || typeof content !== "object") return "";
   if (content.type === "text" || content.type === "section_title" || content.type === "subsection") {
     return content.text ?? "";
@@ -131,7 +131,6 @@ const SectionAiDrawer: FC<SectionAiDrawerProps> = ({ open, section, onClose, onS
   const [draftText, setDraftText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [translateAnchor, setTranslateAnchor] = useState<null | HTMLElement>(null);
-  const [targetLanguage, setTargetLanguage] = useState("English");
 
   useEffect(() => {
     if (open) {
@@ -341,7 +340,7 @@ const SectionAiDrawer: FC<SectionAiDrawerProps> = ({ open, section, onClose, onS
               {section?.content.type === "table" ||
               section?.content.type === "comparison_table" ? (
                 <Typography sx={{ mt: 1, fontSize: 12, color: "#6B7280" }}>
-                  Format: first line headers, next lines rows. Use " | " between cells.
+                  Format: first line headers, next lines rows. Use &quot; | &quot; between cells.
                 </Typography>
               ) : null}
             </Box>
@@ -473,7 +472,6 @@ const SectionAiDrawer: FC<SectionAiDrawerProps> = ({ open, section, onClose, onS
           <MenuItem
             key={lang}
             onClick={() => {
-              setTargetLanguage(lang);
               setTranslateAnchor(null);
               void handleAction("translate", lang);
             }}

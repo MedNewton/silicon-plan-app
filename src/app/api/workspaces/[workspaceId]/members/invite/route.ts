@@ -34,7 +34,6 @@ const resendApiKey =
 let resend: ResendClient | null = null;
 
 if (resendApiKey) {
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
   const client = new Resend(resendApiKey);
   resend = client as unknown as ResendClient;
 }

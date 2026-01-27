@@ -790,7 +790,7 @@ const TimelineContent: FC<{
                     return {
                       date: date ?? "",
                       title: title ?? "",
-                      description: description || undefined,
+                      description: description && description.length > 0 ? description : undefined,
                     };
                   }),
                 }),
@@ -891,7 +891,7 @@ const TeamGridContent: FC<{
                     return {
                       name: name ?? "",
                       role: role ?? "",
-                      bio: bio || undefined,
+                      bio: bio && bio.length > 0 ? bio : undefined,
                     };
                   }),
                 }),
@@ -974,7 +974,7 @@ const MetricsContent: FC<{
                     return {
                       value: value ?? "",
                       label: label ?? "",
-                      description: description || undefined,
+                      description: description && description.length > 0 ? description : undefined,
                     };
                   }),
                 }),
@@ -1061,7 +1061,7 @@ const QuoteContent: FC<{
                     return {
                       ...content,
                       author: author ?? "",
-                      authorTitle: authorTitle || undefined,
+                      authorTitle: authorTitle && authorTitle.length > 0 ? authorTitle : undefined,
                     };
                   },
                 })

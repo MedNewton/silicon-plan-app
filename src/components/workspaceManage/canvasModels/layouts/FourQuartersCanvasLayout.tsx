@@ -34,7 +34,7 @@ const FourQuartersCanvasLayout: FC<FourQuartersCanvasLayoutProps> = ({
   onDismissAISuggestions,
 }) => {
   const getItems = (sectionId: string): CanvasSectionItem[] => {
-    return (sectionsData[sectionId] || []) as CanvasSectionItem[];
+    return sectionsData[sectionId] ?? [];
   };
 
   const handleAddItem = (sectionId: string) => (item: { title: string; description: string }) => {
@@ -54,7 +54,7 @@ const FourQuartersCanvasLayout: FC<FourQuartersCanvasLayoutProps> = ({
   };
 
   const getAISuggestions = (sectionId: string): AiSuggestion[] => {
-    return aiSuggestions[sectionId] || [];
+    return aiSuggestions[sectionId] ?? [];
   };
 
   const isLoadingAI = (sectionId: string): boolean => {

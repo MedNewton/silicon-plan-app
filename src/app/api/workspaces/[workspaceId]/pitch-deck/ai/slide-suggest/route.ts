@@ -91,7 +91,7 @@ export async function POST(
       max_tokens: 600,
     });
 
-    const output = completion.choices[0]?.message?.content?.trim() || sourceText;
+    const output = completion.choices[0]?.message?.content?.trim() ?? sourceText;
     return NextResponse.json({ text: output });
   } catch (error) {
     console.error("Unexpected error in POST /pitch-deck/ai/slide-suggest:", error);

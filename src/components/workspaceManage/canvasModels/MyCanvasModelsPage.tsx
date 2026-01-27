@@ -100,7 +100,7 @@ const MyCanvasModelsPage: FC<MyCanvasModelsPageProps> = ({ workspaceId }) => {
           throw new Error("Failed to load canvas models");
         }
 
-        const data = await response.json();
+        const data = (await response.json()) as { canvasModels: WorkspaceCanvasModel[] };
         setCanvasModels(data.canvasModels);
       } catch (err) {
         console.error("Error loading canvas models:", err);
@@ -110,7 +110,7 @@ const MyCanvasModelsPage: FC<MyCanvasModelsPageProps> = ({ workspaceId }) => {
       }
     };
 
-    loadCanvasModels();
+    void loadCanvasModels();
   }, [workspaceId]);
 
   const handleCanvasClick = (canvasId: string) => {

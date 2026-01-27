@@ -8,7 +8,6 @@ import type { ChatCompletionTool } from "openai/resources/chat/completions";
 import {
   getOrCreateBusinessPlan,
   getOrCreateConversation,
-  getConversationWithMessages,
   createMessage,
   createPendingChange,
   getBusinessPlanWithChapters,
@@ -16,7 +15,6 @@ import {
 import { buildBusinessPlanContext, buildBusinessPlanSystemPrompt } from "@/lib/businessPlanAi";
 import { getWorkspaceAiContext } from "@/lib/workspaceAiContext";
 import type {
-  BusinessPlanAiMessage,
   BusinessPlanPendingChange,
   PendingChangeType,
   BusinessPlanChapterWithSections,
@@ -226,7 +224,7 @@ const isSameContent = (
 };
 
 const extractQuotedUpdate = (message: string): string | null => {
-  const match = message.match(/["“](.+?)["”]/);
+  const match = /["“](.+?)["”]/.exec(message);
   if (!match) return null;
   const candidate = match[1]?.trim();
   return candidate && candidate.length > 0 ? candidate : null;
@@ -283,11 +281,6 @@ export async function POST(
     if (body.conversationId && body.conversationId !== conversation.id) {
       return new NextResponse("Conversation mismatch", { status: 400 });
     }
-
-    const conversationData = await getConversationWithMessages({
-      businessPlanId: businessPlan.id,
-      userId,
-    });
 
     const planData = await getBusinessPlanWithChapters({
       workspaceId,
@@ -450,7 +443,7 @@ export async function POST(
     }
 
     const assistantContentBase =
-      completion.choices[0]?.message?.content?.trim() ||
+      completion.choices[0]?.message?.content?.trim() ??
       "I have suggestions for your business plan. Would you like to review them?";
     const genericNotice = workspaceContext.hasContext
       ? ""
@@ -458,7 +451,7 @@ export async function POST(
     const assistantContent = [
       assistantContentBase,
       skippedUpdates.length > 0 ? skippedUpdates.join(" ") : null,
-      genericNotice || null,
+      genericNotice.length > 0 ? genericNotice : null,
     ]
       .filter(Boolean)
       .join("\n\n");
@@ -484,8 +477,8 @@ export async function POST(
 
     return NextResponse.json({
       conversation,
-      userMessage: userMessage as BusinessPlanAiMessage,
-      assistantMessage: assistantMessage as BusinessPlanAiMessage,
+      userMessage,
+      assistantMessage,
       pendingChanges,
     });
   } catch (error) {

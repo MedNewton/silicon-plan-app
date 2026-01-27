@@ -27,7 +27,7 @@ const ValuePropositionCanvasLayout: FC<ValuePropositionCanvasLayoutProps> = ({
   onDismissAISuggestions,
 }) => {
   const getItems = (sectionId: string): CanvasSectionItem[] => {
-    return (sectionsData[sectionId] || []) as CanvasSectionItem[];
+    return sectionsData[sectionId] ?? [];
   };
 
   const handleAddItem = (sectionId: string) => (item: { title: string; description: string }) => {
@@ -47,7 +47,7 @@ const ValuePropositionCanvasLayout: FC<ValuePropositionCanvasLayoutProps> = ({
   };
 
   const getAISuggestions = (sectionId: string): AiSuggestion[] => {
-    return aiSuggestions[sectionId] || [];
+    return aiSuggestions[sectionId] ?? [];
   };
 
   const isLoadingAI = (sectionId: string): boolean => {

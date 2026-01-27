@@ -48,7 +48,7 @@ const normalizeColor = (color?: string | null): string | undefined => {
   if (!color) return undefined;
   const trimmed = color.trim();
   if (!trimmed) return undefined;
-  const hexMatch = trimmed.match(/#([0-9a-fA-F]{3,6})/);
+  const hexMatch = /#([0-9a-fA-F]{3,6})/.exec(trimmed);
   if (hexMatch) {
     return hexMatch[1]?.toUpperCase();
   }
@@ -244,14 +244,14 @@ const renderSlideContent = (
       const columnGap = layout.width * 0.04;
       const columnWidth = (layout.width - marginX * 2 - columnGap) / 2;
       const leftLines = [
-        content.leftColumn.title ? content.leftColumn.title : "",
-        content.leftColumn.text ? content.leftColumn.text : "",
-        ...(content.leftColumn.bullets ? content.leftColumn.bullets.map((b) => `- ${b}`) : []),
+        content.leftColumn.title ?? "",
+        content.leftColumn.text ?? "",
+        ...((content.leftColumn.bullets ?? []).map((b) => `- ${b}`)),
       ].filter((line) => line.length > 0);
       const rightLines = [
-        content.rightColumn.title ? content.rightColumn.title : "",
-        content.rightColumn.text ? content.rightColumn.text : "",
-        ...(content.rightColumn.bullets ? content.rightColumn.bullets.map((b) => `- ${b}`) : []),
+        content.rightColumn.title ?? "",
+        content.rightColumn.text ?? "",
+        ...((content.rightColumn.bullets ?? []).map((b) => `- ${b}`)),
       ].filter((line) => line.length > 0);
       slide.addText(leftLines.join("\n"), {
         x: marginX,

@@ -72,7 +72,7 @@ const getPreviewText = (
   change: BusinessPlanPendingChange,
   chaptersById: Map<string, BusinessPlanChapterWithSections>
 ): string => {
-  const data = change.proposed_data as Record<string, unknown>;
+  const data = change.proposed_data ?? {};
 
   if (change.change_type === "add_chapter" || change.change_type === "update_chapter") {
     const title = typeof data.title === "string" ? data.title : "Untitled chapter";
@@ -82,7 +82,8 @@ const getPreviewText = (
   if (change.change_type === "add_section") {
     const chapterId = data.chapter_id as string | undefined;
     const chapter = chapterId ? chaptersById.get(chapterId) : null;
-    const sectionType = data.section_type ?? "section";
+    const sectionType =
+      typeof data.section_type === "string" ? data.section_type : "section";
     return `Add ${sectionType} to ${chapter ? chapter.title : "selected chapter"}`;
   }
 

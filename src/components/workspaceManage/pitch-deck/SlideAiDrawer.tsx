@@ -2,7 +2,7 @@
 "use client";
 
 import type { FC } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import {
   Box,
   Drawer,
@@ -78,7 +78,7 @@ const SlideAiDrawer: FC<SlideAiDrawerProps> = ({
     }
   }, [open, target]);
 
-  const handleAction = async (action: AiAction, language?: string) => {
+  const handleAction = useCallback(async (action: AiAction, language?: string) => {
     if (!workspaceId || !target) return;
     setIsLoading(true);
     try {
@@ -109,7 +109,7 @@ const SlideAiDrawer: FC<SlideAiDrawerProps> = ({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [workspaceId, target, draftText]);
 
   const handleSave = async () => {
     if (!target) return;

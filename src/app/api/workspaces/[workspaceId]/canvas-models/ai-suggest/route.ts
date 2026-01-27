@@ -239,8 +239,8 @@ export async function POST(
     }
 
     // Get section description
-    const sectionDescriptions = SECTION_DESCRIPTIONS[templateType] || {};
-    const sectionDescription = sectionDescriptions[sectionId] || `Section: ${sectionId}`;
+    const sectionDescriptions = SECTION_DESCRIPTIONS[templateType] ?? {};
+    const sectionDescription = sectionDescriptions[sectionId] ?? `Section: ${sectionId}`;
 
     // Build existing items context
     let existingContext = "";
@@ -292,15 +292,16 @@ Remember: Respond ONLY with a JSON array of objects with "title" and "descriptio
       max_tokens: 500,
     });
 
-    const responseText = completion.choices[0]?.message?.content?.trim() || "[]";
+    const responseText = completion.choices[0]?.message?.content?.trim() ?? "[]";
 
     // Parse the response
     let suggestions: Array<{ title: string; description: string }> = [];
     try {
       // Try to extract JSON from the response
-      const jsonMatch = responseText.match(/\[[\s\S]*\]/);
+      const jsonMatch = /\[[\s\S]*\]/.exec(responseText);
       if (jsonMatch) {
-        suggestions = JSON.parse(jsonMatch[0]);
+        const parsed = JSON.parse(jsonMatch[0]) as Array<{ title: string; description: string }>;
+        suggestions = Array.isArray(parsed) ? parsed : [];
       }
     } catch (parseError) {
       console.error("Failed to parse AI response:", parseError);

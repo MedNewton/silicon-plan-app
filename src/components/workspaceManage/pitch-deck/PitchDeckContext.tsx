@@ -18,7 +18,6 @@ import type {
   PitchDeckSettings,
   PitchDeckSlideContent,
   PitchDeckSlideType,
-  PitchDeckId,
   PitchDeckSlideId,
 } from "@/types/workspaces";
 

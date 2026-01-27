@@ -95,7 +95,7 @@ export default function JoinWorkspaceClient({ inviteId }: Props) {
         return;
       }
 
-      const json = (await res.json()) as { workspaceId: string };
+      await res.json();
       router.push(`/`);
     } catch (err) {
       console.error(err);

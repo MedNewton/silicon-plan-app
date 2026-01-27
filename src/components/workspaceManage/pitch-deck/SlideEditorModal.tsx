@@ -265,7 +265,7 @@ const buildContentFromDraft = (
           return {
             date: date ?? "",
             title: entryTitle ?? "",
-            description: description || undefined,
+            description: description && description.length > 0 ? description : undefined,
           };
         }),
       };
@@ -278,7 +278,7 @@ const buildContentFromDraft = (
           return {
             name: name ?? "",
             role: role ?? "",
-            bio: bio || undefined,
+            bio: bio && bio.length > 0 ? bio : undefined,
           };
         }),
       };
@@ -291,17 +291,20 @@ const buildContentFromDraft = (
           return {
             value: value ?? "",
             label: label ?? "",
-            description: description || undefined,
+            description: description && description.length > 0 ? description : undefined,
           };
         }),
       };
-    case "quote":
+    case "quote": {
+      const author = draft.author.trim();
+      const authorTitle = draft.authorTitle.trim();
       return {
         type: "quote",
         quote: draft.quote.trim(),
-        author: draft.author.trim() || undefined,
-        authorTitle: draft.authorTitle.trim() || undefined,
+        author: author.length > 0 ? author : undefined,
+        authorTitle: authorTitle.length > 0 ? authorTitle : undefined,
       };
+    }
     case "blank":
       return { type: "blank" };
     default:
@@ -449,12 +452,15 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
                   <Select
                     value={draft.imagePosition}
                     label="Image Position"
-                    onChange={(e) =>
-                      setDraft({
-                        ...draft,
-                        imagePosition: e.target.value as DraftFields["imagePosition"],
-                      })
-                    }
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === "left" || value === "right" || value === "top" || value === "bottom") {
+                        setDraft({
+                          ...draft,
+                          imagePosition: value,
+                        });
+                      }
+                    }}
                   >
                     <MenuItem value="left">Left</MenuItem>
                     <MenuItem value="right">Right</MenuItem>

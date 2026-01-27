@@ -2,7 +2,7 @@
 "use client";
 
 import type { FC, ReactNode, HTMLAttributes } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   Box,
   IconButton,
@@ -481,23 +481,18 @@ const SectionBlock: FC<SectionBlockProps> = ({
   // Get a label for the section to show in the delete modal
   const getSectionLabel = () => {
     const content = section.content;
-    if (content && content.type === "text") {
+    if (content?.type === "text") {
       return content.text.length > 50 ? content.text.slice(0, 50) + "..." : content.text;
-    } else if (
-      content &&
-      (content.type === "section_title" || content.type === "subsection")
-    ) {
+    } else if (content?.type === "section_title" || content?.type === "subsection") {
       return content.text;
     }
-    const fallbackType =
-      typeof (content as { type?: string })?.type === "string"
-        ? (content as { type: string }).type.replace("_", " ")
-        : "unsupported";
+    const contentType = (content as { type?: string } | null | undefined)?.type;
+    const fallbackType = contentType?.replace("_", " ") ?? "unsupported";
     return `${fallbackType} section`;
   };
 
   const getSectionPlainText = () => {
-    const content = section.content as BusinessPlanSectionContent;
+    const content = section.content;
     if (!content || typeof content !== "object") return "";
     switch (content.type) {
       case "section_title":

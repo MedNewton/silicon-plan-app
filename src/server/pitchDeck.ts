@@ -91,7 +91,8 @@ async function getWorkspaceIdFromSlide(
     return null;
   }
 
-  return getWorkspaceIdFromPitchDeck(client, data.pitch_deck_id);
+  const pitchDeckId = (data as { pitch_deck_id: PitchDeckId }).pitch_deck_id;
+  return getWorkspaceIdFromPitchDeck(client, pitchDeckId);
 }
 
 // ========== MAPPERS ==========
@@ -172,7 +173,7 @@ function mapSlideRow(row: unknown): PitchDeckSlide {
 // ========== TEMPLATE FUNCTIONS ==========
 
 export async function getTemplates(): Promise<PitchDeckTemplate[]> {
-  const client = await getSupabaseClient();
+  const client = getSupabaseClient();
 
   const { data, error } = await client
     .from("pitch_deck_templates")
@@ -190,7 +191,7 @@ export async function getTemplates(): Promise<PitchDeckTemplate[]> {
 export async function getTemplateById(
   templateId: PitchDeckTemplateId
 ): Promise<PitchDeckTemplate | null> {
-  const client = await getSupabaseClient();
+  const client = getSupabaseClient();
 
   const { data, error } = await client
     .from("pitch_deck_templates")
@@ -216,7 +217,7 @@ export async function getPitchDecksByWorkspace(params: {
   userId: UserId;
 }): Promise<PitchDeck[]> {
   const { workspaceId, userId } = params;
-  const client = await getSupabaseClient();
+  const client = getSupabaseClient();
 
   await ensureUserHasWorkspaceAccess(client, workspaceId, userId);
 
@@ -239,7 +240,7 @@ export async function getPitchDeck(params: {
   fresh?: boolean;
 }): Promise<PitchDeckWithSlides | null> {
   const { pitchDeckId, userId, fresh } = params;
-  const client = await getSupabaseClient({ fresh });
+  const client = getSupabaseClient({ fresh });
 
   // Get pitch deck
   const { data: deckData, error: deckError } = await client
@@ -290,7 +291,7 @@ export async function createPitchDeck(
   params: CreatePitchDeckParams
 ): Promise<PitchDeck> {
   const { workspaceId, templateId, title, createdBy } = params;
-  const client = await getSupabaseClient();
+  const client = getSupabaseClient();
 
   await ensureUserHasWorkspaceAccess(client, workspaceId, createdBy);
 
@@ -344,7 +345,7 @@ export async function updatePitchDeck(
   params: UpdatePitchDeckParams & { userId: UserId }
 ): Promise<PitchDeck> {
   const { pitchDeckId, userId, title, settings, templateId } = params;
-  const client = await getSupabaseClient();
+  const client = getSupabaseClient();
 
   const workspaceId = await getWorkspaceIdFromPitchDeck(client, pitchDeckId);
   if (!workspaceId) {
@@ -406,7 +407,7 @@ export async function deletePitchDeck(params: {
   userId: UserId;
 }): Promise<void> {
   const { pitchDeckId, userId } = params;
-  const client = await getSupabaseClient();
+  const client = getSupabaseClient();
 
   const workspaceId = await getWorkspaceIdFromPitchDeck(client, pitchDeckId);
   if (!workspaceId) {
@@ -429,7 +430,7 @@ export async function duplicatePitchDeck(
   params: DuplicatePitchDeckParams & { userId: UserId }
 ): Promise<PitchDeck> {
   const { pitchDeckId, userId, newTitle } = params;
-  const client = await getSupabaseClient();
+  const client = getSupabaseClient();
 
   // Get original pitch deck with slides
   const original = await getPitchDeck({ pitchDeckId, userId });
@@ -454,10 +455,22 @@ export async function duplicatePitchDeck(
     throw new Error(`Failed to duplicate pitch deck: ${deckError.message}`);
   }
 
+  const createdDeck = newDeck as {
+    id: PitchDeckId;
+    workspace_id: WorkspaceId;
+    template_id: PitchDeckTemplateId;
+    title: string;
+    settings: PitchDeckSettings | null;
+    created_at: string;
+    updated_at: string;
+    created_by: UserId | null;
+  };
+  const newDeckId = createdDeck.id;
+
   // Duplicate all slides
   if (original.slides.length > 0) {
     const slidesToInsert = original.slides.map((slide) => ({
-      pitch_deck_id: newDeck.id,
+      pitch_deck_id: newDeckId,
       title: slide.title,
       slide_type: slide.slide_type,
       order_index: slide.order_index,
@@ -470,12 +483,12 @@ export async function duplicatePitchDeck(
 
     if (slidesError) {
       // Clean up the deck if slides failed
-      await client.from("pitch_decks").delete().eq("id", newDeck.id);
+      await client.from("pitch_decks").delete().eq("id", newDeckId);
       throw new Error(`Failed to duplicate slides: ${slidesError.message}`);
     }
   }
 
-  return mapPitchDeckRow(newDeck);
+  return mapPitchDeckRow(createdDeck);
 }
 
 // ========== SLIDE CRUD ==========
@@ -484,7 +497,7 @@ export async function createSlide(
   params: CreatePitchDeckSlideParams & { userId: UserId }
 ): Promise<PitchDeckSlide> {
   const { pitchDeckId, userId, title, slideType, content, orderIndex } = params;
-  const client = await getSupabaseClient();
+  const client = getSupabaseClient();
 
   const workspaceId = await getWorkspaceIdFromPitchDeck(client, pitchDeckId);
   if (!workspaceId) {
@@ -504,7 +517,8 @@ export async function createSlide(
       .limit(1)
       .single();
 
-    finalOrderIndex = maxOrderData ? maxOrderData.order_index + 1 : 0;
+    const maxOrderRow = maxOrderData as { order_index: number } | null;
+    finalOrderIndex = maxOrderRow ? maxOrderRow.order_index + 1 : 0;
   }
 
   const { data, error } = await client
@@ -530,7 +544,7 @@ export async function updateSlide(
   params: UpdatePitchDeckSlideParams & { userId: UserId }
 ): Promise<PitchDeckSlide> {
   const { slideId, userId, title, slideType, content, orderIndex } = params;
-  const client = await getSupabaseClient();
+  const client = getSupabaseClient();
 
   const workspaceId = await getWorkspaceIdFromSlide(client, slideId);
   if (!workspaceId) {
@@ -585,7 +599,7 @@ export async function deleteSlide(params: {
   userId: UserId;
 }): Promise<void> {
   const { slideId, userId } = params;
-  const client = await getSupabaseClient();
+  const client = getSupabaseClient();
 
   const workspaceId = await getWorkspaceIdFromSlide(client, slideId);
   if (!workspaceId) {
@@ -608,7 +622,7 @@ export async function reorderSlides(
   params: ReorderPitchDeckSlidesParams & { userId: UserId }
 ): Promise<void> {
   const { pitchDeckId, userId, orderedSlideIds } = params;
-  const client = await getSupabaseClient();
+  const client = getSupabaseClient();
 
   const workspaceId = await getWorkspaceIdFromPitchDeck(client, pitchDeckId);
   if (!workspaceId) {
@@ -639,7 +653,7 @@ export async function duplicateSlide(params: {
   userId: UserId;
 }): Promise<PitchDeckSlide> {
   const { slideId, userId } = params;
-  const client = await getSupabaseClient();
+  const client = getSupabaseClient();
 
   const workspaceId = await getWorkspaceIdFromSlide(client, slideId);
   if (!workspaceId) {
@@ -670,7 +684,8 @@ export async function duplicateSlide(params: {
     .limit(1)
     .single();
 
-  const newOrderIndex = maxOrderData ? maxOrderData.order_index + 1 : 0;
+  const maxOrderRow = maxOrderData as { order_index: number } | null;
+  const newOrderIndex = maxOrderRow ? maxOrderRow.order_index + 1 : 0;
 
   // Create duplicate
   const { data, error } = await client

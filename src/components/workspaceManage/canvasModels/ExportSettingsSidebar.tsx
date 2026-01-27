@@ -50,7 +50,7 @@ const FONT_SIZES = ["12 px", "14 px", "15 px", "16 px", "18 px"];
 const ExportSettingsSidebar: FC<ExportSettingsSidebarProps> = ({
   canvasRef,
   canvasTitle = "Canvas Model",
-  onClose,
+  onClose: _onClose,
 }) => {
   const [settings, setSettings] = useState<ExportSettings>({
     paperSize: "A4",

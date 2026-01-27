@@ -22,8 +22,6 @@ type CanvasModel = {
   previewAccent: string;
 };
 
-type TabKey = "all-models" | "my-models";
-
 const MODELS: CanvasModel[] = [
   {
     id: "business-model",
@@ -101,7 +99,7 @@ const CanvasModelsPage: FC<CanvasModelsPageProps> = ({ workspaceId }) => {
         throw new Error("Failed to create canvas");
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as { canvasModel: { id: string } };
       const canvasId = data.canvasModel.id;
 
       // Navigate to the edit page for the new canvas

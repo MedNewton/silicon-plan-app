@@ -43,7 +43,6 @@ const CanvasModelEditPage: FC<CanvasModelEditPageProps> = ({
   const [canvas, setCanvas] = useState<WorkspaceCanvasModel | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showExportSidebar, setShowExportSidebar] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -70,7 +69,7 @@ const CanvasModelEditPage: FC<CanvasModelEditPageProps> = ({
           return;
         }
 
-        const data = await response.json();
+        const data = (await response.json()) as { canvasModel: WorkspaceCanvasModel };
         setCanvas(data.canvasModel);
         setEditedTitle(data.canvasModel.title);
       } catch (err) {
@@ -81,7 +80,7 @@ const CanvasModelEditPage: FC<CanvasModelEditPageProps> = ({
       }
     };
 
-    loadCanvas();
+    void loadCanvas();
   }, [workspaceId, canvasId]);
 
   // Save canvas data
@@ -106,9 +105,8 @@ const CanvasModelEditPage: FC<CanvasModelEditPageProps> = ({
           throw new Error("Failed to save canvas");
         }
 
-        const data = await response.json();
+        const data = (await response.json()) as { canvasModel: WorkspaceCanvasModel };
         setCanvas(data.canvasModel);
-        setHasUnsavedChanges(false);
       } catch (err) {
         console.error("Error saving canvas:", err);
       } finally {
@@ -147,8 +145,8 @@ const CanvasModelEditPage: FC<CanvasModelEditPageProps> = ({
       description: item.description,
     };
 
-    const currentSections = canvas.sections_data || {};
-    const currentItems = (currentSections[sectionId] || []) as CanvasSectionItem[];
+    const currentSections = canvas.sections_data ?? {};
+    const currentItems = currentSections[sectionId] ?? [];
     const updatedSections: CanvasSectionsData = {
       ...currentSections,
       [sectionId]: [...currentItems, newItem],
@@ -159,8 +157,6 @@ const CanvasModelEditPage: FC<CanvasModelEditPageProps> = ({
       ...canvas,
       sections_data: updatedSections,
     });
-    setHasUnsavedChanges(true);
-
     // Auto-save to server
     await saveCanvas({ sectionsData: updatedSections });
   };
@@ -168,8 +164,8 @@ const CanvasModelEditPage: FC<CanvasModelEditPageProps> = ({
   const handleUpdateItem = (sectionId: string) => async (updatedItem: CanvasSectionItem) => {
     if (!canvas) return;
 
-    const currentSections = canvas.sections_data || {};
-    const currentItems = (currentSections[sectionId] || []) as CanvasSectionItem[];
+    const currentSections = canvas.sections_data ?? {};
+    const currentItems = currentSections[sectionId] ?? [];
     const updatedItems = currentItems.map((item) =>
       item.id === updatedItem.id ? updatedItem : item
     );
@@ -183,8 +179,6 @@ const CanvasModelEditPage: FC<CanvasModelEditPageProps> = ({
       ...canvas,
       sections_data: updatedSections,
     });
-    setHasUnsavedChanges(true);
-
     // Auto-save to server
     await saveCanvas({ sectionsData: updatedSections });
   };
@@ -192,8 +186,8 @@ const CanvasModelEditPage: FC<CanvasModelEditPageProps> = ({
   const handleDeleteItem = (sectionId: string) => async (itemId: string) => {
     if (!canvas) return;
 
-    const currentSections = canvas.sections_data || {};
-    const currentItems = (currentSections[sectionId] || []) as CanvasSectionItem[];
+    const currentSections = canvas.sections_data ?? {};
+    const currentItems = currentSections[sectionId] ?? [];
     const updatedItems = currentItems.filter((item) => item.id !== itemId);
     const updatedSections: CanvasSectionsData = {
       ...currentSections,
@@ -205,8 +199,6 @@ const CanvasModelEditPage: FC<CanvasModelEditPageProps> = ({
       ...canvas,
       sections_data: updatedSections,
     });
-    setHasUnsavedChanges(true);
-
     // Auto-save to server
     await saveCanvas({ sectionsData: updatedSections });
   };
@@ -218,8 +210,8 @@ const CanvasModelEditPage: FC<CanvasModelEditPageProps> = ({
     setLoadingAISections((prev) => [...prev, sectionId]);
 
     try {
-      const currentSections = canvas.sections_data || {};
-      const existingItems = (currentSections[sectionId] || []) as CanvasSectionItem[];
+      const currentSections = canvas.sections_data ?? {};
+      const existingItems = currentSections[sectionId] ?? [];
 
       const response = await fetch(
         `/api/workspaces/${workspaceId}/canvas-models/ai-suggest`,
@@ -243,10 +235,10 @@ const CanvasModelEditPage: FC<CanvasModelEditPageProps> = ({
         throw new Error("Failed to generate AI suggestions");
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as { suggestions?: AiSuggestion[] };
       setAiSuggestions((prev) => ({
         ...prev,
-        [sectionId]: data.suggestions || [],
+        [sectionId]: data.suggestions ?? [],
       }));
     } catch (err) {
       console.error("Error generating AI suggestions:", err);
@@ -351,7 +343,7 @@ const CanvasModelEditPage: FC<CanvasModelEditPageProps> = ({
   const handleGenerateAllAI = async () => {
     if (!canvas || isGeneratingAll) return;
 
-    const templateType = canvas.template_type as WorkspaceCanvasTemplateType;
+    const templateType = canvas.template_type;
     const sectionIds = getSectionIdsForTemplate(templateType);
 
     if (sectionIds.length === 0) return;
@@ -360,12 +352,12 @@ const CanvasModelEditPage: FC<CanvasModelEditPageProps> = ({
     setLoadingAISections(sectionIds);
 
     try {
-      const currentSections = canvas.sections_data || {};
+      const currentSections = canvas.sections_data ?? {};
 
       // Generate suggestions for all sections in parallel
       const results = await Promise.allSettled(
         sectionIds.map(async (sectionId) => {
-          const existingItems = (currentSections[sectionId] || []) as CanvasSectionItem[];
+          const existingItems = currentSections[sectionId] ?? [];
 
           const response = await fetch(
             `/api/workspaces/${workspaceId}/canvas-models/ai-suggest`,
@@ -389,8 +381,8 @@ const CanvasModelEditPage: FC<CanvasModelEditPageProps> = ({
             throw new Error(`Failed to generate AI suggestions for ${sectionId}`);
           }
 
-          const data = await response.json();
-          return { sectionId, suggestions: data.suggestions || [] };
+          const data = (await response.json()) as { suggestions?: AiSuggestion[] };
+          return { sectionId, suggestions: data.suggestions ?? [] };
         })
       );
 
@@ -415,8 +407,8 @@ const CanvasModelEditPage: FC<CanvasModelEditPageProps> = ({
   const renderCanvasLayout = () => {
     if (!canvas) return null;
 
-    const templateType = canvas.template_type as WorkspaceCanvasTemplateType;
-    const sectionsData = canvas.sections_data || {};
+    const templateType = canvas.template_type;
+    const sectionsData = canvas.sections_data ?? {};
 
     const commonProps = {
       sectionsData,
@@ -477,7 +469,7 @@ const CanvasModelEditPage: FC<CanvasModelEditPageProps> = ({
         }}
       >
         <Typography sx={{ fontSize: 18, color: "#6B7280" }}>
-          {error || "Canvas not found"}
+          {error ?? "Canvas not found"}
         </Typography>
         <Button
           variant="outlined"
@@ -619,7 +611,9 @@ const CanvasModelEditPage: FC<CanvasModelEditPageProps> = ({
                 autoFocus
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
-                    handleTitleSave();
+                    handleTitleSave().catch((err) => {
+                      console.error("Failed to save title:", err);
+                    });
                   } else if (e.key === "Escape") {
                     setEditedTitle(canvas.title);
                     setIsEditingTitle(false);
@@ -674,7 +668,7 @@ const CanvasModelEditPage: FC<CanvasModelEditPageProps> = ({
           {/* Generate With AI button */}
           <Button
             variant="outlined"
-            onClick={handleGenerateAllAI}
+            onClick={() => void handleGenerateAllAI()}
             disabled={isGeneratingAll}
             startIcon={
               isGeneratingAll ? (

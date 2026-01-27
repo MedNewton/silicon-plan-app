@@ -43,7 +43,7 @@ const CanvasModelViewPage: FC<CanvasModelViewPageProps> = ({
   const router = useRouter();
   const [showExportSidebar, setShowExportSidebar] = useState(false);
 
-  const canvasTitle = CANVAS_TITLES[canvasId] || "Canvas Model";
+  const canvasTitle = CANVAS_TITLES[canvasId] ?? "Canvas Model";
 
   const handleBack = () => {
     router.push(`/workspaces/${workspaceId}/manage/canvas-models`);

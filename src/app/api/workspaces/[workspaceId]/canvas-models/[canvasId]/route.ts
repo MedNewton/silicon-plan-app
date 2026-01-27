@@ -110,8 +110,7 @@ export async function PATCH(
       return new NextResponse("Canvas id is required", { status: 400 });
     }
 
-    const body = await req.json();
-    const { title, sectionsData } = body as {
+    const { title, sectionsData } = (await req.json()) as {
       title?: string;
       sectionsData?: CanvasSectionsData;
     };
