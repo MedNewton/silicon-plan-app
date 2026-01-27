@@ -4,7 +4,6 @@ import { NextResponse, userAgent } from "next/server";
 
 const isProtectedRoute = createRouteMatcher([
   "/",           // desktop home
-  "/mobile(.*)", // mobile home
   "/team(.*)",   // team and team/mobile
 ]);
 
@@ -16,29 +15,7 @@ export default clerkMiddleware(async (auth, req) => {
     await auth.protect(); // will redirect to your Clerk sign-in URL (set to /auth)
   }
 
-  // 2) Mobile rewrite (your old logic)
-  const { pathname } = req.nextUrl;
-
-  if (mobileRewrittenPaths.includes(pathname)) {
-    const ua = userAgent(req);
-    const deviceType = ua.device.type ?? "desktop";
-    const isMobile = deviceType === "mobile" || deviceType === "tablet";
-
-    if (isMobile) {
-      const url = req.nextUrl.clone();
-
-      if (pathname === "/") {
-        url.pathname = "/mobile";
-      } else {
-        url.pathname = `${pathname}/mobile`;
-      }
-
-      return NextResponse.rewrite(url);
-    }
-  }
-
-  // 3) Default: continue normally
-  return NextResponse.next();
+  NextResponse.next();
 });
 
 export const config = {
