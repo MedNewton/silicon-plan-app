@@ -94,7 +94,10 @@ export const PitchDeckProvider: FC<PitchDeckProviderProps> = ({
 
       // Select first slide if none selected
       if (!selectedSlideId && data.slides.length > 0) {
-        setSelectedSlideId(data.slides[0].id);
+        const firstSlideId = data.slides.at(0)?.id ?? null;
+        if (firstSlideId) {
+          setSelectedSlideId(firstSlideId);
+        }
       }
     } catch (err) {
       console.error("Error loading pitch deck:", err);
