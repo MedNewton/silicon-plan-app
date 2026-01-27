@@ -3,8 +3,9 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse, userAgent } from "next/server";
 
 const isProtectedRoute = createRouteMatcher([
-  "/",           // desktop home
-  "/team(.*)",   // team and team/mobile
+  "/",              // desktop home
+  "/team(.*)",      // team and team/mobile
+  "/workspaces(.*)", // all workspace routes (including pitch-deck)
 ]);
 
 const mobileRewrittenPaths = ["/", "/team"];
