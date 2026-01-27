@@ -366,6 +366,7 @@ export async function updatePitchDeck(
   if (title !== undefined) {
     updateData.title = title;
   }
+  
 
   if (settings !== undefined && currentDeck) {
     updateData.settings = {
