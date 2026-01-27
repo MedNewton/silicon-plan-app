@@ -419,15 +419,9 @@ export async function POST(
     });
 
     const fileName = `${sanitizeFileName(pitchDeck.title || "pitch-deck")}.pptx`;
-    const output = await pptx.write({ outputType: "nodebuffer" });
-    const body =
-      output instanceof ArrayBuffer
-        ? Buffer.from(output)
-        : Buffer.isBuffer(output)
-        ? output
-        : Buffer.from(output as Uint8Array);
+    const buffer = (await pptx.write({ outputType: "arraybuffer" })) as ArrayBuffer;
 
-    return new NextResponse(body, {
+    return new NextResponse(buffer, {
       status: 200,
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
