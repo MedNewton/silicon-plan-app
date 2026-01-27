@@ -2,7 +2,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import pptxgen from "pptxgenjs";
-import type { Slide, TableRow } from "pptxgenjs";
 import path from "path";
 import { readFile } from "fs/promises";
 import { getPitchDeck } from "@/server/pitchDeck";
@@ -22,6 +21,17 @@ type LayoutPreset = {
   isCustom?: boolean;
 };
 
+type Slide = ReturnType<InstanceType<typeof pptxgen>["addSlide"]>;
+type TableCell = {
+  text?: string;
+  options?: {
+    bold?: boolean;
+    color?: string;
+    fill?: { color?: string };
+  };
+};
+type TableRow = TableCell[];
+
 const getLayout = (settings: PitchDeckSettings): LayoutPreset => {
   switch (settings.paperSize) {
     case "4:3":
@@ -40,7 +50,7 @@ const normalizeColor = (color?: string | null): string | undefined => {
   if (!trimmed) return undefined;
   const hexMatch = trimmed.match(/#([0-9a-fA-F]{3,6})/);
   if (hexMatch) {
-    return hexMatch[1].toUpperCase();
+    return hexMatch[1]?.toUpperCase();
   }
   return trimmed.replace("#", "").toUpperCase();
 };
@@ -409,9 +419,15 @@ export async function POST(
     });
 
     const fileName = `${sanitizeFileName(pitchDeck.title || "pitch-deck")}.pptx`;
-    const buffer = await pptx.write({ outputType: "nodebuffer" });
+    const output = await pptx.write({ outputType: "nodebuffer" });
+    const body =
+      output instanceof ArrayBuffer
+        ? Buffer.from(output)
+        : Buffer.isBuffer(output)
+        ? output
+        : Buffer.from(output as Uint8Array);
 
-    return new NextResponse(buffer, {
+    return new NextResponse(body, {
       status: 200,
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
