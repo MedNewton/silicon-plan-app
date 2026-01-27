@@ -10,6 +10,7 @@ import ManageTopTabs, {
 import ManageBusinessPlanContentArea from "@/components/workspaceManage/business-plan/ManageBusinessPlanContentArea";
 import ManageActionArea from "@/components/workspaceManage/business-plan/ManageActionArea";
 import type { ManageAiTab } from "@/components/workspaceManage/business-plan/ManageAiTabs";
+import { BusinessPlanProvider } from "@/components/workspaceManage/business-plan/BusinessPlanContext";
 
 type Props = {
   workspaceId: string;
@@ -20,50 +21,52 @@ export default function ManageBusinessPlanPage({ workspaceId }: Props) {
   const [activeAiTab, setActiveAiTab] = useState<ManageAiTab>("aiChat");
 
   return (
-    <Box
-      sx={{
-        height: "100vh",          // hard cap at viewport
-        display: "flex",
-        bgcolor: "#F7F8FC",
-        overflow: "hidden",       // no page scroll, only inner areas scroll
-      }}
-    >
-      <ManageSidebar activeItem="business-plan" />
-
+    <BusinessPlanProvider workspaceId={workspaceId}>
       <Box
-        component="main"
         sx={{
-          flex: 1,
+          height: "100vh",          // hard cap at viewport
           display: "flex",
-          flexDirection: "column",
-          bgcolor: "#FFFFFF",
-          height: "100%",        // match parent height
-          overflow: "hidden",    // children manage their own scroll
+          bgcolor: "#F7F8FC",
+          overflow: "hidden",       // no page scroll, only inner areas scroll
         }}
       >
-        <ManageTopTabs
-          activeTab={activeTopTab}
-          onTabChange={setActiveTopTab}
-        />
+        <ManageSidebar workspaceId={workspaceId} activeItem="business-plan" />
 
-        {/* Central area: AI column + preview + right action area */}
         <Box
+          component="main"
           sx={{
             flex: 1,
             display: "flex",
-            minHeight: 0,         // critical so inner flex children can scroll
-            overflow: "hidden",
+            flexDirection: "column",
+            bgcolor: "#FFFFFF",
+            height: "100%",        // match parent height
+            overflow: "hidden",    // children manage their own scroll
           }}
         >
-          <ManageBusinessPlanContentArea
-            activeTopTab={activeTopTab}
-            activeAiTab={activeAiTab}
-            onAiTabChange={setActiveAiTab}
+          <ManageTopTabs
+            activeTab={activeTopTab}
+            onTabChange={setActiveTopTab}
           />
 
-          <ManageActionArea activeTopTab={activeTopTab} />
+          {/* Central area: AI column + preview + right action area */}
+          <Box
+            sx={{
+              flex: 1,
+              display: "flex",
+              minHeight: 0,         // critical so inner flex children can scroll
+              overflow: "hidden",
+            }}
+          >
+            <ManageBusinessPlanContentArea
+              activeTopTab={activeTopTab}
+              activeAiTab={activeAiTab}
+              onAiTabChange={setActiveAiTab}
+            />
+
+            <ManageActionArea activeTopTab={activeTopTab} />
+          </Box>
         </Box>
       </Box>
-    </Box>
+    </BusinessPlanProvider>
   );
 }

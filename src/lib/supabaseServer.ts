@@ -8,6 +8,14 @@ import type {
   WorkspaceAiKnowledge,
   WorkspaceMemberInvite,
   WorkspaceAiLibraryEvent,
+  WorkspaceCanvasModel,
+  BusinessPlan,
+  BusinessPlanChapter,
+  BusinessPlanSection,
+  BusinessPlanAiConversation,
+  BusinessPlanAiMessage,
+  BusinessPlanPendingChange,
+  BusinessPlanSectionContent,
 } from "@/types/workspaces";
 
 export type Database = {
@@ -263,6 +271,221 @@ export type Database = {
           },
         ];
       };
+      workspace_canvas_models: {
+        Row: WorkspaceCanvasModel;
+        Insert: {
+          id?: string;
+          workspace_id: string;
+          created_by: string;
+          title: string;
+          template_type: WorkspaceCanvasModel["template_type"];
+          sections_data?: Record<string, unknown>;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          workspace_id?: string;
+          created_by?: string;
+          title?: string;
+          template_type?: WorkspaceCanvasModel["template_type"];
+          sections_data?: Record<string, unknown>;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "workspace_canvas_models_workspace_id_fkey";
+            columns: ["workspace_id"];
+            referencedRelation: "workspaces";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      workspace_business_plans: {
+        Row: BusinessPlan;
+        Insert: {
+          id?: string;
+          workspace_id: string;
+          title: string;
+          status?: BusinessPlan["status"];
+          export_settings?: BusinessPlan["export_settings"];
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          workspace_id?: string;
+          title?: string;
+          status?: BusinessPlan["status"];
+          export_settings?: BusinessPlan["export_settings"];
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "workspace_business_plans_workspace_id_fkey";
+            columns: ["workspace_id"];
+            referencedRelation: "workspaces";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      business_plan_chapters: {
+        Row: BusinessPlanChapter;
+        Insert: {
+          id?: string;
+          business_plan_id: string;
+          parent_id?: string | null;
+          title: string;
+          order_index?: number;
+          is_collapsed?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          business_plan_id?: string;
+          parent_id?: string | null;
+          title?: string;
+          order_index?: number;
+          is_collapsed?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "business_plan_chapters_business_plan_id_fkey";
+            columns: ["business_plan_id"];
+            referencedRelation: "workspace_business_plans";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "business_plan_chapters_parent_id_fkey";
+            columns: ["parent_id"];
+            referencedRelation: "business_plan_chapters";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      business_plan_sections: {
+        Row: BusinessPlanSection;
+        Insert: {
+          id?: string;
+          chapter_id: string;
+          section_type: BusinessPlanSection["section_type"];
+          content: BusinessPlanSectionContent;
+          order_index?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          chapter_id?: string;
+          section_type?: BusinessPlanSection["section_type"];
+          content?: BusinessPlanSectionContent;
+          order_index?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "business_plan_sections_chapter_id_fkey";
+            columns: ["chapter_id"];
+            referencedRelation: "business_plan_chapters";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      business_plan_ai_conversations: {
+        Row: BusinessPlanAiConversation;
+        Insert: {
+          id?: string;
+          business_plan_id: string;
+          user_id: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          business_plan_id?: string;
+          user_id?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "business_plan_ai_conversations_business_plan_id_fkey";
+            columns: ["business_plan_id"];
+            referencedRelation: "workspace_business_plans";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      business_plan_ai_messages: {
+        Row: BusinessPlanAiMessage;
+        Insert: {
+          id?: string;
+          conversation_id: string;
+          role: BusinessPlanAiMessage["role"];
+          content: string;
+          metadata?: BusinessPlanAiMessage["metadata"];
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          conversation_id?: string;
+          role?: BusinessPlanAiMessage["role"];
+          content?: string;
+          metadata?: BusinessPlanAiMessage["metadata"];
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "business_plan_ai_messages_conversation_id_fkey";
+            columns: ["conversation_id"];
+            referencedRelation: "business_plan_ai_conversations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      business_plan_pending_changes: {
+        Row: BusinessPlanPendingChange;
+        Insert: {
+          id?: string;
+          conversation_id: string;
+          message_id: string;
+          change_type: BusinessPlanPendingChange["change_type"];
+          target_id?: string | null;
+          proposed_data: Record<string, unknown>;
+          status?: BusinessPlanPendingChange["status"];
+          created_at?: string;
+          reviewed_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          conversation_id?: string;
+          message_id?: string;
+          change_type?: BusinessPlanPendingChange["change_type"];
+          target_id?: string | null;
+          proposed_data?: Record<string, unknown>;
+          status?: BusinessPlanPendingChange["status"];
+          created_at?: string;
+          reviewed_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "business_plan_pending_changes_conversation_id_fkey";
+            columns: ["conversation_id"];
+            referencedRelation: "business_plan_ai_conversations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "business_plan_pending_changes_message_id_fkey";
+            columns: ["message_id"];
+            referencedRelation: "business_plan_ai_messages";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -275,8 +498,14 @@ export type SupabaseDb = Database;
 
 let supabaseClient: SupabaseClient<SupabaseDb> | null = null;
 
-export function getSupabaseClient(): SupabaseClient<SupabaseDb> {
-  if (supabaseClient) return supabaseClient;
+type SupabaseClientOptions = {
+  fresh?: boolean;
+};
+
+export function getSupabaseClient(
+  options?: SupabaseClientOptions
+): SupabaseClient<SupabaseDb> {
+  if (!options?.fresh && supabaseClient) return supabaseClient;
 
   const url = process.env.SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -291,11 +520,15 @@ export function getSupabaseClient(): SupabaseClient<SupabaseDb> {
     );
   }
 
-  supabaseClient = createClient<SupabaseDb>(url, serviceRoleKey, {
+  const client = createClient<SupabaseDb>(url, serviceRoleKey, {
     auth: {
       persistSession: false,
     },
   });
 
-  return supabaseClient;
+  if (!options?.fresh) {
+    supabaseClient = client;
+  }
+
+  return client;
 }

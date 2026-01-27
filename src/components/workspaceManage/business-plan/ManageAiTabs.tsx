@@ -1,23 +1,48 @@
-// src/components/workspaceManage/ManageAiTabs.tsx
+// src/components/workspaceManage/business-plan/ManageAiTabs.tsx
 "use client";
 
-import type { FC } from "react";
-import { useState } from "react";
+import type { FC, HTMLAttributes, MouseEventHandler } from "react";
+import { useEffect, useState } from "react";
 import {
   Box,
   Button,
   Typography,
   Stack,
-  InputBase,
-  IconButton,
   Collapse,
+  TextField,
+  CircularProgress,
+  IconButton,
 } from "@mui/material";
 
-import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
-import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
-import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
-import MoreHorizOutlinedIcon from "@mui/icons-material/MoreHorizOutlined";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import AddIcon from "@mui/icons-material/Add";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import CheckIcon from "@mui/icons-material/Check";
+import CloseIcon from "@mui/icons-material/Close";
+
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+
+import { useBusinessPlan } from "./BusinessPlanContext";
+import ConfirmDeleteModal from "./ConfirmDeleteModal";
+import type { BusinessPlanChapterWithSections } from "@/types/workspaces";
+import ChatContainer from "./chat/ChatContainer";
 
 export type ManageAiTab = "aiChat" | "planChapters";
 
@@ -32,7 +57,7 @@ const ManageAiTabs: FC<ManageAiTabsProps> = ({ activeTab, onTabChange }) => {
       sx={{
         display: "flex",
         flexDirection: "column",
-        height: "100%", // parent central area should be flex:1 + minHeight:0
+        height: "100%",
         maxHeight: "100% !important",
         borderRight: "1px solid #E5E7EB",
         bgcolor: "#FFFFFF",
@@ -110,213 +135,99 @@ export default ManageAiTabs;
 /* ------------------------------------------------------------------ */
 
 const AiChatPane: FC = () => {
+  const {
+    chapters,
+    messages,
+    pendingChanges,
+    isChatLoading,
+    isChatSending,
+    chatError,
+    refreshChat,
+    sendChatMessage,
+    acceptPendingChange,
+    rejectPendingChange,
+  } = useBusinessPlan();
+
+  useEffect(() => {
+    void refreshChat();
+  }, [refreshChat]);
+
   return (
-    <Box
-      sx={{
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        minHeight: 0,
-        bgcolor: "#FFFFFF",
-      }}
-    >
-      {/* Scrollable messages */}
-      <Box
-        sx={{
-          flex: 1,
-          minHeight: 0,
-          overflowY: "auto",
-          px: 3,
-          pt: 3,
-          pb: 2,
-        }}
-      >
-        <AiMessage
-          text={
-            "Hello! That sounds great. Let’s start with the basics. Could you briefly describe the idea you want to implement?"
-          }
-        />
-
-        <UserMessage
-          text={
-            "I’m planning to launch an online platform for local artisans so they can sell their products without intermediaries."
-          }
-        />
-
-        <AiMessage
-          text={
-            "Very interesting! This could support small businesses and craftsmen.\nI suggest the following structure for your business plan:\n\n1. Brief description of the idea\n2. Market analysis\n3. Target audience\n4. Competitors\n5. Business model"
-          }
-        />
-      </Box>
-
-      {/* Fixed input */}
-      <Box
-        sx={{
-          borderTop: "1px solid #E5E7EB",
-          px: 3,
-          py: 1.75,
-          bgcolor: "#FFFFFF",
-        }}
-      >
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            borderRadius: 3,
-            border: "1px solid #CBD5F5",
-            px: 2,
-            py: 1.2,
-            bgcolor: "#FDFDFF",
-            boxShadow: "0 0 0 1px rgba(148,163,255,0.2)",
-          }}
-        >
-          <InputBase
-            placeholder="Type"
-            sx={{
-              flex: 1,
-              fontSize: 15,
-            }}
-          />
-          <IconButton
-            disableRipple
-            sx={{
-              ml: 1.5,
-              width: 40,
-              height: 40,
-              borderRadius: 2,
-              background:
-                "linear-gradient(135deg, #4C6AD2 0%, #7F54D9 100%)",
-              boxShadow: "0px 8px 20px rgba(76,106,210,0.35)",
-              "&:hover": {
-                background:
-                  "linear-gradient(135deg, #435ABF 0%, #744BD5 100%)",
-              },
-            }}
-          >
-            <SendRoundedIcon sx={{ fontSize: 22, color: "#FFFFFF" }} />
-          </IconButton>
-        </Box>
-      </Box>
-    </Box>
+    <ChatContainer
+      messages={messages}
+      pendingChanges={pendingChanges}
+      chapters={chapters}
+      isLoading={isChatLoading}
+      isStreaming={isChatSending}
+      error={chatError}
+      onSend={sendChatMessage}
+      onAcceptChange={acceptPendingChange}
+      onRejectChange={rejectPendingChange}
+    />
   );
 };
 
-type MessageProps = {
-  text: string;
-};
-
-const AiMessage: FC<MessageProps> = ({ text }) => (
-  <Box sx={{ mb: 3 }}>
-    <Stack direction="row" spacing={1.5} alignItems="center" mb={1}>
-      <Box
-        sx={{
-          width: 32,
-          height: 32,
-          borderRadius: "50%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background:
-            "radial-gradient(circle at 0% 0%, #E0E7FF 0%, #C7D2FE 50%, #EDE9FE 100%)",
-        }}
-      >
-        <AutoAwesomeIcon sx={{ fontSize: 18, color: "#4C6AD2" }} />
-      </Box>
-      <Typography
-        sx={{ fontWeight: 700, fontSize: 16, color: "#111827" }}
-      >
-        Silicon Plan AI
-      </Typography>
-    </Stack>
-    <Box
-      sx={{
-        borderRadius: 3,
-        bgcolor: "#F3F4FF",
-        px: 2.5,
-        py: 2,
-      }}
-    >
-      <Typography
-        sx={{ fontSize: 15, lineHeight: 1.6, whiteSpace: "pre-line" }}
-      >
-        {text}
-      </Typography>
-    </Box>
-  </Box>
-);
-
-const UserMessage: FC<MessageProps> = ({ text }) => (
-  <Box sx={{ mb: 3 }}>
-    <Box
-      sx={{
-        borderRadius: 3,
-        bgcolor: "#F9FAFB",
-        px: 2.5,
-        py: 2,
-      }}
-    >
-      <Typography sx={{ fontSize: 15, lineHeight: 1.6 }}>
-        {text}
-      </Typography>
-    </Box>
-  </Box>
-);
-
 /* ------------------------------------------------------------------ */
-/* PLAN CHAPTERS PANE – ACCORDION / COLLAPSE                          */
+/* PLAN CHAPTERS PANE – REAL DATA FROM CONTEXT                         */
 /* ------------------------------------------------------------------ */
-
-type Chapter = {
-  id: string;
-  title: string;
-  items: string[];
-};
 
 const PlanChaptersPane: FC = () => {
-  const chapters: Chapter[] = [
-    {
-      id: "executive-summary",
-      title: "Executive Summary",
-      items: [
-        "Business Overview",
-        "Vision",
-        "Mossion",
-        "Management Team",
-        "Management Team",
-      ],
-    },
-    {
-      id: "business-overview",
-      title: "Business Overview",
-      items: [
-        "Business Overview",
-        "Vision",
-        "Mossion",
-        "Management Team",
-        "Management Team",
-      ],
-    },
-    {
-      id: "industry-analysis",
-      title: "Industry Analysis",
-      items: [
-        "Business Overview",
-        "Vision",
-        "Mossion",
-        "Management Team",
-        "Management Team",
-      ],
-    },
-  ];
-
-  const [openId, setOpenId] = useState<string | null>(
-    chapters[0]?.id ?? null,
+  const { chapters, isLoading, addChapter, reorderChapters } = useBusinessPlan();
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [isAddingChapter, setIsAddingChapter] = useState(false);
+  const [newChapterTitle, setNewChapterTitle] = useState("");
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
   );
 
   const handleToggle = (id: string) => {
     setOpenId((prev) => (prev === id ? null : id));
   };
+
+  const handleAddChapter = async () => {
+    if (!newChapterTitle.trim()) return;
+
+    setIsAddingChapter(true);
+    try {
+      await addChapter(newChapterTitle.trim());
+      setNewChapterTitle("");
+    } finally {
+      setIsAddingChapter(false);
+    }
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = chapters.findIndex((chapter) => chapter.id === active.id);
+    const newIndex = chapters.findIndex((chapter) => chapter.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const orderedChapterIds = arrayMove(chapters, oldIndex, newIndex).map(
+      (chapter) => chapter.id
+    );
+    void reorderChapters(orderedChapterIds);
+  };
+
+  if (isLoading) {
+    return (
+      <Box
+        sx={{
+          flex: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          bgcolor: "#FFFFFF",
+        }}
+      >
+        <CircularProgress size={24} sx={{ color: "#4C6AD2" }} />
+      </Box>
+    );
+  }
 
   return (
     <Box
@@ -330,82 +241,388 @@ const PlanChaptersPane: FC = () => {
         bgcolor: "#FFFFFF",
       }}
     >
-      <Stack spacing={2}>
-        {chapters.map((chapter) => {
-          const isOpen = openId === chapter.id;
-          return (
-            <Box
-              key={chapter.id}
-              sx={{
-                borderRadius: 3,
-                border: "1px solid #CBD5F5",
-                bgcolor: "#FFFFFF",
-                boxShadow: "0 1px 3px rgba(15,23,42,0.04)",
-                overflow: "hidden",
-              }}
-            >
-              {/* Header (always visible) */}
-              <Box
-                onClick={() => handleToggle(chapter.id)}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={chapters.map((chapter) => chapter.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          <Stack spacing={2}>
+            {chapters.length === 0 ? (
+              <Typography
                 sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  px: 2.5,
-                  py: 1.8,
-                  cursor: "pointer",
-                  bgcolor: isOpen ? "#F8FAFF" : "#FFFFFF",
+                  fontSize: 14,
+                  color: "#9CA3AF",
+                  textAlign: "center",
+                  py: 4,
                 }}
               >
-                <Stack direction="row" spacing={1.5} alignItems="center">
-                  <DragIndicatorIcon
-                    sx={{ fontSize: 20, color: "#9CA3AF" }}
-                  />
-                  <Typography
-                    sx={{
-                      fontSize: 14,
-                      fontWeight: 600,
-                      color: "#1F2933",
-                    }}
-                  >
-                    {chapter.title}
-                  </Typography>
-                </Stack>
-                <Stack direction="row" spacing={1.5} alignItems="center">
-                  <VisibilityOutlinedIcon
-                    sx={{ fontSize: 20, color: "#4C6AD2" }}
-                  />
-                  <MoreHorizOutlinedIcon
-                    sx={{ fontSize: 20, color: "#9CA3AF" }}
-                  />
-                </Stack>
-              </Box>
+                No chapters yet. Add your first chapter below.
+              </Typography>
+            ) : (
+              chapters.map((chapter) => (
+                <SortableChapter
+                  key={chapter.id}
+                  chapter={chapter}
+                  isOpen={openId === chapter.id}
+                  onToggle={() => handleToggle(chapter.id)}
+                />
+              ))
+            )}
 
-              {/* Collapsible body */}
-              <Collapse in={isOpen} timeout="auto" unmountOnExit>
-                <Box
-                  sx={{
-                    borderTop: "1px solid #E5E7EB",
-                    px: 2.5,
-                    py: 1.8,
+            {/* Add Chapter Input */}
+            <Box
+              sx={{
+                borderRadius: 3,
+                border: "1px dashed #CBD5F5",
+                bgcolor: "#FAFBFF",
+                px: 2.5,
+                py: 2,
+              }}
+            >
+              <Stack direction="row" spacing={1.5} alignItems="center">
+                <AddIcon sx={{ fontSize: 20, color: "#4C6AD2" }} />
+                <TextField
+                  fullWidth
+                  size="small"
+                  placeholder="New chapter title..."
+                  value={newChapterTitle}
+                  onChange={(e) => setNewChapterTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !isAddingChapter) {
+                      void handleAddChapter();
+                    }
                   }}
+                  disabled={isAddingChapter}
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      fontSize: 14,
+                      bgcolor: "#FFFFFF",
+                    },
+                  }}
+                />
+                <IconButton
+                  size="small"
+                  onClick={handleAddChapter}
+                  disabled={isAddingChapter || !newChapterTitle.trim()}
+                  sx={{ color: "#4C6AD2" }}
                 >
-                  <Stack spacing={0.75} sx={{ pl: 4 }}>
-                    {chapter.items.map((item, idx) => (
-                      <Typography
-                        key={`${item}-${idx}`}
-                        sx={{ fontSize: 15, color: "#111827" }}
-                      >
-                        {item}
-                      </Typography>
-                    ))}
-                  </Stack>
-                </Box>
-              </Collapse>
+                  {isAddingChapter ? (
+                    <CircularProgress size={18} />
+                  ) : (
+                    <CheckIcon sx={{ fontSize: 18 }} />
+                  )}
+                </IconButton>
+              </Stack>
             </Box>
-          );
-        })}
-      </Stack>
+          </Stack>
+        </SortableContext>
+      </DndContext>
     </Box>
+  );
+};
+
+type SortableChapterProps = {
+  chapter: BusinessPlanChapterWithSections;
+  isOpen: boolean;
+  onToggle: () => void;
+};
+
+const SortableChapter: FC<SortableChapterProps> = ({
+  chapter,
+  isOpen,
+  onToggle,
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: chapter.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <Box
+      ref={setNodeRef}
+      style={style}
+      sx={{
+        opacity: isDragging ? 0.6 : 1,
+      }}
+    >
+      <ChapterAccordion
+        chapter={chapter}
+        isOpen={isOpen}
+        onToggle={onToggle}
+        dragHandleProps={{
+          ...attributes,
+          ...listeners,
+        }}
+        dragHandleRef={setActivatorNodeRef}
+      />
+    </Box>
+  );
+};
+
+type ChapterAccordionProps = {
+  chapter: BusinessPlanChapterWithSections;
+  isOpen: boolean;
+  onToggle: () => void;
+  dragHandleProps?: HTMLAttributes<HTMLDivElement>;
+  dragHandleRef?: (element: HTMLDivElement | null) => void;
+};
+
+const ChapterAccordion: FC<ChapterAccordionProps> = ({
+  chapter,
+  isOpen,
+  onToggle,
+  dragHandleProps,
+  dragHandleRef,
+}) => {
+  const { updateChapter, deleteChapter, setSelectedChapterId, selectedChapterId } = useBusinessPlan();
+  const isSelected = selectedChapterId === chapter.id;
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(chapter.title);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const isDraggable = Boolean(dragHandleProps);
+
+  const handleSaveTitle = async () => {
+    if (!editTitle.trim()) return;
+
+    setIsSaving(true);
+    try {
+      await updateChapter(chapter.id, editTitle.trim());
+      setIsEditing(false);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await deleteChapter(chapter.id);
+      setShowDeleteModal(false);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleDragHandleClick: MouseEventHandler<HTMLDivElement> = (event) => {
+    if (!isDraggable) return;
+    event.stopPropagation();
+    dragHandleProps?.onClick?.(event);
+  };
+
+  return (
+    <>
+      <ConfirmDeleteModal
+        open={showDeleteModal}
+        title="Delete Chapter"
+        message="Are you sure you want to delete this chapter? All sections within this chapter will also be deleted. This action cannot be undone."
+        itemName={chapter.title}
+        isDeleting={isDeleting}
+        onConfirm={() => void handleDelete()}
+        onCancel={() => setShowDeleteModal(false)}
+      />
+    <Box
+      sx={{
+        borderRadius: 3,
+        border: isSelected ? "2px solid #4C6AD2" : "1px solid #CBD5F5",
+        bgcolor: isSelected ? "#F0F4FF" : "#FFFFFF",
+        boxShadow: isSelected
+          ? "0 2px 8px rgba(76, 106, 210, 0.2)"
+          : "0 1px 3px rgba(15,23,42,0.04)",
+        overflow: "hidden",
+        transition: "all 0.15s ease",
+      }}
+    >
+      {/* Header (always visible) */}
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          px: 2.5,
+          py: 1.8,
+          cursor: "pointer",
+          bgcolor: isSelected ? "#F0F4FF" : isOpen ? "#F8FAFF" : "#FFFFFF",
+        }}
+      >
+        <Stack
+          direction="row"
+          spacing={1.5}
+          alignItems="center"
+          onClick={() => {
+            onToggle();
+            setSelectedChapterId(chapter.id);
+          }}
+          sx={{ flex: 1 }}
+        >
+          <Box
+            ref={dragHandleRef}
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              cursor: isDraggable ? "grab" : "default",
+              color: "#9CA3AF",
+              touchAction: isDraggable ? "none" : "auto",
+            }}
+            {...dragHandleProps}
+            onClick={isDraggable ? handleDragHandleClick : undefined}
+          >
+            <DragIndicatorIcon sx={{ fontSize: 20 }} />
+          </Box>
+          {isEditing ? (
+            <TextField
+              size="small"
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void handleSaveTitle();
+                if (e.key === "Escape") setIsEditing(false);
+              }}
+              disabled={isSaving}
+              autoFocus
+              sx={{
+                flex: 1,
+                "& .MuiOutlinedInput-root": {
+                  fontSize: 14,
+                  fontWeight: 600,
+                },
+              }}
+            />
+          ) : (
+            <Typography
+              sx={{
+                fontSize: 14,
+                fontWeight: 600,
+                color: "#1F2933",
+              }}
+            >
+              {chapter.title}
+            </Typography>
+          )}
+        </Stack>
+        <Stack direction="row" spacing={1} alignItems="center">
+          {isEditing ? (
+            <>
+              <IconButton
+                size="small"
+                onClick={() => setIsEditing(false)}
+                disabled={isSaving}
+              >
+                <CloseIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+              <IconButton
+                size="small"
+                onClick={handleSaveTitle}
+                disabled={isSaving}
+                sx={{ color: "#4C6AD2" }}
+              >
+                <CheckIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </>
+          ) : (
+            <>
+              <IconButton
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditTitle(chapter.title);
+                  setIsEditing(true);
+                }}
+              >
+                <EditOutlinedIcon sx={{ fontSize: 18, color: "#9CA3AF" }} />
+              </IconButton>
+              <IconButton
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowDeleteModal(true);
+                }}
+                sx={{ "&:hover": { color: "#EF4444" } }}
+              >
+                <DeleteOutlineIcon sx={{ fontSize: 18, color: "#9CA3AF" }} />
+              </IconButton>
+            </>
+          )}
+        </Stack>
+      </Box>
+
+      {/* Collapsible body */}
+      <Collapse in={isOpen} timeout="auto" unmountOnExit>
+        <Box
+          sx={{
+            borderTop: "1px solid #E5E7EB",
+            px: 2.5,
+            py: 1.8,
+          }}
+        >
+          {chapter.sections.length === 0 ? (
+            <Typography
+              sx={{
+                fontSize: 13,
+                color: "#9CA3AF",
+                fontStyle: "italic",
+                pl: 4,
+              }}
+            >
+              No sections yet. Add content from the right sidebar.
+            </Typography>
+          ) : (
+            <Stack spacing={0.75} sx={{ pl: 4 }}>
+              {chapter.sections.map((section) => {
+                const label =
+                  section.content.type === "section_title" ||
+                  section.content.type === "subsection"
+                    ? (section.content as { text: string }).text
+                    : section.content.type === "text"
+                    ? (section.content as { text: string }).text.slice(0, 50) +
+                      ((section.content as { text: string }).text.length > 50
+                        ? "..."
+                        : "")
+                    : `${section.content.type.replace("_", " ")} section`;
+
+                return (
+                  <Typography
+                    key={section.id}
+                    sx={{ fontSize: 13, color: "#4B5563" }}
+                  >
+                    {label}
+                  </Typography>
+                );
+              })}
+            </Stack>
+          )}
+
+          {/* Nested chapters */}
+          {chapter.children && chapter.children.length > 0 && (
+            <Box sx={{ mt: 2, pl: 2 }}>
+              {chapter.children.map((child) => (
+                <ChapterAccordion
+                  key={child.id}
+                  chapter={child}
+                  isOpen={false}
+                  onToggle={() => { /* nested children not toggled */ }}
+                />
+              ))}
+            </Box>
+          )}
+        </Box>
+      </Collapse>
+    </Box>
+    </>
   );
 };

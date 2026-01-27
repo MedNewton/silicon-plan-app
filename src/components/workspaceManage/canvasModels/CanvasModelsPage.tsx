@@ -1,10 +1,14 @@
 "use client";
 
 import type { FC } from "react";
-import { Box, Grid, Stack, Typography } from "@mui/material";
+import { useState } from "react";
+import { Box, Grid, Typography, CircularProgress } from "@mui/material";
+import { useRouter } from "next/navigation";
 import ViewQuiltOutlinedIcon from "@mui/icons-material/ViewQuiltOutlined";
+import FolderOutlinedIcon from "@mui/icons-material/FolderOutlined";
 
 import ManageSidebar from "@/components/workspaceManage/business-plan/ManageSidebar";
+import type { WorkspaceCanvasTemplateType } from "@/types/workspaces";
 
 export type CanvasModelsPageProps = Readonly<{
   workspaceId: string;
@@ -17,6 +21,8 @@ type CanvasModel = {
   previewBg: string;
   previewAccent: string;
 };
+
+type TabKey = "all-models" | "my-models";
 
 const MODELS: CanvasModel[] = [
   {
@@ -69,7 +75,43 @@ const MODELS: CanvasModel[] = [
   },
 ];
 
-const CanvasModelsPage: FC<CanvasModelsPageProps> = () => {
+const CanvasModelsPage: FC<CanvasModelsPageProps> = ({ workspaceId }) => {
+  const router = useRouter();
+  const [isCreating, setIsCreating] = useState<string | null>(null);
+
+  const handleCanvasClick = async (templateType: WorkspaceCanvasTemplateType, title: string) => {
+    if (isCreating) return;
+
+    setIsCreating(templateType);
+
+    try {
+      const response = await fetch(`/api/workspaces/${workspaceId}/canvas-models`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title,
+          templateType,
+          sectionsData: {},
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create canvas");
+      }
+
+      const data = await response.json();
+      const canvasId = data.canvasModel.id;
+
+      // Navigate to the edit page for the new canvas
+      router.push(`/workspaces/${workspaceId}/manage/canvas-models/edit/${canvasId}`);
+    } catch (error) {
+      console.error("Error creating canvas:", error);
+      setIsCreating(null);
+    }
+  };
+
   return (
     <Box
       sx={{
@@ -81,7 +123,7 @@ const CanvasModelsPage: FC<CanvasModelsPageProps> = () => {
       }}
     >
       {/* Left sidebar – Canvas Models active */}
-      <ManageSidebar activeItem="canvas-models" />
+      <ManageSidebar workspaceId={workspaceId} activeItem="canvas-models" />
 
       {/* Main content */}
       <Box
@@ -94,34 +136,69 @@ const CanvasModelsPage: FC<CanvasModelsPageProps> = () => {
           minHeight: 0,
         }}
       >
-        {/* Header row */}
+        {/* Header row with tabs */}
         <Box
           sx={{
             px: 4,
-            py: 2.5,
+            py: 0,
             borderBottom: "1px solid #E5E7EB",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            gap: 4,
           }}
         >
-          <Stack
-            direction="row"
-            spacing={1.2}
-            alignItems="center"
-            sx={{ color: "#324C8A" }}
+          {/* All Models Tab - Active */}
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              py: 2,
+              borderBottom: "2px solid #4C6AD2",
+              cursor: "pointer",
+            }}
           >
-            <ViewQuiltOutlinedIcon sx={{ fontSize: 22 }} />
+            <ViewQuiltOutlinedIcon sx={{ fontSize: 20, color: "#4C6AD2" }} />
             <Typography
               sx={{
                 fontSize: 14,
-                fontWeight: 700,
-                letterSpacing: 2,
+                fontWeight: 600,
+                color: "#4C6AD2",
+                letterSpacing: 1,
               }}
             >
               ALL MODELS
             </Typography>
-          </Stack>
+          </Box>
+
+          {/* My Models Tab - Inactive */}
+          <Box
+            onClick={() => router.push(`/workspaces/${workspaceId}/manage/canvas-models/my-models`)}
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              py: 2,
+              borderBottom: "2px solid transparent",
+              cursor: "pointer",
+              "&:hover": {
+                borderBottomColor: "#E5E7EB",
+              },
+            }}
+          >
+            <FolderOutlinedIcon sx={{ fontSize: 20, color: "#6B7280" }} />
+            <Typography
+              sx={{
+                fontSize: 14,
+                fontWeight: 600,
+                color: "#6B7280",
+                letterSpacing: 1,
+              }}
+            >
+              MY MODELS
+            </Typography>
+          </Box>
         </Box>
 
         {/* Scrollable grid area */}
@@ -147,6 +224,7 @@ const CanvasModelsPage: FC<CanvasModelsPageProps> = () => {
               {MODELS.map((model) => (
                 <Grid key={model.id} size={{ xs: 12, sm: 6, lg: 4 }}>
                   <Box
+                    onClick={() => handleCanvasClick(model.id as WorkspaceCanvasTemplateType, model.title)}
                     sx={{
                       borderRadius: 3,
                       border: "1px solid #E2E8F0",
@@ -155,8 +233,36 @@ const CanvasModelsPage: FC<CanvasModelsPageProps> = () => {
                       display: "flex",
                       flexDirection: "column",
                       height: "100%",
+                      cursor: isCreating ? "wait" : "pointer",
+                      transition: "all 0.2s ease",
+                      opacity: isCreating && isCreating !== model.id ? 0.5 : 1,
+                      position: "relative",
+                      "&:hover": {
+                        borderColor: isCreating ? "#E2E8F0" : "#4C6AD2",
+                        boxShadow: isCreating ? "none" : "0 4px 12px rgba(76, 106, 210, 0.15)",
+                        transform: isCreating ? "none" : "translateY(-2px)",
+                      },
                     }}
                   >
+                    {/* Loading overlay */}
+                    {isCreating === model.id && (
+                      <Box
+                        sx={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          bgcolor: "rgba(255,255,255,0.8)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          zIndex: 1,
+                        }}
+                      >
+                        <CircularProgress size={32} sx={{ color: "#4C6AD2" }} />
+                      </Box>
+                    )}
                     {/* Top preview block */}
                     <Box
                       sx={{

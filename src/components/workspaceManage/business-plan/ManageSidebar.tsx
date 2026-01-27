@@ -24,13 +24,15 @@ export type ManageSidebarNavKey =
   | "settings";
 
 export type ManageSidebarProps = Readonly<{
+  workspaceId: string;
   activeItem: ManageSidebarNavKey;
   onNavChange?: (key: ManageSidebarNavKey) => void;
 }>;
 
 export default function ManageSidebar({
+  workspaceId,
   activeItem,
-  onNavChange,
+  onNavChange: _onNavChange,
 }: ManageSidebarProps): ReactElement {
   const theme = useTheme();
   const router = useRouter();
@@ -49,13 +51,13 @@ export default function ManageSidebar({
 
   const handleNavClick = (key: ManageSidebarNavKey) => {
     if (key === "business-plan") {
-      router.push("/workspaces/[workspaceId]/manage/business-plan");
+      router.push(`/workspaces/${workspaceId}/manage/business-plan`);
     } else if (key === "canvas-models") {
-      router.push("/workspaces/[workspaceId]/manage/canvas-models");
+      router.push(`/workspaces/${workspaceId}/manage/canvas-models`);
     } else if (key === "pitch-deck") {
-      router.push("/workspaces/[workspaceId]/manage/pitch-deck");
+      router.push(`/workspaces/${workspaceId}/manage/pitch-deck`);
     } else if (key === "finance-forecasting") {
-      router.push("/workspaces/[workspaceId]/manage/finance-forecasting");
+      router.push(`/workspaces/${workspaceId}/manage/finance-forecasting`);
     }
   };
 
