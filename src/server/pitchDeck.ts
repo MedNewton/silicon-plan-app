@@ -370,7 +370,7 @@ export async function updatePitchDeck(
 
   if (settings !== undefined && currentDeck) {
     updateData.settings = {
-      ...(currentDeck.settings as PitchDeckSettings),
+      ...currentDeck.settings,
       ...settings,
     };
   }
