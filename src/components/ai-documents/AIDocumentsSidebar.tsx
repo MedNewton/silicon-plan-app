@@ -7,21 +7,21 @@ import {
   useTheme,
 } from "@mui/material";
 import type { ReactElement, ReactNode } from "react";
+import { useClerk } from "@clerk/nextjs";
 
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import PersonOutlineOutlinedIcon from "@mui/icons-material/PersonOutlineOutlined";
 import BookmarkBorderOutlinedIcon from "@mui/icons-material/BookmarkBorderOutlined";
 import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
 import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
-import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
+import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
 
 export type NavKey =
   | "ai-documents"
   | "consultants"
   | "bookings"
   | "session-history"
-  | "learning"
-  | "settings";
+  | "learning";
 
 export type AIDocumentsSideBarProps = Readonly<{
   activeNav: NavKey;
@@ -33,6 +33,11 @@ export default function AIDocumentsSideBar({
   onNavChange,
 }: AIDocumentsSideBarProps): ReactElement {
   const theme = useTheme();
+  const { signOut } = useClerk();
+
+  const handleSignOut = () => {
+    void signOut({ redirectUrl: "/auth" });
+  };
 
   const itemBaseStyles = {
     height: 64,
@@ -152,22 +157,22 @@ export default function AIDocumentsSideBar({
         }}
       >
         <Box
-          onClick={() => onNavChange("settings")}
+          onClick={handleSignOut}
           sx={{
             display: "flex",
             alignItems: "center",
             gap: 1.5,
             px: 3,
             cursor: "pointer",
-            color:
-              activeNav === "settings"
-                ? theme.palette.primary.main
-                : theme.palette.text.secondary,
+            color: theme.palette.text.secondary,
+            "&:hover": {
+              color: "#DC2626",
+            },
           }}
         >
-          <SettingsOutlinedIcon sx={{ fontSize: 22 }} />
+          <LogoutOutlinedIcon sx={{ fontSize: 22 }} />
           <Typography sx={{ fontSize: 15, fontWeight: 500 }}>
-            Settings
+            Sign Out
           </Typography>
         </Box>
       </Box>
