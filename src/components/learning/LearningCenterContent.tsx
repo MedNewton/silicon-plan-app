@@ -49,7 +49,7 @@ const learningTopics: LearningTopic[] = [
     badge: "Start Here",
     videos: [
       {
-        src: "/learning-videos/registering + creating .mp4",
+        src: "/learning-videos/getting-started.mp4",
         title: "Registration & Creating Your First Workspace",
       },
     ],
@@ -86,7 +86,7 @@ const learningTopics: LearningTopic[] = [
     icon: <AutoAwesomeOutlinedIcon sx={{ fontSize: 24, color: "#7B4FD6" }} />,
     videos: [
       {
-        src: "/learning-videos/ai knowledge.mp4",
+        src: "/learning-videos/ai-knowledge.mp4",
         title: "Using the AI Knowledge Library",
       },
     ],
