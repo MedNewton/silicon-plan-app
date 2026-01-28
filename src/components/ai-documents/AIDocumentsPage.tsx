@@ -15,6 +15,7 @@ import AIDocumentsTopTabs, {
 } from "@/components/ai-documents/AIDocumentsTopTabs";
 import AIDocumentCreateTabContent from "@/components/ai-documents/AIDocumentsCreateTabContent";
 import AIDocumentMyWorkspacesTabContent from "@/components/ai-documents/AIDocumentsMyWorkspacesTabContent";
+import LearningCenterContent from "@/components/learning/LearningCenterContent";
 
 type ListWorkspacesResponse = {
   workspaces: Workspace[];
@@ -26,8 +27,11 @@ export default function AIDocumentsPage() {
   const initialTab: ActiveTab =
     searchParams.get("tab") === "my-workspaces" ? "myWorkspaces" : "create";
 
+  const initialNav: NavKey =
+    searchParams.get("nav") === "learning" ? "learning" : "ai-documents";
+
   const [activeTab, setActiveTab] = useState<ActiveTab>(initialTab);
-  const [activeNav, setActiveNav] = useState<NavKey>("ai-documents");
+  const [activeNav, setActiveNav] = useState<NavKey>(initialNav);
 
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [loadingWorkspaces, setLoadingWorkspaces] = useState(false);
@@ -52,6 +56,31 @@ export default function AIDocumentsPage() {
     void loadWorkspaces();
   }, []);
 
+  const renderMainContent = () => {
+    if (activeNav === "learning") {
+      return <LearningCenterContent />;
+    }
+
+    return (
+      <>
+        <AIDocumentsTopTabs
+          activeTab={activeTab}
+          workspaceCount={workspaces.length}
+          onTabChange={setActiveTab}
+        />
+
+        {activeTab === "create" ? (
+          <AIDocumentCreateTabContent />
+        ) : (
+          <AIDocumentMyWorkspacesTabContent
+            workspaces={workspaces}
+            loading={loadingWorkspaces}
+          />
+        )}
+      </>
+    );
+  };
+
   return (
     <Box
       sx={{
@@ -71,20 +100,7 @@ export default function AIDocumentsPage() {
           bgcolor: "#FFFFFF",
         }}
       >
-        <AIDocumentsTopTabs
-          activeTab={activeTab}
-          workspaceCount={workspaces.length}
-          onTabChange={setActiveTab}
-        />
-
-        {activeTab === "create" ? (
-          <AIDocumentCreateTabContent />
-        ) : (
-          <AIDocumentMyWorkspacesTabContent
-            workspaces={workspaces}
-            loading={loadingWorkspaces}
-          />
-        )}
+        {renderMainContent()}
       </Box>
     </Box>
   );

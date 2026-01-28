@@ -121,13 +121,15 @@ export default function ManageSidebar({
         }}
       >
         <Box
+          component="img"
+          src="/logo.png"
+          alt="Silicon Plan"
           sx={{
             width: 28,
             height: 28,
             borderRadius: "50%",
             mr: 1.5,
-            background:
-              "radial-gradient(circle at 0% 0%, #8CC2FF 0%, #4C6AD2 45%, #7F54D9 100%)",
+            objectFit: "cover",
           }}
         />
         <Typography
