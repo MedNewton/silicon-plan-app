@@ -125,6 +125,235 @@ async function ensureUserHasWorkspaceAccess(
   }
 }
 
+function isForeignKeyViolation(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  if (error.code === "23503") return true;
+  const message = (error.message ?? "").toLowerCase();
+  return (
+    message.includes("foreign key") &&
+    (message.includes("violates") || message.includes("constraint"))
+  );
+}
+
+async function cleanupWorkspaceDependenciesForDelete(
+  client: Supa,
+  workspaceId: WorkspaceId,
+): Promise<void> {
+  const { data: planRows, error: planError } = await client
+    .from("workspace_business_plans")
+    .select("id")
+    .eq("workspace_id", workspaceId);
+
+  if (planError) {
+    throw new Error(`Failed to load workspace business plans: ${planError.message}`);
+  }
+
+  const planIds = (planRows ?? [])
+    .map((row) => row.id)
+    .filter((id): id is string => typeof id === "string" && id.length > 0);
+
+  if (planIds.length > 0) {
+    const { data: conversationRows, error: conversationError } = await client
+      .from("business_plan_ai_conversations")
+      .select("id")
+      .in("business_plan_id", planIds);
+
+    if (conversationError) {
+      throw new Error(
+        `Failed to load business plan AI conversations: ${conversationError.message}`,
+      );
+    }
+
+    const conversationIds = (conversationRows ?? [])
+      .map((row) => row.id)
+      .filter((id): id is string => typeof id === "string" && id.length > 0);
+
+    if (conversationIds.length > 0) {
+      const { error: pendingChangesError } = await client
+        .from("business_plan_pending_changes")
+        .delete()
+        .in("conversation_id", conversationIds);
+
+      if (pendingChangesError) {
+        throw new Error(
+          `Failed to delete business plan pending changes: ${pendingChangesError.message}`,
+        );
+      }
+
+      const { error: aiMessagesError } = await client
+        .from("business_plan_ai_messages")
+        .delete()
+        .in("conversation_id", conversationIds);
+
+      if (aiMessagesError) {
+        throw new Error(
+          `Failed to delete business plan AI messages: ${aiMessagesError.message}`,
+        );
+      }
+    }
+
+    const { error: conversationDeleteError } = await client
+      .from("business_plan_ai_conversations")
+      .delete()
+      .in("business_plan_id", planIds);
+
+    if (conversationDeleteError) {
+      throw new Error(
+        `Failed to delete business plan AI conversations: ${conversationDeleteError.message}`,
+      );
+    }
+
+    const { error: tasksError } = await client
+      .from("business_plan_tasks")
+      .delete()
+      .in("business_plan_id", planIds);
+
+    if (tasksError) {
+      throw new Error(`Failed to delete business plan tasks: ${tasksError.message}`);
+    }
+
+    const { data: chapterRows, error: chapterLoadError } = await client
+      .from("business_plan_chapters")
+      .select("id")
+      .in("business_plan_id", planIds);
+
+    if (chapterLoadError) {
+      throw new Error(
+        `Failed to load business plan chapters before delete: ${chapterLoadError.message}`,
+      );
+    }
+
+    const chapterIds = (chapterRows ?? [])
+      .map((row) => row.id)
+      .filter((id): id is string => typeof id === "string" && id.length > 0);
+
+    if (chapterIds.length > 0) {
+      const { error: sectionDeleteError } = await client
+        .from("business_plan_sections")
+        .delete()
+        .in("chapter_id", chapterIds);
+
+      if (sectionDeleteError) {
+        throw new Error(`Failed to delete business plan sections: ${sectionDeleteError.message}`);
+      }
+    }
+
+    const { error: chapterDeleteError } = await client
+      .from("business_plan_chapters")
+      .delete()
+      .in("business_plan_id", planIds);
+
+    if (chapterDeleteError) {
+      throw new Error(`Failed to delete business plan chapters: ${chapterDeleteError.message}`);
+    }
+
+    const { error: planDeleteError } = await client
+      .from("workspace_business_plans")
+      .delete()
+      .eq("workspace_id", workspaceId);
+
+    if (planDeleteError) {
+      throw new Error(`Failed to delete workspace business plans: ${planDeleteError.message}`);
+    }
+  }
+
+  const { data: deckRows, error: deckLoadError } = await client
+    .from("pitch_decks")
+    .select("id")
+    .eq("workspace_id", workspaceId);
+
+  if (deckLoadError) {
+    throw new Error(`Failed to load pitch decks before delete: ${deckLoadError.message}`);
+  }
+
+  const deckIds = (deckRows ?? [])
+    .map((row) => row.id)
+    .filter((id): id is string => typeof id === "string" && id.length > 0);
+
+  if (deckIds.length > 0) {
+    const { error: slideDeleteError } = await client
+      .from("pitch_deck_slides")
+      .delete()
+      .in("pitch_deck_id", deckIds);
+
+    if (slideDeleteError) {
+      throw new Error(`Failed to delete pitch deck slides: ${slideDeleteError.message}`);
+    }
+  }
+
+  const { error: deckDeleteError } = await client
+    .from("pitch_decks")
+    .delete()
+    .eq("workspace_id", workspaceId);
+
+  if (deckDeleteError) {
+    throw new Error(`Failed to delete pitch decks: ${deckDeleteError.message}`);
+  }
+
+  const { error: libraryEventsError } = await client
+    .from("workspace_ai_library_events")
+    .delete()
+    .eq("workspace_id", workspaceId);
+
+  if (libraryEventsError) {
+    throw new Error(`Failed to delete workspace AI events: ${libraryEventsError.message}`);
+  }
+
+  const { error: invitesError } = await client
+    .from("workspace_member_invites")
+    .delete()
+    .eq("workspace_id", workspaceId);
+
+  if (invitesError) {
+    throw new Error(`Failed to delete workspace invites: ${invitesError.message}`);
+  }
+
+  const { error: knowledgeError } = await client
+    .from("workspace_ai_knowledge")
+    .delete()
+    .eq("workspace_id", workspaceId);
+
+  if (knowledgeError) {
+    throw new Error(`Failed to delete workspace AI knowledge: ${knowledgeError.message}`);
+  }
+
+  const { error: documentsError } = await client
+    .from("workspace_ai_documents")
+    .delete()
+    .eq("workspace_id", workspaceId);
+
+  if (documentsError) {
+    throw new Error(`Failed to delete workspace AI documents: ${documentsError.message}`);
+  }
+
+  const { error: canvasModelsError } = await client
+    .from("workspace_canvas_models")
+    .delete()
+    .eq("workspace_id", workspaceId);
+
+  if (canvasModelsError) {
+    throw new Error(`Failed to delete workspace canvas models: ${canvasModelsError.message}`);
+  }
+
+  const { error: profileError } = await client
+    .from("workspace_business_profile")
+    .delete()
+    .eq("workspace_id", workspaceId);
+
+  if (profileError) {
+    throw new Error(`Failed to delete workspace business profile: ${profileError.message}`);
+  }
+
+  const { error: membersError } = await client
+    .from("workspace_members")
+    .delete()
+    .eq("workspace_id", workspaceId);
+
+  if (membersError) {
+    throw new Error(`Failed to delete workspace members: ${membersError.message}`);
+  }
+}
+
 // ========== CREATE / LIST / DETAILS ==========
 
 export async function createWorkspace(
@@ -450,6 +679,105 @@ export async function updateWorkspaceGeneral(params: {
   }
 
   return mapWorkspaceRow(data);
+}
+
+export async function deleteWorkspaceByOwner(params: {
+  userId: UserId;
+  workspaceId: WorkspaceId;
+  confirmationName: string;
+}): Promise<void> {
+  const { userId, workspaceId, confirmationName } = params;
+  const client = getSupabaseClient();
+
+  const normalizedConfirmationName = confirmationName.trim();
+  if (!normalizedConfirmationName) {
+    throw new Error("Workspace confirmation name is required.");
+  }
+
+  const { data: workspaceRow, error: workspaceError } = await client
+    .from("workspaces")
+    .select("id,name,owner_user_id")
+    .eq("id", workspaceId)
+    .maybeSingle();
+
+  if (workspaceError) {
+    throw new Error(`Failed to load workspace: ${workspaceError.message}`);
+  }
+
+  if (!workspaceRow) {
+    throw new Error("Workspace not found.");
+  }
+
+  if ((workspaceRow as { owner_user_id: string }).owner_user_id !== userId) {
+    throw new Error("Only the workspace owner can delete this workspace.");
+  }
+
+  const workspaceName = ((workspaceRow as { name: string }).name ?? "").trim();
+  if (normalizedConfirmationName !== workspaceName) {
+    throw new Error("Workspace confirmation name does not match.");
+  }
+
+  const { data: storageRows, error: storageRowsError } = await client
+    .from("workspace_ai_documents")
+    .select("storage_bucket,storage_path")
+    .eq("workspace_id", workspaceId);
+
+  if (storageRowsError) {
+    console.error(
+      "Failed to read workspace document storage targets before workspace delete:",
+      storageRowsError.message,
+    );
+  }
+
+  const storageTargets = (storageRows ??
+    []) as { storage_bucket: string; storage_path: string }[];
+
+  let { error: deleteWorkspaceError } = await client
+    .from("workspaces")
+    .delete()
+    .eq("id", workspaceId)
+    .eq("owner_user_id", userId);
+
+  if (isForeignKeyViolation(deleteWorkspaceError)) {
+    await cleanupWorkspaceDependenciesForDelete(client, workspaceId);
+
+    const retryDeleteResult = await client
+      .from("workspaces")
+      .delete()
+      .eq("id", workspaceId)
+      .eq("owner_user_id", userId);
+
+    deleteWorkspaceError = retryDeleteResult.error;
+  }
+
+  if (deleteWorkspaceError) {
+    throw new Error(`Failed to delete workspace: ${deleteWorkspaceError.message}`);
+  }
+
+  const pathsByBucket = new Map<string, string[]>();
+
+  for (const target of storageTargets) {
+    if (!target.storage_bucket || !target.storage_path) continue;
+    const existing = pathsByBucket.get(target.storage_bucket) ?? [];
+    existing.push(target.storage_path);
+    pathsByBucket.set(target.storage_bucket, existing);
+  }
+
+  for (const [bucket, paths] of pathsByBucket) {
+    const uniquePaths = Array.from(new Set(paths));
+    if (uniquePaths.length === 0) continue;
+
+    const { error: storageDeleteError } = await client.storage
+      .from(bucket)
+      .remove(uniquePaths);
+
+    if (storageDeleteError) {
+      console.error(
+        `Failed to remove storage objects after workspace deletion (bucket: ${bucket})`,
+        storageDeleteError.message,
+      );
+    }
+  }
 }
 
 // ========== MEMBERS (SETTINGS TAB) ==========

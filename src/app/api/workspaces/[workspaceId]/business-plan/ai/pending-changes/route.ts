@@ -90,6 +90,9 @@ export async function POST(
       "update_chapter",
       "delete_chapter",
       "reorder_chapters",
+      "add_task",
+      "update_task",
+      "delete_task",
     ];
 
     if (!changeType || !validChangeTypes.includes(changeType)) {

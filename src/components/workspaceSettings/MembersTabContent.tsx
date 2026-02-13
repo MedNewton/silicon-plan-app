@@ -5,6 +5,10 @@ import {
   Box,
   Button,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   IconButton,
   Stack,
   Typography,
@@ -106,6 +110,7 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
   const [inviteActionType, setInviteActionType] = useState<
     "resend" | "revoke" | null
   >(null);
+  const [inviteToRevoke, setInviteToRevoke] = useState<InviteRow | null>(null);
 
   const [inviteOpen, setInviteOpen] = useState(false);
 
@@ -299,13 +304,8 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
     }
   };
 
-  const handleRevokeInvite = async (invite: InviteRow): Promise<void> => {
-    if (!workspaceId || !canManageInvites) return;
-
-    const confirmed = window.confirm(
-      `Revoke invitation for ${invite.email}?`,
-    );
-    if (!confirmed) return;
+  const handleRevokeInvite = async (invite: InviteRow): Promise<boolean> => {
+    if (!workspaceId || !canManageInvites) return false;
 
     try {
       setInviteActionLoadingId(invite.inviteId);
@@ -323,17 +323,42 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
           | { error?: string }
           | null;
         toast.error(payload?.error ?? "Failed to revoke invitation.");
-        return;
+        return false;
       }
 
       toast.success("Invitation revoked.");
       await loadMembers();
+      return true;
     } catch (error) {
       console.error("Failed to revoke invite", error);
       toast.error("Something went wrong while revoking invitation.");
+      return false;
     } finally {
       setInviteActionLoadingId(null);
       setInviteActionType(null);
+    }
+  };
+
+  const handleOpenRevokeDialog = (invite: InviteRow): void => {
+    if (!canManageInvites || invite.status !== "pending") return;
+    setInviteToRevoke(invite);
+  };
+
+  const handleCloseRevokeDialog = (): void => {
+    const isRevokingCurrentInvite =
+      inviteToRevoke != null &&
+      inviteActionType === "revoke" &&
+      inviteActionLoadingId === inviteToRevoke.inviteId;
+
+    if (isRevokingCurrentInvite) return;
+    setInviteToRevoke(null);
+  };
+
+  const handleConfirmRevokeDialog = async (): Promise<void> => {
+    if (!inviteToRevoke) return;
+    const success = await handleRevokeInvite(inviteToRevoke);
+    if (success) {
+      setInviteToRevoke(null);
     }
   };
 
@@ -771,7 +796,7 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
                             )
                           }
                           onClick={() => {
-                            void handleRevokeInvite(invite);
+                            handleOpenRevokeDialog(invite);
                           }}
                           sx={{
                             textTransform: "none",
@@ -879,6 +904,98 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
           void loadMembers();
         }}
       />
+
+      <Dialog
+        open={inviteToRevoke != null}
+        onClose={handleCloseRevokeDialog}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle
+          sx={{
+            fontWeight: 700,
+            fontSize: 19,
+            color: "#991B1B",
+            pb: 1,
+          }}
+        >
+          Revoke invitation
+        </DialogTitle>
+        <DialogContent sx={{ pt: "8px !important" }}>
+          <Typography
+            sx={{
+              fontSize: 14,
+              color: "#374151",
+              lineHeight: 1.55,
+            }}
+          >
+            This will immediately disable the invitation link for{" "}
+            <Box component="span" sx={{ fontWeight: 700, color: "#111827" }}>
+              {inviteToRevoke?.email ?? "this user"}
+            </Box>
+            . You can still send a new invite later.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5, pt: 1.2, gap: 1.2 }}>
+          <Button
+            type="button"
+            onClick={handleCloseRevokeDialog}
+            disabled={
+              inviteToRevoke != null &&
+              inviteActionType === "revoke" &&
+              inviteActionLoadingId === inviteToRevoke.inviteId
+            }
+            sx={{
+              textTransform: "none",
+              fontWeight: 600,
+              color: "#6B7280",
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            onClick={() => {
+              void handleConfirmRevokeDialog();
+            }}
+            disabled={
+              inviteToRevoke == null ||
+              (inviteActionType === "revoke" &&
+                inviteActionLoadingId === inviteToRevoke.inviteId)
+            }
+            startIcon={
+              inviteToRevoke != null &&
+              inviteActionType === "revoke" &&
+              inviteActionLoadingId === inviteToRevoke.inviteId ? (
+                <CircularProgress size={14} color="inherit" />
+              ) : (
+                <BlockOutlinedIcon sx={{ fontSize: 16 }} />
+              )
+            }
+            sx={{
+              textTransform: "none",
+              fontWeight: 700,
+              borderRadius: 999,
+              px: 2.1,
+              py: 0.65,
+              border: "1px solid #FCA5A5",
+              color: "#B91C1C",
+              bgcolor: "#FEF2F2",
+              "&:hover": {
+                borderColor: "#F87171",
+                bgcolor: "#FEE2E2",
+              },
+              "&.Mui-disabled": {
+                borderColor: "#E5E7EB",
+                color: "#9CA3AF",
+                bgcolor: "#F9FAFB",
+              },
+            }}
+          >
+            Revoke invitation
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };

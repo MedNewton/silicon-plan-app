@@ -4,9 +4,9 @@ Source of truth for tasks: `TASKS.md`
 
 ## Summary
 - Total scoped tasks: 47
-- `done`: 35
+- `done`: 37
 - `in_progress`: 0
-- `todo`: 12
+- `todo`: 10
 - `blocked`: 0
 
 ## Completed (This Batch)
@@ -36,6 +36,8 @@ Source of truth for tasks: `TASKS.md`
 24. `WS-003` - Add invite actions `resend` and `revoke`
 25. `WS-002` - Add invitation lifecycle statuses
 26. `WS-007` - Rename confusing section labels
+27. `WS-004` - Add workspace delete capability
+28. `WS-016` - Fix AI Chat + Plan Chapters task creation gap
 
 ## Todo (Immediate Next)
 1. `CORE-005` - Implement Step 6 ATECO (optional) with search
@@ -95,3 +97,5 @@ Source of truth for tasks: `TASKS.md`
 - 2026-02-13: Completed `WS-003` by adding invite action endpoints for resend/revoke with owner/admin permission checks and wiring action buttons in the Members invitations UI.
 - 2026-02-13: Completed `WS-002` by implementing invite decline flow (`POST /api/workspaces/invites/decline`), wiring decline action in the join page UI, and persisting `declined_at`/`declined_by_user_id` so lifecycle statuses (`pending`, `accepted`, `declined`, `expired`) are fully actionable.
 - 2026-02-13: Completed `WS-007` by renaming user-facing workspace editing labels to `Setup Business` in settings sidebar, workspace cards, and Learning Center instructional copy for terminology consistency.
+- 2026-02-13: Completed `WS-004` with owner-only workspace deletion (API `DELETE /api/workspaces/[workspaceId]`), explicit typed-name confirmation dialog in General settings, foreign-key-safe dependency cleanup fallback, and post-delete redirect to My Workspaces.
+- 2026-02-13: Completed `WS-016` by hardening business-plan AI chat task/chapter change generation: added recent conversation history to prompts, introduced a strict second-pass tool-call retry for structural requests, improved H1/H2 inference and parent resolution from chapter/task references, and expanded pending-change API validation to include task change types.

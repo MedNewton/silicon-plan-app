@@ -50,7 +50,7 @@ Status legend: `todo`, `in_progress`, `blocked`, `done`
 | WS-001 | P1 | done | Build Team/Users invitation visibility panel | List of invited users in workspace settings | None | Invited users are visible in UI |
 | WS-002 | P1 | done | Add invitation lifecycle statuses | `pending`, `accepted`, `declined`, `expired` | WS-001 | Each invite displays accurate status |
 | WS-003 | P1 | done | Add invite actions `resend` and `revoke` | API + UI actions in Team/Users | WS-002 | Resend/revoke work with proper permission checks |
-| WS-004 | P1 | todo | Add workspace delete capability | API `DELETE /api/workspaces/[workspaceId]` + warning dialog | None | Owner can delete workspace with explicit confirmation |
+| WS-004 | P1 | done | Add workspace delete capability | API `DELETE /api/workspaces/[workspaceId]` + warning dialog | None | Owner can delete workspace with explicit confirmation |
 | WS-005 | P1 | todo | Implement EN/IT language toggle | Toggle on main pages + persisted choice | None | UI switches language without breaking flows |
 | WS-006 | P1 | todo | Localize key workspace pages and exports | Workspace setup/settings/manage and export labels localized | WS-005 | EN/IT visible in targeted pages and exports |
 | WS-007 | P1 | done | Rename confusing section labels | `Edit your workspace` -> `Setup Business` (or approved wording) | None | Terminology matches real function and is consistent |
@@ -62,7 +62,7 @@ Status legend: `todo`, `in_progress`, `blocked`, `done`
 | WS-013 | P1 | done | Implement real drag-and-drop in AI Library | Functional dropzone with file processing | None | Dragging a file uploads successfully |
 | WS-014 | P1 | done | Improve long filename handling in AI Library UI | Truncation + tooltip + no layout breaks | None | Long names render without overflow or broken layout |
 | WS-015 | P1 | done | Improve task action affordance in Manage Workspace | Clarify button meaning and flow in task UI | CORE-013 | Users can understand task actions without ambiguity |
-| WS-016 | P1 | todo | Fix AI Chat + Plan Chapters task creation gap | Chat instructions should create/update tasks as expected | CORE-016 | Prompting chapter/task structure from chat works reliably |
+| WS-016 | P1 | done | Fix AI Chat + Plan Chapters task creation gap | Chat instructions should create/update tasks as expected | CORE-016 | Prompting chapter/task structure from chat works reliably |
 | WS-017 | P1 | todo | Implement workspace/library -> task automation | Auto-preload task context from existing project data | CORE-017 | User no longer needs to re-enter same topic per task |
 | WS-018 | P1 | todo | Add workspace usability QA suite | Focused QA for settings/manage/library/task usability | WS-001..WS-017 | Usability checklist passes with no P1 blockers |
 

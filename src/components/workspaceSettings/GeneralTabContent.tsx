@@ -1,7 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { Box, Button, TextField, Typography } from "@mui/material";
+import { useRouter } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
+import {
+  Box,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  TextField,
+  Typography,
+} from "@mui/material";
 import { toast } from "react-toastify";
 
 import type { Workspace } from "@/types/workspaces";
@@ -19,14 +30,22 @@ const GeneralTabContent = ({
   workspaceId,
   onWorkspaceNameChange,
 }: GeneralTabContentProps) => {
+  const router = useRouter();
+  const { user } = useUser();
+
   const [workspaceLoading, setWorkspaceLoading] = useState<boolean>(true);
   const [workspaceSaving, setWorkspaceSaving] = useState<boolean>(false);
+  const [workspaceDeleting, setWorkspaceDeleting] = useState<boolean>(false);
 
   const [workspaceName, setWorkspaceName] = useState<string>("");
   const [initialName, setInitialName] = useState<string>("");
+  const [ownerUserId, setOwnerUserId] = useState<string>("");
 
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [initialImageUrl, setInitialImageUrl] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState<boolean>(false);
+  const [deleteConfirmationName, setDeleteConfirmationName] =
+    useState<string>("");
 
   useEffect(() => {
     if (!workspaceId) return;
@@ -53,6 +72,7 @@ const GeneralTabContent = ({
 
         setWorkspaceName(name);
         setInitialName(name);
+        setOwnerUserId(ws.owner_user_id ?? "");
         setImageUrl(img);
         setInitialImageUrl(img);
 
@@ -138,6 +158,67 @@ const GeneralTabContent = ({
   const handleGeneralCancel = () => {
     setWorkspaceName(initialName);
     setImageUrl(initialImageUrl);
+  };
+
+  const isWorkspaceOwner = Boolean(user?.id) && user?.id === ownerUserId;
+  const deleteNameMatches =
+    deleteConfirmationName.trim() === initialName.trim() &&
+    initialName.trim().length > 0;
+
+  const handleOpenDeleteDialog = () => {
+    if (!isWorkspaceOwner || !workspaceId || workspaceLoading) {
+      return;
+    }
+    setDeleteConfirmationName("");
+    setDeleteDialogOpen(true);
+  };
+
+  const handleCloseDeleteDialog = () => {
+    if (workspaceDeleting) return;
+    setDeleteDialogOpen(false);
+    setDeleteConfirmationName("");
+  };
+
+  const handleDeleteWorkspace = async () => {
+    if (!workspaceId || !isWorkspaceOwner || !deleteNameMatches) return;
+
+    try {
+      setWorkspaceDeleting(true);
+
+      const res = await fetch(`/api/workspaces/${workspaceId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          confirmationName: deleteConfirmationName.trim(),
+        }),
+      });
+
+      if (!res.ok) {
+        let message = "Failed to delete workspace";
+        try {
+          const json = (await res.json()) as { error?: string };
+          if (json.error) {
+            message = json.error;
+          }
+        } catch {
+          // ignore JSON parse errors
+        }
+        toast.error(message);
+        return;
+      }
+
+      toast.success("Workspace deleted");
+      setDeleteDialogOpen(false);
+      router.push("/?tab=my-workspaces");
+      router.refresh();
+    } catch (error) {
+      console.error("Failed to delete workspace", error);
+      toast.error("Something went wrong while deleting the workspace");
+    } finally {
+      setWorkspaceDeleting(false);
+    }
   };
 
   const handleImageChange = async (
@@ -337,6 +418,76 @@ const GeneralTabContent = ({
 
       <Box
         sx={{
+          width: "100%",
+          maxWidth: 980,
+          borderRadius: 4,
+          border: "1px solid #F4C7C7",
+          bgcolor: "#FFF7F7",
+          px: 4,
+          py: 3,
+        }}
+      >
+        <Typography
+          sx={{
+            fontSize: 16,
+            fontWeight: 700,
+            color: "#B42318",
+            mb: 0.8,
+          }}
+        >
+          Danger zone
+        </Typography>
+        <Typography
+          sx={{
+            fontSize: 13,
+            color: "#7A2E2E",
+            mb: 2.2,
+          }}
+        >
+          Deleting this workspace permanently removes members, plans, tasks,
+          AI library items, and generated documents.
+        </Typography>
+        <Button
+          type="button"
+          onClick={handleOpenDeleteDialog}
+          disabled={!isWorkspaceOwner || workspaceLoading || workspaceDeleting}
+          sx={{
+            borderRadius: 2,
+            textTransform: "none",
+            fontWeight: 700,
+            fontSize: 14,
+            px: 2.2,
+            py: 1,
+            border: "1px solid #EF4444",
+            color: "#DC2626",
+            bgcolor: "#FFFFFF",
+            "&:hover": {
+              bgcolor: "#FFF1F1",
+              borderColor: "#DC2626",
+            },
+            "&.Mui-disabled": {
+              borderColor: "#F1D2D2",
+              color: "#CDA6A6",
+            },
+          }}
+        >
+          Delete Workspace
+        </Button>
+        {!isWorkspaceOwner ? (
+          <Typography
+            sx={{
+              fontSize: 12,
+              color: "#A94442",
+              mt: 1.2,
+            }}
+          >
+            Only the workspace owner can delete this workspace.
+          </Typography>
+        ) : null}
+      </Box>
+
+      <Box
+        sx={{
           display: "flex",
           justifyContent: "center",
           gap: 3,
@@ -399,6 +550,94 @@ const GeneralTabContent = ({
           Save
         </Button>
       </Box>
+
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleCloseDeleteDialog}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle
+          sx={{
+            fontWeight: 700,
+            fontSize: 20,
+            color: "#B42318",
+            pb: 1,
+          }}
+        >
+          Delete workspace
+        </DialogTitle>
+        <DialogContent sx={{ pt: "8px !important" }}>
+          <Typography
+            sx={{
+              fontSize: 14,
+              color: "#3F3F46",
+              mb: 2,
+            }}
+          >
+            This action cannot be undone. Type{" "}
+            <Box component="span" sx={{ fontWeight: 700 }}>
+              {initialName}
+            </Box>{" "}
+            to confirm deletion.
+          </Typography>
+          <TextField
+            fullWidth
+            autoFocus
+            placeholder={initialName || "Workspace name"}
+            value={deleteConfirmationName}
+            onChange={(event) => setDeleteConfirmationName(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                void handleDeleteWorkspace();
+              }
+            }}
+            InputProps={{
+              sx: {
+                borderRadius: 2,
+                bgcolor: "#FFFFFF",
+              },
+            }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5, pt: 1.2, gap: 1.2 }}>
+          <Button
+            type="button"
+            onClick={handleCloseDeleteDialog}
+            disabled={workspaceDeleting}
+            sx={{
+              textTransform: "none",
+              fontWeight: 600,
+              color: "#6B7280",
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            onClick={() => void handleDeleteWorkspace()}
+            disabled={workspaceDeleting || !deleteNameMatches}
+            sx={{
+              textTransform: "none",
+              fontWeight: 700,
+              borderRadius: 2,
+              px: 2.2,
+              bgcolor: "#DC2626",
+              color: "#FFFFFF",
+              "&:hover": {
+                bgcolor: "#B91C1C",
+              },
+              "&.Mui-disabled": {
+                bgcolor: "#F5B5B5",
+                color: "#FFFFFF",
+              },
+            }}
+          >
+            {workspaceDeleting ? "Deleting..." : "Delete workspace"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
