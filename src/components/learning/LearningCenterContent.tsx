@@ -67,9 +67,9 @@ const learningTopics: LearningTopic[] = [
         tip: "The more details you provide about your business, the better the AI-generated content will be.",
       },
       {
-        title: "Edit Your Workspace Anytime",
+        title: "Update Your Business Setup Anytime",
         content:
-          "You can always update your workspace information later. Go to 'My Workspaces' tab, find your workspace, and click 'Edit Workspace'. From there, you can modify your workspace name, upload a logo, update business data, or manage team members.",
+          "You can always update your workspace information later. Go to 'My Workspaces' tab, find your workspace, and click 'Setup Business'. From there, you can modify your workspace name, upload a logo, update business data, or manage team members.",
       },
       {
         title: "Navigate the Platform",
@@ -99,7 +99,7 @@ const learningTopics: LearningTopic[] = [
       {
         title: "Open Workspace Settings",
         content:
-          "Find the workspace you want to enhance with AI knowledge and click the 'Edit Workspace' button. This will open your workspace settings where you can configure various options.",
+          "Find the workspace you want to enhance with AI knowledge and click the 'Setup Business' button. This will open your workspace settings where you can configure various options.",
       },
       {
         title: "Navigate to AI Library",

@@ -287,7 +287,7 @@ export default function AIDocumentMyWorkspacesTabContent({
                     },
                   }}
                 >
-                  Edit Workspace
+                  Setup Business
                 </Button>
               </Stack>
             </Box>

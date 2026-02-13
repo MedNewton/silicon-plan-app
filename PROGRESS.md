@@ -4,9 +4,9 @@ Source of truth for tasks: `TASKS.md`
 
 ## Summary
 - Total scoped tasks: 47
-- `done`: 33
+- `done`: 35
 - `in_progress`: 0
-- `todo`: 14
+- `todo`: 12
 - `blocked`: 0
 
 ## Completed (This Batch)
@@ -34,6 +34,8 @@ Source of truth for tasks: `TASKS.md`
 22. `WS-014` - Improve long filename handling in AI Library UI
 23. `WS-001` - Build Team/Users invitation visibility panel
 24. `WS-003` - Add invite actions `resend` and `revoke`
+25. `WS-002` - Add invitation lifecycle statuses
+26. `WS-007` - Rename confusing section labels
 
 ## Todo (Immediate Next)
 1. `CORE-005` - Implement Step 6 ATECO (optional) with search
@@ -91,3 +93,5 @@ Source of truth for tasks: `TASKS.md`
 - 2026-02-13: Applied DB migration `supabase/migrations/20260213_workspace_member_invites_lifecycle.sql` to add invite lifecycle fields (`declined_at`, `revoked_at`, resend metadata) for Team/Users invite workflows.
 - 2026-02-13: Completed `WS-001` by extending members settings data/API to include workspace invitation records and rendering a dedicated Invitations panel in `Members` tab.
 - 2026-02-13: Completed `WS-003` by adding invite action endpoints for resend/revoke with owner/admin permission checks and wiring action buttons in the Members invitations UI.
+- 2026-02-13: Completed `WS-002` by implementing invite decline flow (`POST /api/workspaces/invites/decline`), wiring decline action in the join page UI, and persisting `declined_at`/`declined_by_user_id` so lifecycle statuses (`pending`, `accepted`, `declined`, `expired`) are fully actionable.
+- 2026-02-13: Completed `WS-007` by renaming user-facing workspace editing labels to `Setup Business` in settings sidebar, workspace cards, and Learning Center instructional copy for terminology consistency.

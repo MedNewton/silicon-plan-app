@@ -48,12 +48,12 @@ Status legend: `todo`, `in_progress`, `blocked`, `done`
 | ID | Priority | Status | Task | Deliverable | Dependencies | Acceptance Criteria |
 |---|---|---|---|---|---|---|
 | WS-001 | P1 | done | Build Team/Users invitation visibility panel | List of invited users in workspace settings | None | Invited users are visible in UI |
-| WS-002 | P1 | todo | Add invitation lifecycle statuses | `pending`, `accepted`, `declined`, `expired` | WS-001 | Each invite displays accurate status |
+| WS-002 | P1 | done | Add invitation lifecycle statuses | `pending`, `accepted`, `declined`, `expired` | WS-001 | Each invite displays accurate status |
 | WS-003 | P1 | done | Add invite actions `resend` and `revoke` | API + UI actions in Team/Users | WS-002 | Resend/revoke work with proper permission checks |
 | WS-004 | P1 | todo | Add workspace delete capability | API `DELETE /api/workspaces/[workspaceId]` + warning dialog | None | Owner can delete workspace with explicit confirmation |
 | WS-005 | P1 | todo | Implement EN/IT language toggle | Toggle on main pages + persisted choice | None | UI switches language without breaking flows |
 | WS-006 | P1 | todo | Localize key workspace pages and exports | Workspace setup/settings/manage and export labels localized | WS-005 | EN/IT visible in targeted pages and exports |
-| WS-007 | P1 | todo | Rename confusing section labels | `Edit your workspace` -> `Setup Business` (or approved wording) | None | Terminology matches real function and is consistent |
+| WS-007 | P1 | done | Rename confusing section labels | `Edit your workspace` -> `Setup Business` (or approved wording) | None | Terminology matches real function and is consistent |
 | WS-008 | P1 | done | Upgrade workspace AI actions beyond text correction | Add research + regenerate capability in setup/business sections | None | User can trigger research/regenerate in setup context |
 | WS-009 | P1 | done | Enable Excel uploads in AI Knowledge/Library | Accept `.xls/.xlsx` and process correctly | None | Excel file uploads succeed with useful status |
 | WS-010 | P1 | done | Fix AI Knowledge description save issues | Reliable create/save/update behavior | None | Description persists and reloads correctly |

@@ -72,7 +72,7 @@ export default function SettingsSecondarySidebar({
           mb: 2.5,
         }}
       >
-        Edit your workspace
+        Setup Business
       </Typography>
 
       <Typography

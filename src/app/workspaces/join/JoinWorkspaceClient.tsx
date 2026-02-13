@@ -33,6 +33,7 @@ export default function JoinWorkspaceClient({ inviteId }: Props) {
 
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
+  const [declining, setDeclining] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<InspectResponse | null>(null);
 
@@ -101,6 +102,40 @@ export default function JoinWorkspaceClient({ inviteId }: Props) {
       console.error(err);
       setError("Something went wrong while joining the workspace.");
       setJoining(false);
+    }
+  };
+
+  const handleDecline = async () => {
+    if (!data) return;
+    if (data.alreadyMember) {
+      router.push("/");
+      return;
+    }
+
+    try {
+      setDeclining(true);
+      setError(null);
+
+      const res = await fetch("/api/workspaces/invites/decline", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ inviteId }),
+      });
+
+      if (!res.ok) {
+        const json = (await res.json().catch(() => ({}))) as {
+          error?: string;
+        };
+        setError(json.error ?? "Failed to decline invitation.");
+        setDeclining(false);
+        return;
+      }
+
+      router.push("/");
+    } catch (err) {
+      console.error(err);
+      setError("Something went wrong while declining the workspace invitation.");
+      setDeclining(false);
     }
   };
 
@@ -253,6 +288,7 @@ export default function JoinWorkspaceClient({ inviteId }: Props) {
           <Button
             variant="outlined"
             onClick={() => router.push("/")}
+            disabled={joining || declining}
             sx={{
               borderRadius: 999,
               textTransform: "none",
@@ -272,9 +308,39 @@ export default function JoinWorkspaceClient({ inviteId }: Props) {
             Cancel
           </Button>
 
+          {!data.alreadyMember && (
+            <Button
+              variant="outlined"
+              disabled={joining || declining}
+              onClick={handleDecline}
+              sx={{
+                borderRadius: 999,
+                textTransform: "none",
+                fontWeight: 600,
+                fontSize: 14,
+                px: 2.8,
+                py: 0.9,
+                borderColor: "#FECACA",
+                color: "#B91C1C",
+                bgcolor: "#FEF2F2",
+                "&:hover": {
+                  borderColor: "#FCA5A5",
+                  bgcolor: "#FEE2E2",
+                },
+                "&.Mui-disabled": {
+                  borderColor: "#E5E7EB",
+                  color: "#9CA3AF",
+                  bgcolor: "#F9FAFB",
+                },
+              }}
+            >
+              {declining ? "Declining…" : "Decline"}
+            </Button>
+          )}
+
           <Button
             variant="contained"
-            disabled={joining}
+            disabled={joining || declining}
             onClick={handleJoin}
             sx={{
               borderRadius: 999,
