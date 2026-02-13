@@ -5,6 +5,7 @@ import { Resend } from "resend";
 
 import { createWorkspaceInvite } from "@/server/workspaces";
 import type { WorkspaceRole } from "@/types/workspaces";
+import { resolvePublicAppUrl } from "@/lib/publicAppUrl";
 
 export const dynamic = "force-dynamic";
 
@@ -90,7 +91,7 @@ export async function POST(
       );
     }
 
-    const origin = new URL(request.url).origin;
+    const origin = resolvePublicAppUrl(request);
     const inviteUrl = `${origin}/workspaces/join?invite=${encodeURIComponent(
       invite.inviteId,
     )}`;

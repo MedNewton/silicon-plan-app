@@ -3,6 +3,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import { Resend } from "resend";
 
 import { resendWorkspaceInvite } from "@/server/workspaces";
+import { resolvePublicAppUrl } from "@/lib/publicAppUrl";
 
 type RouteParams = {
   workspaceId: string;
@@ -56,7 +57,7 @@ export async function POST(
     });
 
     if (resend) {
-      const origin = new URL(request.url).origin;
+      const origin = resolvePublicAppUrl(request);
       const inviteUrl = `${origin}/workspaces/join?invite=${encodeURIComponent(
         invite.inviteId,
       )}`;
