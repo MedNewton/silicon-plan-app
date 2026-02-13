@@ -983,15 +983,31 @@ If the request is ambiguous, ask a concise clarifying question.`,
     });
 
     for (const input of pendingChangeInputs) {
-      const pendingChange = await createPendingChange({
-        messageId: assistantMessage.id,
-        userId,
-        changeType: input.changeType,
-        targetId: input.targetId,
-        proposedData: input.proposedData,
-      });
+      try {
+        const pendingChange = await createPendingChange({
+          messageId: assistantMessage.id,
+          userId,
+          changeType: input.changeType,
+          targetId: input.targetId,
+          proposedData: input.proposedData,
+        });
 
-      pendingChanges.push(pendingChange);
+        pendingChanges.push(pendingChange);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to create pending change.";
+
+        if (
+          message.includes("invalid input value for enum pending_change_type") ||
+          message.includes('invalid input value for enum "pending_change_type"')
+        ) {
+          throw new Error(
+            "Database migration required: pending_change_type must include add_task/update_task/delete_task."
+          );
+        }
+
+        throw error;
+      }
     }
 
     return NextResponse.json({
