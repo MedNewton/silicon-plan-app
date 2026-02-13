@@ -4,12 +4,15 @@
 import {
   Box,
   Button,
+  CircularProgress,
   IconButton,
   Stack,
   Typography,
   useTheme,
 } from "@mui/material";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
+import ReplayOutlinedIcon from "@mui/icons-material/ReplayOutlined";
+import BlockOutlinedIcon from "@mui/icons-material/BlockOutlined";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 
@@ -340,13 +343,20 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
 
   const renderInviteStatus = (
     status: InviteRow["status"],
-  ): { label: string; bg: string; color: string; border: string } => {
+  ): {
+    label: string;
+    bg: string;
+    color: string;
+    border: string;
+    dot: string;
+  } => {
     if (status === "pending") {
       return {
         label: "Pending",
-        bg: "#FFF7E6",
+        bg: "#FFF7ED",
         color: "#B45309",
-        border: "#FCD34D",
+        border: "#FDBA74",
+        dot: "#EA580C",
       };
     }
     if (status === "accepted") {
@@ -355,6 +365,7 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
         bg: "#ECFDF3",
         color: "#047857",
         border: "#A7F3D0",
+        dot: "#059669",
       };
     }
     if (status === "declined") {
@@ -363,14 +374,16 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
         bg: "#FEF2F2",
         color: "#B91C1C",
         border: "#FECACA",
+        dot: "#DC2626",
       };
     }
     if (status === "revoked") {
       return {
         label: "Revoked",
-        bg: "#F8FAFC",
-        color: "#475569",
+        bg: "#F1F5F9",
+        color: "#334155",
         border: "#CBD5E1",
+        dot: "#64748B",
       };
     }
     return {
@@ -378,6 +391,7 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
       bg: "#F3F4F6",
       color: "#6B7280",
       border: "#D1D5DB",
+      dot: "#9CA3AF",
     };
   };
 
@@ -631,7 +645,9 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
                         display: "flex",
                         justifyContent: "space-between",
                         gap: 2,
-                        alignItems: "center",
+                        alignItems: { xs: "flex-start", md: "center" },
+                        flexDirection: { xs: "column", md: "row" },
+                        boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
                       }}
                     >
                       <Box sx={{ minWidth: 0 }}>
@@ -657,41 +673,82 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
                         </Typography>
                       </Box>
 
-                      <Stack direction="row" spacing={1} alignItems="center">
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        alignItems="center"
+                        sx={{ width: { xs: "100%", md: "auto" }, justifyContent: "flex-end" }}
+                      >
                         <Box
                           sx={{
                             borderRadius: 999,
                             border: `1px solid ${badge.border}`,
-                            px: 1.4,
-                            py: 0.45,
+                            px: 1.25,
+                            py: 0.35,
                             fontSize: 12,
                             fontWeight: 600,
                             bgcolor: badge.bg,
                             color: badge.color,
                             textTransform: "none",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 0.7,
                           }}
                         >
+                          <Box
+                            sx={{
+                              width: 7,
+                              height: 7,
+                              borderRadius: "50%",
+                              bgcolor: badge.dot,
+                            }}
+                          />
                           {badge.label}
                         </Box>
+
+                        <Typography
+                          component="span"
+                          sx={{
+                            fontSize: 13,
+                            lineHeight: 1,
+                            color: "#CBD5E1",
+                            fontWeight: 400,
+                            px: 0.2,
+                            userSelect: "none",
+                          }}
+                        >
+                          |
+                        </Typography>
 
                         <Button
                           disableRipple
                           size="small"
                           disabled={!canResend || loading}
+                          startIcon={
+                            loading && inviteActionType === "resend" ? (
+                              <CircularProgress size={12} />
+                            ) : (
+                              <ReplayOutlinedIcon sx={{ fontSize: 15 }} />
+                            )
+                          }
                           onClick={() => {
                             void handleResendInvite(invite);
                           }}
                           sx={{
                             textTransform: "none",
-                            minWidth: 72,
+                            minWidth: 88,
                             borderRadius: 999,
                             border: "1px solid #BFDBFE",
                             color: "#1D4ED8",
                             bgcolor: "#EFF6FF",
-                            fontSize: 12.5,
+                            fontSize: 12,
                             fontWeight: 600,
-                            px: 1.6,
-                            py: 0.4,
+                            px: 1.45,
+                            py: 0.38,
+                            "&:hover": {
+                              borderColor: "#93C5FD",
+                              bgcolor: "#DBEAFE",
+                            },
                             "&.Mui-disabled": {
                               borderColor: "#E5E7EB",
                               color: "#9CA3AF",
@@ -699,29 +756,38 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
                             },
                           }}
                         >
-                          {loading && inviteActionType === "resend"
-                            ? "..."
-                            : "Resend"}
+                          Resend
                         </Button>
 
                         <Button
                           disableRipple
                           size="small"
                           disabled={!canRevoke || loading}
+                          startIcon={
+                            loading && inviteActionType === "revoke" ? (
+                              <CircularProgress size={12} />
+                            ) : (
+                              <BlockOutlinedIcon sx={{ fontSize: 15 }} />
+                            )
+                          }
                           onClick={() => {
                             void handleRevokeInvite(invite);
                           }}
                           sx={{
                             textTransform: "none",
-                            minWidth: 72,
+                            minWidth: 88,
                             borderRadius: 999,
                             border: "1px solid #FECACA",
                             color: "#B91C1C",
                             bgcolor: "#FEF2F2",
-                            fontSize: 12.5,
+                            fontSize: 12,
                             fontWeight: 600,
-                            px: 1.6,
-                            py: 0.4,
+                            px: 1.45,
+                            py: 0.38,
+                            "&:hover": {
+                              borderColor: "#FCA5A5",
+                              bgcolor: "#FEE2E2",
+                            },
                             "&.Mui-disabled": {
                               borderColor: "#E5E7EB",
                               color: "#9CA3AF",
@@ -729,9 +795,7 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
                             },
                           }}
                         >
-                          {loading && inviteActionType === "revoke"
-                            ? "..."
-                            : "Revoke"}
+                          Revoke
                         </Button>
                       </Stack>
                     </Box>
