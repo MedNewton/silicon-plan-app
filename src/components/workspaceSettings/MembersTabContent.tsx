@@ -10,7 +10,7 @@ import {
   useTheme,
 } from "@mui/material";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 
 import type { WorkspaceRole } from "@/types/workspaces";
@@ -25,6 +25,22 @@ type MembersApiResponse = {
     role: WorkspaceRole;
     isOwner: boolean;
   }[];
+  invites: {
+    inviteId: string;
+    email: string;
+    role: WorkspaceRole;
+    status: "pending" | "accepted" | "declined" | "expired" | "revoked";
+    invitedByUserId: string;
+    invitedByName: string | null;
+    invitedByEmail: string | null;
+    createdAt: string;
+    expiresAt: string | null;
+    acceptedAt: string | null;
+    declinedAt: string | null;
+    revokedAt: string | null;
+    resendCount: number;
+    lastSentAt: string | null;
+  }[];
 };
 
 type MemberRow = {
@@ -34,6 +50,18 @@ type MemberRow = {
   role: "Owner" | "Admin" | "Editor" | "Viewer";
   initials: string;
   isOwner: boolean;
+};
+
+type InviteRow = {
+  inviteId: string;
+  email: string;
+  role: "Admin" | "Editor" | "Viewer";
+  status: "pending" | "accepted" | "declined" | "expired" | "revoked";
+  invitedByLabel: string;
+  createdAt: string | null;
+  expiresAt: string | null;
+  resendCount: number;
+  lastSentAt: string | null;
 };
 
 type MembersTabContentProps = {
@@ -62,78 +90,99 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
   const theme = useTheme();
 
   const [members, setMembers] = useState<MemberRow[]>([]);
+  const [invites, setInvites] = useState<InviteRow[]>([]);
   const [membersLoading, setMembersLoading] = useState<boolean>(false);
   const [currentUserRole, setCurrentUserRole] =
     useState<WorkspaceRole | null>(null);
   const [memberDeleteLoading, setMemberDeleteLoading] = useState<string | null>(
     null,
   );
+  const [inviteActionLoadingId, setInviteActionLoadingId] = useState<
+    string | null
+  >(null);
+  const [inviteActionType, setInviteActionType] = useState<
+    "resend" | "revoke" | null
+  >(null);
 
   const [inviteOpen, setInviteOpen] = useState(false);
 
-  useEffect(() => {
+  const loadMembers = useCallback(async (): Promise<void> => {
     if (!workspaceId) return;
 
-    let cancelled = false;
+    try {
+      setMembersLoading(true);
+      const res = await fetch(`/api/workspaces/${workspaceId}/members`);
 
-    const loadMembers = async () => {
-      try {
-        setMembersLoading(true);
-        const res = await fetch(`/api/workspaces/${workspaceId}/members`);
+      if (!res.ok) {
+        console.error("Failed to load workspace members");
+        return;
+      }
 
-        if (!res.ok) {
-          console.error("Failed to load workspace members");
-          return;
-        }
+      const json = (await res.json()) as MembersApiResponse;
+      setCurrentUserRole(json.currentUserRole);
 
-        const json = (await res.json()) as MembersApiResponse;
+      const mappedMembers: MemberRow[] = json.members.map((m) => {
+        const rawName = (m.name ?? "").trim();
+        const email = (m.email ?? "").trim();
+        const displayName =
+          rawName.length > 0 ? rawName : email.length > 0 ? email : "Member";
 
-        if (cancelled) return;
-
-        setCurrentUserRole(json.currentUserRole);
-
-        const mapped: MemberRow[] = json.members.map((m) => {
-          const rawName = (m.name ?? "").trim();
-          const email = (m.email ?? "").trim();
-
-          const displayName =
-            rawName.length > 0 ? rawName : email.length > 0 ? email : "Member";
-
-          const roleLabel: MemberRow["role"] =
-            m.role === "owner"
-              ? "Owner"
-              : m.role === "admin"
+        const roleLabel: MemberRow["role"] =
+          m.role === "owner"
+            ? "Owner"
+            : m.role === "admin"
               ? "Admin"
               : m.role === "editor"
+                ? "Editor"
+                : "Viewer";
+
+        return {
+          userId: m.userId,
+          name: displayName,
+          email,
+          role: roleLabel,
+          initials: getInitials(rawName || null, email || null),
+          isOwner: m.isOwner,
+        };
+      });
+
+      const mappedInvites: InviteRow[] = json.invites.map((invite) => {
+        const roleLabel: InviteRow["role"] =
+          invite.role === "admin"
+            ? "Admin"
+            : invite.role === "editor"
               ? "Editor"
               : "Viewer";
 
-          return {
-            userId: m.userId,
-            name: displayName,
-            email,
-            role: roleLabel,
-            initials: getInitials(rawName || null, email || null),
-            isOwner: m.isOwner,
-          };
-        });
+        const inviterName = (invite.invitedByName ?? "").trim();
+        const inviterEmail = (invite.invitedByEmail ?? "").trim();
 
-        setMembers(mapped);
-      } catch (error) {
-        console.error("Failed to load workspace members", error);
-      } finally {
-        if (!cancelled) {
-          setMembersLoading(false);
-        }
-      }
-    };
+        return {
+          inviteId: invite.inviteId,
+          email: invite.email,
+          role: roleLabel,
+          status: invite.status,
+          invitedByLabel:
+            inviterName || inviterEmail || "Workspace teammate",
+          createdAt: invite.createdAt,
+          expiresAt: invite.expiresAt,
+          resendCount: invite.resendCount,
+          lastSentAt: invite.lastSentAt,
+        };
+      });
 
-    void loadMembers();
-
-    return () => {
-      cancelled = true;
-    };
+      setMembers(mappedMembers);
+      setInvites(mappedInvites);
+    } catch (error) {
+      console.error("Failed to load workspace members", error);
+    } finally {
+      setMembersLoading(false);
+    }
   }, [workspaceId]);
+
+  useEffect(() => {
+    void loadMembers();
+  }, [loadMembers]);
 
   const canCurrentUserDeleteMember = (member: MemberRow): boolean => {
     if (!currentUserRole) return false;
@@ -200,8 +249,137 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
     setInviteOpen(false);
   };
 
+  const canManageInvites =
+    currentUserRole === "owner" || currentUserRole === "admin";
+
+  const formatDateLabel = (iso: string | null): string => {
+    if (!iso) return "—";
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return "—";
+    return date.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
+  const handleResendInvite = async (invite: InviteRow): Promise<void> => {
+    if (!workspaceId || !canManageInvites) return;
+
+    try {
+      setInviteActionLoadingId(invite.inviteId);
+      setInviteActionType("resend");
+
+      const res = await fetch(
+        `/api/workspaces/${workspaceId}/members/invites/${invite.inviteId}/resend`,
+        {
+          method: "POST",
+        },
+      );
+
+      if (!res.ok) {
+        const payload = (await res.json().catch(() => null)) as
+          | { error?: string }
+          | null;
+        toast.error(payload?.error ?? "Failed to resend invitation.");
+        return;
+      }
+
+      toast.success("Invitation resent.");
+      await loadMembers();
+    } catch (error) {
+      console.error("Failed to resend invite", error);
+      toast.error("Something went wrong while resending invitation.");
+    } finally {
+      setInviteActionLoadingId(null);
+      setInviteActionType(null);
+    }
+  };
+
+  const handleRevokeInvite = async (invite: InviteRow): Promise<void> => {
+    if (!workspaceId || !canManageInvites) return;
+
+    const confirmed = window.confirm(
+      `Revoke invitation for ${invite.email}?`,
+    );
+    if (!confirmed) return;
+
+    try {
+      setInviteActionLoadingId(invite.inviteId);
+      setInviteActionType("revoke");
+
+      const res = await fetch(
+        `/api/workspaces/${workspaceId}/members/invites/${invite.inviteId}/revoke`,
+        {
+          method: "POST",
+        },
+      );
+
+      if (!res.ok) {
+        const payload = (await res.json().catch(() => null)) as
+          | { error?: string }
+          | null;
+        toast.error(payload?.error ?? "Failed to revoke invitation.");
+        return;
+      }
+
+      toast.success("Invitation revoked.");
+      await loadMembers();
+    } catch (error) {
+      console.error("Failed to revoke invite", error);
+      toast.error("Something went wrong while revoking invitation.");
+    } finally {
+      setInviteActionLoadingId(null);
+      setInviteActionType(null);
+    }
+  };
+
   const hasMembers = useMemo(() => members.length > 0, [members]);
+  const hasInvites = useMemo(() => invites.length > 0, [invites]);
   const disabled = true;
+
+  const renderInviteStatus = (
+    status: InviteRow["status"],
+  ): { label: string; bg: string; color: string; border: string } => {
+    if (status === "pending") {
+      return {
+        label: "Pending",
+        bg: "#FFF7E6",
+        color: "#B45309",
+        border: "#FCD34D",
+      };
+    }
+    if (status === "accepted") {
+      return {
+        label: "Accepted",
+        bg: "#ECFDF3",
+        color: "#047857",
+        border: "#A7F3D0",
+      };
+    }
+    if (status === "declined") {
+      return {
+        label: "Declined",
+        bg: "#FEF2F2",
+        color: "#B91C1C",
+        border: "#FECACA",
+      };
+    }
+    if (status === "revoked") {
+      return {
+        label: "Revoked",
+        bg: "#F8FAFC",
+        color: "#475569",
+        border: "#CBD5E1",
+      };
+    }
+    return {
+      label: "Expired",
+      bg: "#F3F4F6",
+      color: "#6B7280",
+      border: "#D1D5DB",
+    };
+  };
 
   return (
     <>
@@ -399,6 +577,169 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
               })}
             </Stack>
           )}
+
+          <Box sx={{ mt: 4 }}>
+            <Typography
+              sx={{
+                fontSize: 16,
+                fontWeight: 600,
+                mb: 1,
+              }}
+            >
+              Invitations
+            </Typography>
+            <Typography
+              sx={{
+                fontSize: 13,
+                color: theme.palette.text.secondary,
+                mb: 2,
+              }}
+            >
+              Track pending and historical workspace invitations.
+            </Typography>
+
+            {membersLoading ? (
+              <Typography sx={{ fontSize: 14, color: theme.palette.text.secondary }}>
+                Loading invitations…
+              </Typography>
+            ) : !hasInvites ? (
+              <Typography sx={{ fontSize: 14, color: theme.palette.text.secondary }}>
+                No invitations found for this workspace.
+              </Typography>
+            ) : (
+              <Stack spacing={1.6}>
+                {invites.map((invite) => {
+                  const badge = renderInviteStatus(invite.status);
+                  const loading = inviteActionLoadingId === invite.inviteId;
+                  const canResend =
+                    canManageInvites &&
+                    (invite.status === "pending" ||
+                      invite.status === "expired" ||
+                      invite.status === "declined" ||
+                      invite.status === "revoked");
+                  const canRevoke = canManageInvites && invite.status === "pending";
+
+                  return (
+                    <Box
+                      key={invite.inviteId}
+                      sx={{
+                        borderRadius: 2.5,
+                        border: "1px solid #E2E8F0",
+                        bgcolor: "#FFFFFF",
+                        px: 2,
+                        py: 1.6,
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: 2,
+                        alignItems: "center",
+                      }}
+                    >
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography
+                          sx={{
+                            fontSize: 14,
+                            fontWeight: 600,
+                            color: "#111827",
+                            mb: 0.2,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {invite.email}
+                        </Typography>
+                        <Typography sx={{ fontSize: 12.5, color: "#6B7280" }}>
+                          {invite.role} • Invited by {invite.invitedByLabel}
+                        </Typography>
+                        <Typography sx={{ fontSize: 12, color: "#9CA3AF", mt: 0.35 }}>
+                          Sent: {formatDateLabel(invite.lastSentAt ?? invite.createdAt)} •
+                          Expires: {formatDateLabel(invite.expiresAt)} • Resent: {invite.resendCount}
+                        </Typography>
+                      </Box>
+
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Box
+                          sx={{
+                            borderRadius: 999,
+                            border: `1px solid ${badge.border}`,
+                            px: 1.4,
+                            py: 0.45,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            bgcolor: badge.bg,
+                            color: badge.color,
+                            textTransform: "none",
+                          }}
+                        >
+                          {badge.label}
+                        </Box>
+
+                        <Button
+                          disableRipple
+                          size="small"
+                          disabled={!canResend || loading}
+                          onClick={() => {
+                            void handleResendInvite(invite);
+                          }}
+                          sx={{
+                            textTransform: "none",
+                            minWidth: 72,
+                            borderRadius: 999,
+                            border: "1px solid #BFDBFE",
+                            color: "#1D4ED8",
+                            bgcolor: "#EFF6FF",
+                            fontSize: 12.5,
+                            fontWeight: 600,
+                            px: 1.6,
+                            py: 0.4,
+                            "&.Mui-disabled": {
+                              borderColor: "#E5E7EB",
+                              color: "#9CA3AF",
+                              bgcolor: "#F9FAFB",
+                            },
+                          }}
+                        >
+                          {loading && inviteActionType === "resend"
+                            ? "..."
+                            : "Resend"}
+                        </Button>
+
+                        <Button
+                          disableRipple
+                          size="small"
+                          disabled={!canRevoke || loading}
+                          onClick={() => {
+                            void handleRevokeInvite(invite);
+                          }}
+                          sx={{
+                            textTransform: "none",
+                            minWidth: 72,
+                            borderRadius: 999,
+                            border: "1px solid #FECACA",
+                            color: "#B91C1C",
+                            bgcolor: "#FEF2F2",
+                            fontSize: 12.5,
+                            fontWeight: 600,
+                            px: 1.6,
+                            py: 0.4,
+                            "&.Mui-disabled": {
+                              borderColor: "#E5E7EB",
+                              color: "#9CA3AF",
+                              bgcolor: "#F9FAFB",
+                            },
+                          }}
+                        >
+                          {loading && inviteActionType === "revoke"
+                            ? "..."
+                            : "Revoke"}
+                        </Button>
+                      </Stack>
+                    </Box>
+                  );
+                })}
+              </Stack>
+            )}
+          </Box>
         </Box>
 
         <Box
@@ -470,6 +811,9 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
         open={inviteOpen}
         workspaceId={workspaceId}
         onClose={handleCloseInvite}
+        onInvited={() => {
+          void loadMembers();
+        }}
       />
     </>
   );

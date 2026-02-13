@@ -12,6 +12,8 @@ import {
 import type {
   BusinessPlan,
   BusinessPlanChapterWithSections,
+  BusinessPlanTaskWithChildren,
+  BusinessPlanTaskStatus,
   BusinessPlanSectionType,
   BusinessPlanSectionContent,
   BusinessPlanChapterId,
@@ -27,7 +29,9 @@ type BusinessPlanContextValue = {
   // Data
   businessPlan: BusinessPlan | null;
   chapters: BusinessPlanChapterWithSections[];
+  tasks: BusinessPlanTaskWithChildren[];
   isLoading: boolean;
+  isTasksLoading: boolean;
   error: string | null;
 
   // Selected state
@@ -38,6 +42,7 @@ type BusinessPlanContextValue = {
 
   // Actions
   refreshData: () => Promise<void>;
+  refreshTasks: () => Promise<void>;
   updateBusinessPlanTitle: (title: string) => Promise<void>;
   addChapter: (title: string, parentChapterId?: string | null) => Promise<void>;
   updateChapter: (chapterId: string, title: string) => Promise<void>;
@@ -54,6 +59,23 @@ type BusinessPlanContextValue = {
   ) => Promise<void>;
   reorderSections: (chapterId: string, orderedSectionIds: string[]) => Promise<void>;
   deleteSection: (sectionId: string) => Promise<void>;
+  addTask: (params: {
+    title: string;
+    hierarchyLevel: "h1" | "h2";
+    parentTaskId?: string | null;
+    instructions?: string;
+    aiPrompt?: string;
+  }) => Promise<void>;
+  updateTask: (
+    taskId: string,
+    updates: {
+      title?: string;
+      instructions?: string;
+      aiPrompt?: string;
+      status?: BusinessPlanTaskStatus;
+    }
+  ) => Promise<void>;
+  deleteTask: (taskId: string) => Promise<void>;
 
   // AI chat state
   conversationId: BusinessPlanAiConversationId | null;
@@ -91,7 +113,9 @@ export const BusinessPlanProvider: FC<BusinessPlanProviderProps> = ({
 }) => {
   const [businessPlan, setBusinessPlan] = useState<BusinessPlan | null>(null);
   const [chapters, setChapters] = useState<BusinessPlanChapterWithSections[]>([]);
+  const [tasks, setTasks] = useState<BusinessPlanTaskWithChildren[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isTasksLoading, setIsTasksLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedChapterId, setSelectedChapterId] = useState<BusinessPlanChapterId | null>(null);
   const [selectedSectionId, setSelectedSectionId] = useState<BusinessPlanSectionId | null>(null);
@@ -127,10 +151,36 @@ export const BusinessPlanProvider: FC<BusinessPlanProviderProps> = ({
     }
   }, [workspaceId]);
 
+  const refreshTasks = useCallback(async () => {
+    try {
+      setIsTasksLoading(true);
+
+      const response = await fetch(`/api/workspaces/${workspaceId}/business-plan/tasks`);
+      if (!response.ok) {
+        throw new Error("Failed to load business plan tasks");
+      }
+
+      const data = (await response.json()) as {
+        businessPlanId: string;
+        tasks: BusinessPlanTaskWithChildren[];
+      };
+      setTasks(data.tasks ?? []);
+    } catch (err) {
+      console.error("Error loading business plan tasks:", err);
+      setError(err instanceof Error ? err.message : "Failed to load business plan tasks");
+    } finally {
+      setIsTasksLoading(false);
+    }
+  }, [workspaceId]);
+
   // Load data on mount
   useEffect(() => {
     void refreshData();
   }, [refreshData]);
+
+  useEffect(() => {
+    void refreshTasks();
+  }, [refreshTasks]);
 
   // Update business plan title
   const updateBusinessPlanTitle = useCallback(
@@ -411,6 +461,86 @@ export const BusinessPlanProvider: FC<BusinessPlanProviderProps> = ({
     [workspaceId, refreshData]
   );
 
+  const addTask = useCallback(
+    async (params: {
+      title: string;
+      hierarchyLevel: "h1" | "h2";
+      parentTaskId?: string | null;
+      instructions?: string;
+      aiPrompt?: string;
+    }) => {
+      if (!businessPlan) {
+        throw new Error("Business plan is not ready yet.");
+      }
+
+      const response = await fetch(`/api/workspaces/${workspaceId}/business-plan/tasks`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          businessPlanId: businessPlan.id,
+          title: params.title,
+          parentTaskId: params.parentTaskId ?? null,
+          instructions: params.instructions,
+          aiPrompt: params.aiPrompt,
+          hierarchyLevel: params.hierarchyLevel,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create task");
+      }
+
+      await refreshTasks();
+    },
+    [workspaceId, businessPlan, refreshTasks]
+  );
+
+  const updateTask = useCallback(
+    async (
+      taskId: string,
+      updates: {
+        title?: string;
+        instructions?: string;
+        aiPrompt?: string;
+        status?: BusinessPlanTaskStatus;
+      }
+    ) => {
+      const response = await fetch(
+        `/api/workspaces/${workspaceId}/business-plan/tasks/${taskId}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updates),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to update task");
+      }
+
+      await refreshTasks();
+    },
+    [workspaceId, refreshTasks]
+  );
+
+  const deleteTask = useCallback(
+    async (taskId: string) => {
+      const response = await fetch(
+        `/api/workspaces/${workspaceId}/business-plan/tasks/${taskId}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to delete task");
+      }
+
+      await refreshTasks();
+    },
+    [workspaceId, refreshTasks]
+  );
+
   const refreshChat = useCallback(async () => {
     try {
       setIsChatLoading(true);
@@ -529,13 +659,14 @@ export const BusinessPlanProvider: FC<BusinessPlanProviderProps> = ({
         }
 
         await refreshData();
+        await refreshTasks();
         await refreshChat();
       } catch (err) {
         console.error("Error accepting pending change:", err);
         setChatError(err instanceof Error ? err.message : "Failed to accept change");
       }
     },
-    [workspaceId, refreshData, refreshChat]
+    [workspaceId, refreshData, refreshTasks, refreshChat]
   );
 
   const rejectPendingChange = useCallback(
@@ -566,13 +697,16 @@ export const BusinessPlanProvider: FC<BusinessPlanProviderProps> = ({
   const value: BusinessPlanContextValue = {
     businessPlan,
     chapters,
+    tasks,
     isLoading,
+    isTasksLoading,
     error,
     selectedChapterId,
     selectedSectionId,
     setSelectedChapterId,
     setSelectedSectionId,
     refreshData,
+    refreshTasks,
     updateBusinessPlanTitle,
     addChapter,
     updateChapter,
@@ -582,6 +716,9 @@ export const BusinessPlanProvider: FC<BusinessPlanProviderProps> = ({
     updateSection,
     reorderSections,
     deleteSection,
+    addTask,
+    updateTask,
+    deleteTask,
     conversationId,
     messages,
     pendingChanges,

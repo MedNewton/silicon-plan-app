@@ -14,6 +14,7 @@ export type WorkspaceCanvasModelId = string;
 export type BusinessPlanId = string;
 export type BusinessPlanChapterId = string;
 export type BusinessPlanSectionId = string;
+export type BusinessPlanTaskId = string;
 export type BusinessPlanAiConversationId = string;
 export type BusinessPlanAiMessageId = string;
 export type BusinessPlanPendingChangeId = string;
@@ -75,6 +76,9 @@ export type BusinessPlanSectionType =
   | "page_break"
   | "empty_space";
 
+export type BusinessPlanTaskHierarchyLevel = "h1" | "h2";
+export type BusinessPlanTaskStatus = "todo" | "in_progress" | "done";
+
 export type AiMessageRole = "user" | "assistant";
 
 export type PendingChangeType =
@@ -85,7 +89,10 @@ export type PendingChangeType =
   | "add_chapter"
   | "update_chapter"
   | "delete_chapter"
-  | "reorder_chapters";
+  | "reorder_chapters"
+  | "add_task"
+  | "update_task"
+  | "delete_task";
 
 export type PendingChangeStatus = "pending" | "approved" | "rejected";
 
@@ -252,6 +259,20 @@ export type BusinessPlanSection = {
   updated_at: string;
 };
 
+export type BusinessPlanTask = {
+  id: BusinessPlanTaskId;
+  business_plan_id: BusinessPlanId;
+  parent_task_id: BusinessPlanTaskId | null;
+  title: string;
+  instructions: string;
+  ai_prompt: string;
+  hierarchy_level: BusinessPlanTaskHierarchyLevel;
+  status: BusinessPlanTaskStatus;
+  order_index: number;
+  created_at: string;
+  updated_at: string;
+};
+
 // Section content types (discriminated union based on section_type)
 // Matching database enum: section_title, subsection, text, image, table, list, comparison_table, timeline, embed, page_break, empty_space
 export type BusinessPlanSectionContent =
@@ -379,6 +400,12 @@ export type WorkspaceMemberInvite = {
   invited_by_user_id: UserId;
   expires_at: string | null;
   accepted_at: string | null;
+  declined_at: string | null;
+  declined_by_user_id: UserId | null;
+  revoked_at: string | null;
+  revoked_by_user_id: UserId | null;
+  resend_count: number;
+  last_sent_at: string | null;
   created_at: string;
 };
 
@@ -532,6 +559,28 @@ export type UpdateBusinessPlanSectionParams = {
   orderIndex?: number;
 };
 
+export type CreateBusinessPlanTaskParams = {
+  businessPlanId: BusinessPlanId;
+  parentTaskId?: BusinessPlanTaskId | null;
+  title: string;
+  instructions?: string;
+  aiPrompt?: string;
+  hierarchyLevel: BusinessPlanTaskHierarchyLevel;
+  status?: BusinessPlanTaskStatus;
+  orderIndex?: number;
+};
+
+export type UpdateBusinessPlanTaskParams = {
+  taskId: BusinessPlanTaskId;
+  parentTaskId?: BusinessPlanTaskId | null;
+  title?: string;
+  instructions?: string;
+  aiPrompt?: string;
+  hierarchyLevel?: BusinessPlanTaskHierarchyLevel;
+  status?: BusinessPlanTaskStatus;
+  orderIndex?: number;
+};
+
 export type CreateAiConversationParams = {
   businessPlanId: BusinessPlanId;
   userId: UserId;
@@ -566,6 +615,10 @@ export type BusinessPlanWithChapters = {
 export type BusinessPlanChapterWithSections = BusinessPlanChapter & {
   sections: BusinessPlanSection[];
   children?: BusinessPlanChapterWithSections[];
+};
+
+export type BusinessPlanTaskWithChildren = BusinessPlanTask & {
+  children?: BusinessPlanTaskWithChildren[];
 };
 
 export type AiConversationWithMessages = {

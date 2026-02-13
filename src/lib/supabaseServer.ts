@@ -12,6 +12,7 @@ import type {
   BusinessPlan,
   BusinessPlanChapter,
   BusinessPlanSection,
+  BusinessPlanTask,
   BusinessPlanAiConversation,
   BusinessPlanAiMessage,
   BusinessPlanPendingChange,
@@ -211,6 +212,12 @@ export type Database = {
           invited_by_user_id: string;
           expires_at?: string | null;
           accepted_at?: string | null;
+          declined_at?: string | null;
+          declined_by_user_id?: string | null;
+          revoked_at?: string | null;
+          revoked_by_user_id?: string | null;
+          resend_count?: number;
+          last_sent_at?: string | null;
           created_at?: string;
         };
         Update: {
@@ -222,6 +229,12 @@ export type Database = {
           invited_by_user_id?: string;
           expires_at?: string | null;
           accepted_at?: string | null;
+          declined_at?: string | null;
+          declined_by_user_id?: string | null;
+          revoked_at?: string | null;
+          revoked_by_user_id?: string | null;
+          resend_count?: number;
+          last_sent_at?: string | null;
           created_at?: string;
         };
         Relationships: [
@@ -398,6 +411,49 @@ export type Database = {
             foreignKeyName: "business_plan_sections_chapter_id_fkey";
             columns: ["chapter_id"];
             referencedRelation: "business_plan_chapters";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      business_plan_tasks: {
+        Row: BusinessPlanTask;
+        Insert: {
+          id?: string;
+          business_plan_id: string;
+          parent_task_id?: string | null;
+          title: string;
+          instructions?: string;
+          ai_prompt?: string;
+          hierarchy_level: BusinessPlanTask["hierarchy_level"];
+          status?: BusinessPlanTask["status"];
+          order_index?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          business_plan_id?: string;
+          parent_task_id?: string | null;
+          title?: string;
+          instructions?: string;
+          ai_prompt?: string;
+          hierarchy_level?: BusinessPlanTask["hierarchy_level"];
+          status?: BusinessPlanTask["status"];
+          order_index?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "business_plan_tasks_business_plan_id_fkey";
+            columns: ["business_plan_id"];
+            referencedRelation: "workspace_business_plans";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "business_plan_tasks_parent_task_id_fkey";
+            columns: ["parent_task_id"];
+            referencedRelation: "business_plan_tasks";
             referencedColumns: ["id"];
           },
         ];

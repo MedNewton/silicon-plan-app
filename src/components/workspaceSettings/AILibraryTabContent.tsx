@@ -6,8 +6,11 @@ import {
   Box,
   Button,
   Chip,
+  CircularProgress,
   IconButton,
+  TextField,
   Stack,
+  Tooltip,
   Typography,
   Select,
   MenuItem,
@@ -17,7 +20,6 @@ import {
 import AutorenewOutlinedIcon from "@mui/icons-material/AutorenewOutlined";
 import CheckCircleOutlineOutlinedIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
-import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
 import CloseOutlinedIcon from "@mui/icons-material/CloseOutlined";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
@@ -109,6 +111,14 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
     [],
   );
   const [knowledgeLoading, setKnowledgeLoading] = useState<boolean>(false);
+  const [editingKnowledgeId, setEditingKnowledgeId] = useState<string | null>(
+    null,
+  );
+  const [editingKnowledgeLabel, setEditingKnowledgeLabel] = useState("");
+  const [editingKnowledgeValue, setEditingKnowledgeValue] = useState("");
+  const [knowledgeSavingId, setKnowledgeSavingId] = useState<string | null>(
+    null,
+  );
 
   const [rowsPerPage, setRowsPerPage] = useState<number>(10);
   const [currentPage, setCurrentPage] = useState<number>(0);
@@ -247,10 +257,77 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
       }
 
       setKnowledgeEntries((prev) => prev.filter((item) => item.id !== id));
+      if (editingKnowledgeId === id) {
+        setEditingKnowledgeId(null);
+        setEditingKnowledgeLabel("");
+        setEditingKnowledgeValue("");
+      }
       toast.success("Knowledge item deleted.");
     } catch (error) {
       console.error("Error deleting knowledge item", error);
       toast.error("Something went wrong while deleting the knowledge item.");
+    }
+  };
+
+  const startEditingKnowledge = (entry: KnowledgeEntry): void => {
+    setEditingKnowledgeId(entry.id);
+    setEditingKnowledgeLabel(entry.label);
+    setEditingKnowledgeValue(entry.value);
+  };
+
+  const cancelEditingKnowledge = (): void => {
+    setEditingKnowledgeId(null);
+    setEditingKnowledgeLabel("");
+    setEditingKnowledgeValue("");
+  };
+
+  const saveEditingKnowledge = async (): Promise<void> => {
+    if (!effectiveWorkspaceId || !editingKnowledgeId) return;
+
+    const label = editingKnowledgeLabel.trim();
+    const value = editingKnowledgeValue.trim();
+
+    if (!label || !value) {
+      toast.error("Both title and description are required.");
+      return;
+    }
+
+    try {
+      setKnowledgeSavingId(editingKnowledgeId);
+
+      const res = await fetch(
+        `/api/workspaces/${effectiveWorkspaceId}/ai-library/knowledge/${editingKnowledgeId}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ label, value }),
+        },
+      );
+
+      const payload = (await res.json().catch(() => null)) as
+        | { error?: string; knowledge?: WorkspaceAiKnowledge }
+        | null;
+
+      if (!res.ok || !payload?.knowledge) {
+        toast.error(payload?.error ?? "Failed to update knowledge item.");
+        return;
+      }
+
+      const updated = payload.knowledge;
+      setKnowledgeEntries((prev) =>
+        prev.map((entry) =>
+          entry.id === updated.id
+            ? { ...entry, label: updated.label, value: updated.value }
+            : entry,
+        ),
+      );
+      toast.success("Knowledge item updated.");
+      cancelEditingKnowledge();
+    } catch (error) {
+      console.error("Error updating knowledge item", error);
+      toast.error("Something went wrong while updating the knowledge item.");
+    } finally {
+      setKnowledgeSavingId(null);
     }
   };
 
@@ -522,9 +599,21 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
               >
                 <Stack direction="row" spacing={1.5} alignItems="center">
                   {renderTypeBadge(doc.type)}
-                  <Typography sx={{ fontSize: 14.5, fontWeight: 500 }}>
-                    {doc.name}
-                  </Typography>
+                  <Tooltip title={doc.name} placement="top" arrow>
+                    <Typography
+                      sx={{
+                        fontSize: 14.5,
+                        fontWeight: 500,
+                        minWidth: 0,
+                        maxWidth: 300,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {doc.name}
+                    </Typography>
+                  </Tooltip>
                 </Stack>
 
                 <Typography
@@ -660,94 +749,150 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
     );
   };
 
-  const renderKnowledgeCard = (entry: KnowledgeEntry) => (
-    <Box
-      key={entry.id}
-      sx={{
-        borderRadius: 3,
-        border: "1px solid #E1E6F5",
-        bgcolor: "#FFFFFF",
-        px: 3,
-        py: 2.4,
-      }}
-    >
+  const renderKnowledgeCard = (entry: KnowledgeEntry) => {
+    const isEditing = editingKnowledgeId === entry.id;
+    const isSaving = knowledgeSavingId === entry.id;
+
+    return (
       <Box
+        key={entry.id}
         sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          mb: 1.2,
+          borderRadius: 3,
+          border: "1px solid #E1E6F5",
+          bgcolor: "#FFFFFF",
+          px: 3,
+          py: 2.4,
         }}
       >
-        <Typography
+        <Box
           sx={{
-            fontSize: 12,
-            fontWeight: 600,
-            color: "#64748B",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            mb: 1.2,
+            gap: 1,
           }}
         >
-          {entry.label}
-        </Typography>
+          {isEditing ? (
+            <TextField
+              size="small"
+              value={editingKnowledgeLabel}
+              onChange={(event) => setEditingKnowledgeLabel(event.target.value)}
+              placeholder="Title"
+              sx={{
+                minWidth: 240,
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: 2,
+                  fontSize: 13.5,
+                },
+              }}
+            />
+          ) : (
+            <Typography
+              sx={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: "#64748B",
+                wordBreak: "break-word",
+              }}
+            >
+              {entry.label}
+            </Typography>
+          )}
 
-        <Stack direction="row" spacing={0.6} alignItems="center">
-          <IconButton
-            size="small"
+          <Stack direction="row" spacing={0.6} alignItems="center">
+            {!isEditing ? (
+              <IconButton
+                size="small"
+                onClick={() => startEditingKnowledge(entry)}
+                sx={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 999,
+                  border: "1px solid #E5E7EB",
+                  bgcolor: "#FFFFFF",
+                  color: "#4B5563",
+                }}
+              >
+                <EditOutlinedIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            ) : (
+              <Button
+                disableRipple
+                size="small"
+                onClick={() => {
+                  void saveEditingKnowledge();
+                }}
+                disabled={isSaving}
+                sx={{
+                  textTransform: "none",
+                  fontSize: 12.5,
+                  minWidth: 68,
+                  borderRadius: 999,
+                  px: 1.4,
+                  py: 0.3,
+                  border: "1px solid #BFDBFE",
+                  bgcolor: "#EFF6FF",
+                  color: "#1D4ED8",
+                }}
+              >
+                {isSaving ? <CircularProgress size={14} /> : "Save"}
+              </Button>
+            )}
+
+            <IconButton
+              size="small"
+              onClick={() => {
+                if (isEditing) {
+                  cancelEditingKnowledge();
+                  return;
+                }
+                void handleDeleteKnowledge(entry.id);
+              }}
+              sx={{
+                width: 28,
+                height: 28,
+                borderRadius: 999,
+                border: "1px solid #FCA5A5",
+                bgcolor: isEditing ? "#F8FAFC" : "#FFF5F5",
+                color: isEditing ? "#64748B" : "#DC2626",
+              }}
+            >
+              <CloseOutlinedIcon sx={{ fontSize: 15 }} />
+            </IconButton>
+          </Stack>
+        </Box>
+
+        {isEditing ? (
+          <TextField
+            fullWidth
+            multiline
+            minRows={3}
+            value={editingKnowledgeValue}
+            onChange={(event) => setEditingKnowledgeValue(event.target.value)}
+            placeholder="Description"
             sx={{
-              width: 28,
-              height: 28,
-              borderRadius: 999,
-              border: "1px solid #CBD5F1",
-              bgcolor: "#F6F8FF",
-              color: "#4C6AD2",
+              "& .MuiOutlinedInput-root": {
+                borderRadius: 2,
+                fontSize: 13.5,
+              },
+            }}
+          />
+        ) : (
+          <Typography
+            sx={{
+              fontSize: 13.5,
+              whiteSpace: "pre-line",
+              color: "#111827",
+              wordBreak: "break-word",
             }}
           >
-            <AutoAwesomeOutlinedIcon sx={{ fontSize: 16 }} />
-          </IconButton>
-
-          <IconButton
-            size="small"
-            sx={{
-              width: 28,
-              height: 28,
-              borderRadius: 999,
-              border: "1px solid #E5E7EB",
-              bgcolor: "#FFFFFF",
-              color: "#4B5563",
-            }}
-          >
-            <EditOutlinedIcon sx={{ fontSize: 16 }} />
-          </IconButton>
-
-          <IconButton
-            size="small"
-            onClick={() => {
-              void handleDeleteKnowledge(entry.id);
-            }}
-            sx={{
-              width: 28,
-              height: 28,
-              borderRadius: 999,
-              border: "1px solid #FCA5A5",
-              bgcolor: "#FFF5F5",
-              color: "#DC2626",
-            }}
-          >
-            <CloseOutlinedIcon sx={{ fontSize: 15 }} />
-          </IconButton>
-        </Stack>
+            {entry.value}
+          </Typography>
+        )}
       </Box>
-
-      <Typography
-        sx={{
-          fontSize: 13.5,
-          whiteSpace: "pre-line",
-          color: "#111827",
-        }}
-      >
-        {entry.value}
-      </Typography>
-    </Box>
-  );
+    );
+  };
 
   const renderKnowledgeView = () => (
     <Box

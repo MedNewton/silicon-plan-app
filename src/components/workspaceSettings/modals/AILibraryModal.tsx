@@ -12,6 +12,7 @@ import {
   IconButton,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 
@@ -60,6 +61,7 @@ const AILibraryModal: FC<AILibraryModalProps> = ({
   const [activeTab, setActiveTab] = useState<AILibraryModalTab>(initialTab);
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isDragActive, setIsDragActive] = useState(false);
   const [notesTitle, setNotesTitle] = useState<string>("");
   const [notesDescription, setNotesDescription] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -72,6 +74,7 @@ const AILibraryModal: FC<AILibraryModalProps> = ({
   const resetState = () => {
     setSelectedFileName(null);
     setSelectedFile(null);
+    setIsDragActive(false);
     setNotesTitle("");
     setNotesDescription("");
     setIsSubmitting(false);
@@ -202,6 +205,11 @@ const AILibraryModal: FC<AILibraryModalProps> = ({
     }
   };
 
+  const applySelectedFile = (file: File | null): void => {
+    setSelectedFile(file);
+    setSelectedFileName(file?.name ?? null);
+  };
+
   const renderTabs = () => (
     <Box
       sx={{
@@ -269,12 +277,28 @@ const AILibraryModal: FC<AILibraryModalProps> = ({
     >
       <Box
         component="label"
+        onDragOver={(event) => {
+          event.preventDefault();
+          if (isSubmitting) return;
+          setIsDragActive(true);
+        }}
+        onDragLeave={(event) => {
+          event.preventDefault();
+          setIsDragActive(false);
+        }}
+        onDrop={(event) => {
+          event.preventDefault();
+          if (isSubmitting) return;
+          const dropped = event.dataTransfer.files?.[0] ?? null;
+          applySelectedFile(dropped);
+          setIsDragActive(false);
+        }}
         sx={{
           borderRadius: 4,
           border: "1.5px dashed #93C5FD",
           borderStyle: "dashed",
-          borderColor: "#93C5FD",
-          bgcolor: "#F9FAFF",
+          borderColor: isDragActive ? "#4C6AD2" : "#93C5FD",
+          bgcolor: isDragActive ? "#EEF2FF" : "#F9FAFF",
           px: 3,
           py: 8,
           display: "flex",
@@ -314,7 +338,7 @@ const AILibraryModal: FC<AILibraryModalProps> = ({
             mt: 0.5,
           }}
         >
-          PDF, XLX, XLSX, PPT, PPTX, TXT, DOC, DOCX (max. 3MB)
+          PDF, XLS, XLSX, PPT, PPTX, TXT, DOC, DOCX, CSV (max. 3MB)
         </Typography>
 
         <input
@@ -323,26 +347,27 @@ const AILibraryModal: FC<AILibraryModalProps> = ({
           accept=".pdf,.txt,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.csv"
           onChange={(event) => {
             const file = event.target.files?.[0] ?? null;
-            setSelectedFile(file);
-            if (file) {
-              setSelectedFileName(file.name);
-            } else {
-              setSelectedFileName(null);
-            }
+            applySelectedFile(file);
           }}
         />
       </Box>
 
       {selectedFileName && (
-        <Typography
-          sx={{
-            mt: 1.5,
-            fontSize: 13,
-            color: "#4B5563",
-          }}
-        >
-          Selected file: <strong>{selectedFileName}</strong>
-        </Typography>
+        <Tooltip title={selectedFileName} placement="top" arrow>
+          <Typography
+            sx={{
+              mt: 1.5,
+              fontSize: 13,
+              color: "#4B5563",
+              maxWidth: "100%",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Selected file: <strong>{selectedFileName}</strong>
+          </Typography>
+        </Tooltip>
       )}
     </Box>
   );

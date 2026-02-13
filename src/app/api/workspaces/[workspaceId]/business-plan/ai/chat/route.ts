@@ -12,6 +12,10 @@ import {
   createPendingChange,
   getBusinessPlanWithChapters,
 } from "@/server/businessPlan";
+import {
+  ensureDefaultBusinessPlanTasks,
+  getBusinessPlanTaskTree,
+} from "@/server/businessPlanTasks";
 import { buildBusinessPlanContext, buildBusinessPlanSystemPrompt } from "@/lib/businessPlanAi";
 import { getWorkspaceAiContext } from "@/lib/workspaceAiContext";
 import type {
@@ -112,6 +116,59 @@ const tools: ChatCompletionTool[] = [
           sectionId: { type: "string" },
         },
         required: ["sectionId"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "propose_add_task",
+      description: "Propose adding a new task in the H1/H2 task hierarchy",
+      parameters: {
+        type: "object",
+        properties: {
+          title: { type: "string" },
+          hierarchyLevel: { type: "string", enum: ["h1", "h2"] },
+          parentTaskId: { type: "string", nullable: true },
+          instructions: { type: "string" },
+          aiPrompt: { type: "string" },
+          status: { type: "string", enum: ["todo", "in_progress", "done"] },
+        },
+        required: ["title"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "propose_update_task",
+      description: "Propose updating an existing task",
+      parameters: {
+        type: "object",
+        properties: {
+          taskId: { type: "string" },
+          title: { type: "string" },
+          instructions: { type: "string" },
+          aiPrompt: { type: "string" },
+          hierarchyLevel: { type: "string", enum: ["h1", "h2"] },
+          parentTaskId: { type: "string", nullable: true },
+          status: { type: "string", enum: ["todo", "in_progress", "done"] },
+        },
+        required: ["taskId"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "propose_delete_task",
+      description: "Propose deleting an existing task",
+      parameters: {
+        type: "object",
+        properties: {
+          taskId: { type: "string" },
+        },
+        required: ["taskId"],
       },
     },
   },
@@ -223,6 +280,90 @@ const isSameContent = (
   }
 };
 
+const normalizeTaskHierarchyLevel = (value: unknown): "h1" | "h2" => {
+  if (typeof value !== "string") return "h2";
+  const normalized = value.trim().toLowerCase();
+  return normalized === "h1" ? "h1" : "h2";
+};
+
+const normalizeTaskStatus = (value: unknown): "todo" | "in_progress" | "done" | undefined => {
+  if (typeof value !== "string") return undefined;
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "todo" || normalized === "in_progress" || normalized === "done") {
+    return normalized;
+  }
+  return undefined;
+};
+
+const flattenTasks = (
+  tasks: Array<{ id: string; title: string; hierarchy_level: string; children?: unknown[] }>
+): Array<{ id: string; title: string; hierarchy_level: string; parentTaskId: string | null }> => {
+  const list: Array<{
+    id: string;
+    title: string;
+    hierarchy_level: string;
+    parentTaskId: string | null;
+  }> = [];
+  const visit = (
+    nodes: Array<{ id: string; title: string; hierarchy_level: string; children?: unknown[] }>,
+    parentTaskId: string | null
+  ) => {
+    for (const node of nodes) {
+      list.push({
+        id: node.id,
+        title: node.title,
+        hierarchy_level: node.hierarchy_level,
+        parentTaskId,
+      });
+      if (Array.isArray(node.children) && node.children.length > 0) {
+        visit(
+          node.children as Array<{
+            id: string;
+            title: string;
+            hierarchy_level: string;
+            children?: unknown[];
+          }>,
+          node.id
+        );
+      }
+    }
+  };
+
+  visit(tasks, null);
+  return list;
+};
+
+const buildTaskContextLines = (
+  tasks: Array<{ id: string; title: string; hierarchy_level: string; children?: unknown[] }>
+): string[] => {
+  const lines: string[] = [];
+  const visit = (
+    nodes: Array<{ id: string; title: string; hierarchy_level: string; children?: unknown[] }>,
+    depth: number
+  ) => {
+    for (const node of nodes) {
+      const indent = "  ".repeat(depth);
+      lines.push(
+        `${indent}- Task ${node.hierarchy_level.toUpperCase()}: ${node.title} (id: ${node.id})`
+      );
+      if (Array.isArray(node.children) && node.children.length > 0) {
+        visit(
+          node.children as Array<{
+            id: string;
+            title: string;
+            hierarchy_level: string;
+            children?: unknown[];
+          }>,
+          depth + 1
+        );
+      }
+    }
+  };
+
+  visit(tasks, 0);
+  return lines;
+};
+
 const extractQuotedUpdate = (message: string): string | null => {
   const match = /["“](.+?)["”]/.exec(message);
   if (!match) return null;
@@ -237,6 +378,9 @@ const TOOL_TO_CHANGE: Record<string, PendingChangeType> = {
   propose_add_section: "add_section",
   propose_update_section: "update_section",
   propose_delete_section: "delete_section",
+  propose_add_task: "add_task",
+  propose_update_task: "update_task",
+  propose_delete_task: "delete_task",
 };
 
 export async function POST(
@@ -287,12 +431,29 @@ export async function POST(
       userId,
     });
 
+    await ensureDefaultBusinessPlanTasks({
+      businessPlanId: businessPlan.id,
+      userId,
+    });
+    const taskTree = await getBusinessPlanTaskTree({
+      workspaceId,
+      userId,
+    });
+    const taskContextLines = buildTaskContextLines(taskTree?.tasks ?? []);
+    const flattenedTasks = flattenTasks(taskTree?.tasks ?? []);
+
     const context = buildBusinessPlanContext({
       businessPlan: planData?.businessPlan ?? null,
       chapters: planData?.chapters ?? [],
     });
     const workspaceContext = await getWorkspaceAiContext(workspaceId);
-    const combinedContext = [context, workspaceContext.context].filter(Boolean).join("\n\n");
+    const tasksContext = [
+      "Current task hierarchy:",
+      taskContextLines.length > 0 ? taskContextLines.join("\n") : "- No tasks yet",
+    ].join("\n");
+    const combinedContext = [context, tasksContext, workspaceContext.context]
+      .filter(Boolean)
+      .join("\n\n");
     const systemPrompt = buildBusinessPlanSystemPrompt(combinedContext);
 
     const historyMessages: Array<{ role: "user" | "assistant"; content: string }> = [];
@@ -426,14 +587,97 @@ export async function POST(
           proposedData = {};
           break;
         }
+        case "propose_add_task": {
+          const hierarchyLevel = normalizeTaskHierarchyLevel(args.hierarchyLevel);
+          const requestedParentTaskId =
+            typeof args.parentTaskId === "string" ? args.parentTaskId : null;
+          let parentTaskId: string | null = requestedParentTaskId;
+
+          if (hierarchyLevel === "h2" && !parentTaskId) {
+            const firstH1 = flattenedTasks.find((task) => task.hierarchy_level === "h1");
+            parentTaskId = firstH1?.id ?? null;
+          }
+
+          if (hierarchyLevel === "h2" && !parentTaskId) {
+            skippedUpdates.push(
+              "I couldn't determine which H1 chapter should own this H2 task."
+            );
+            break;
+          }
+
+          proposedData = {
+            title: typeof args.title === "string" ? args.title : "New Task",
+            instructions:
+              typeof args.instructions === "string" ? args.instructions : "",
+            ai_prompt: typeof args.aiPrompt === "string" ? args.aiPrompt : "",
+            hierarchy_level: hierarchyLevel,
+            parent_task_id: hierarchyLevel === "h2" ? parentTaskId : null,
+            status: normalizeTaskStatus(args.status) ?? "todo",
+          };
+          break;
+        }
+        case "propose_update_task": {
+          targetId = (args.taskId as string) ?? null;
+          if (!targetId && typeof args.title === "string") {
+            const requestedTitle = args.title.toLowerCase();
+            const byTitle = flattenedTasks.find(
+              (task) => task.title.toLowerCase() === requestedTitle
+            );
+            targetId = byTitle?.id ?? null;
+          }
+
+          if (!targetId) {
+            skippedUpdates.push("I couldn't find the target task to update.");
+            break;
+          }
+
+          const nextLevel =
+            args.hierarchyLevel !== undefined
+              ? normalizeTaskHierarchyLevel(args.hierarchyLevel)
+              : undefined;
+          const nextParent =
+            typeof args.parentTaskId === "string" ? args.parentTaskId : undefined;
+          const nextStatus = normalizeTaskStatus(args.status);
+
+          proposedData = {
+            ...(typeof args.title === "string" ? { title: args.title } : {}),
+            ...(typeof args.instructions === "string"
+              ? { instructions: args.instructions }
+              : {}),
+            ...(typeof args.aiPrompt === "string" ? { ai_prompt: args.aiPrompt } : {}),
+            ...(nextLevel ? { hierarchy_level: nextLevel } : {}),
+            ...(nextParent !== undefined ? { parent_task_id: nextParent } : {}),
+            ...(nextStatus ? { status: nextStatus } : {}),
+          };
+
+          break;
+        }
+        case "propose_delete_task": {
+          targetId = (args.taskId as string) ?? null;
+          if (!targetId && typeof args.title === "string") {
+            const requestedTitle = args.title.toLowerCase();
+            const byTitle = flattenedTasks.find(
+              (task) => task.title.toLowerCase() === requestedTitle
+            );
+            targetId = byTitle?.id ?? null;
+          }
+          if (!targetId) {
+            skippedUpdates.push("I couldn't find the target task to delete.");
+            break;
+          }
+          proposedData = {};
+          break;
+        }
         default:
           break;
       }
 
       const hasProposedData = Object.keys(proposedData).length > 0;
-      if (changeType === "update_section" && !hasProposedData) {
+      if ((changeType === "update_section" || changeType === "update_task") && !hasProposedData) {
         skippedUpdates.push(
-          "I couldn't generate an updated section payload. Please provide the exact text to replace."
+          changeType === "update_task"
+            ? "I couldn't generate an updated task payload."
+            : "I couldn't generate an updated section payload. Please provide the exact text to replace."
         );
         continue;
       }

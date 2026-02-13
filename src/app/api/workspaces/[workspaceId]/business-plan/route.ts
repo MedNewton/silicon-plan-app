@@ -7,6 +7,7 @@ import {
   getBusinessPlanWithChapters,
   updateBusinessPlan,
 } from "@/server/businessPlan";
+import { ensureDefaultBusinessPlanTasks } from "@/server/businessPlanTasks";
 import type { BusinessPlanStatus, BusinessPlanExportSettings } from "@/types/workspaces";
 
 // ---------- GET: get business plan with all chapters and sections ----------
@@ -39,11 +40,21 @@ export async function GET(
         userId,
       });
 
+      await ensureDefaultBusinessPlanTasks({
+        businessPlanId: businessPlan.id,
+        userId,
+      });
+
       return NextResponse.json({
         businessPlan,
         chapters: [],
       });
     }
+
+    await ensureDefaultBusinessPlanTasks({
+      businessPlanId: result.businessPlan.id,
+      userId,
+    });
 
     return NextResponse.json(result);
   } catch (error) {

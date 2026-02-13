@@ -15,6 +15,7 @@ import type {
   WorkspaceAiDocument,
   WorkspaceAiKnowledge,
   WorkspaceAiLibraryEvent,
+  WorkspaceMemberInvite,
   WorkspaceAiDocumentStatus,
   CreateWorkspaceAiDocumentParams,
   UpsertWorkspaceAiKnowledgeParams,
@@ -27,6 +28,17 @@ type Supa = SupabaseClient<SupabaseDb>;
 type Tables = SupabaseDb["public"]["Tables"];
 
 // ========== SMALL HELPERS ==========
+
+function isTransientSupabaseNetworkError(message: string | undefined): boolean {
+  if (!message) return false;
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes("fetch failed") ||
+    normalized.includes("network") ||
+    normalized.includes("timeout") ||
+    normalized.includes("econnreset")
+  );
+}
 
 function mapWorkspaceRow(row: unknown): Workspace {
   const r = row as Workspace;
@@ -175,16 +187,24 @@ export async function createWorkspace(
 export async function getWorkspacesForUser(
   userId: UserId,
 ): Promise<Workspace[]> {
-  const client = getSupabaseClient();
-
-  const {
-    data: membershipRows,
-    error: membershipError,
-  } = await client
+  let membershipResult = await getSupabaseClient()
     .from("workspace_members")
     .select("workspace_id")
     .eq("user_id", userId)
     .eq("status", "active");
+
+  if (membershipResult.error && isTransientSupabaseNetworkError(membershipResult.error.message)) {
+    console.warn(
+      "Transient Supabase error while loading workspace memberships, retrying once with fresh client.",
+    );
+    membershipResult = await getSupabaseClient({ fresh: true })
+      .from("workspace_members")
+      .select("workspace_id")
+      .eq("user_id", userId)
+      .eq("status", "active");
+  }
+
+  const { data: membershipRows, error: membershipError } = membershipResult;
 
   if (membershipError) {
     throw new Error(
@@ -198,14 +218,24 @@ export async function getWorkspacesForUser(
 
   const workspaceIds = membershipRows.map((row) => row.workspace_id);
 
-  const {
-    data: workspacesData,
-    error: workspacesError,
-  } = await client
+  let workspacesResult = await getSupabaseClient()
     .from("workspaces")
     .select("*")
     .in("id", workspaceIds)
     .order("created_at", { ascending: false });
+
+  if (workspacesResult.error && isTransientSupabaseNetworkError(workspacesResult.error.message)) {
+    console.warn(
+      "Transient Supabase error while loading workspaces, retrying once with fresh client.",
+    );
+    workspacesResult = await getSupabaseClient({ fresh: true })
+      .from("workspaces")
+      .select("*")
+      .in("id", workspaceIds)
+      .order("created_at", { ascending: false });
+  }
+
+  const { data: workspacesData, error: workspacesError } = workspacesResult;
 
   if (workspacesError || !workspacesData) {
     throw new Error(
@@ -433,6 +463,37 @@ export type WorkspaceMembersForSettingsResult = {
     role: WorkspaceRole;
     isOwner: boolean;
   }[];
+  invites: {
+    inviteId: string;
+    email: string;
+    role: WorkspaceRole;
+    status: "pending" | "accepted" | "declined" | "expired" | "revoked";
+    invitedByUserId: UserId;
+    invitedByName: string | null;
+    invitedByEmail: string | null;
+    createdAt: string;
+    expiresAt: string | null;
+    acceptedAt: string | null;
+    declinedAt: string | null;
+    revokedAt: string | null;
+    resendCount: number;
+    lastSentAt: string | null;
+  }[];
+};
+
+const computeInviteStatus = (invite: {
+  accepted_at: string | null;
+  declined_at: string | null;
+  revoked_at: string | null;
+  expires_at: string | null;
+}): "pending" | "accepted" | "declined" | "expired" | "revoked" => {
+  if (invite.revoked_at) return "revoked";
+  if (invite.accepted_at) return "accepted";
+  if (invite.declined_at) return "declined";
+  if (invite.expires_at && new Date(invite.expires_at) < new Date()) {
+    return "expired";
+  }
+  return "pending";
 };
 
 export async function getWorkspaceMembersForSettings(params: {
@@ -444,15 +505,22 @@ export async function getWorkspaceMembersForSettings(params: {
 
   await ensureUserHasWorkspaceAccess(client, workspaceId, userId);
 
-  const {
-    data: memberRows,
-    error: membersError,
-  } = await client
-    .from("workspace_members")
-    .select("*")
-    .eq("workspace_id", workspaceId)
-    .eq("status", "active")
-    .order("created_at", { ascending: true });
+  const [
+    { data: memberRows, error: membersError },
+    { data: inviteRows, error: invitesError },
+  ] = await Promise.all([
+    client
+      .from("workspace_members")
+      .select("*")
+      .eq("workspace_id", workspaceId)
+      .eq("status", "active")
+      .order("created_at", { ascending: true }),
+    client
+      .from("workspace_member_invites")
+      .select("*")
+      .eq("workspace_id", workspaceId)
+      .order("created_at", { ascending: false }),
+  ]);
 
   if (membersError) {
     throw new Error(
@@ -462,14 +530,24 @@ export async function getWorkspaceMembersForSettings(params: {
     );
   }
 
+  if (invitesError) {
+    throw new Error(
+      `Failed to load workspace invites: ${
+        invitesError.message ?? "Unknown error"
+      }`,
+    );
+  }
+
   const rows: WorkspaceMember[] = (memberRows ?? []).map((row) =>
     mapWorkspaceMemberRow(row),
   );
+  const invites = (inviteRows ?? []) as Tables["workspace_member_invites"]["Row"][];
 
   if (rows.length === 0) {
     return {
       currentUserRole: null,
       members: [],
+      invites: [],
     };
   }
 
@@ -481,7 +559,12 @@ export async function getWorkspaceMembersForSettings(params: {
     : null;
 
   const uniqueUserIds = Array.from(
-    new Set<UserId>(rows.map((m) => m.user_id)),
+    new Set<UserId>([
+      ...rows.map((m) => m.user_id),
+      ...invites
+        .map((invite) => invite.invited_by_user_id)
+        .filter((id): id is UserId => Boolean(id)),
+    ]),
   );
 
   const userInfoById = new Map<
@@ -531,9 +614,27 @@ export async function getWorkspaceMembersForSettings(params: {
     };
   });
 
+  const mappedInvites = invites.map((invite) => ({
+    inviteId: invite.token,
+    email: invite.email,
+    role: invite.role,
+    status: computeInviteStatus(invite),
+    invitedByUserId: invite.invited_by_user_id,
+    invitedByName: userInfoById.get(invite.invited_by_user_id)?.name ?? null,
+    invitedByEmail: userInfoById.get(invite.invited_by_user_id)?.email ?? null,
+    createdAt: invite.created_at,
+    expiresAt: invite.expires_at,
+    acceptedAt: invite.accepted_at,
+    declinedAt: invite.declined_at,
+    revokedAt: invite.revoked_at,
+    resendCount: invite.resend_count ?? 0,
+    lastSentAt: invite.last_sent_at,
+  }));
+
   return {
     currentUserRole,
     members: mappedMembers,
+    invites: mappedInvites,
   };
 }
 
@@ -609,6 +710,8 @@ export async function createWorkspaceInvite(params: {
     token,
     invited_by_user_id: inviterUserId,
     expires_at: expiresAt.toISOString(),
+    resend_count: 0,
+    last_sent_at: new Date().toISOString(),
   };
 
   const {
@@ -635,6 +738,167 @@ export async function createWorkspaceInvite(params: {
     email: normalizedEmail,
     role,
   };
+}
+
+async function assertCanManageWorkspaceInvites(params: {
+  client: Supa;
+  workspaceId: WorkspaceId;
+  userId: UserId;
+}): Promise<void> {
+  const { client, workspaceId, userId } = params;
+
+  const { data: memberRow, error: memberError } = await client
+    .from("workspace_members")
+    .select("*")
+    .eq("workspace_id", workspaceId)
+    .eq("user_id", userId)
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (memberError) {
+    throw new Error(`Failed to verify workspace member: ${memberError.message}`);
+  }
+
+  if (!memberRow) {
+    throw new Error("You are not a member of this workspace.");
+  }
+
+  const member = mapWorkspaceMemberRow(memberRow);
+  if (member.role !== "owner" && member.role !== "admin") {
+    throw new Error("Only owner or admin can manage invites.");
+  }
+}
+
+type WorkspaceInviteActionResult = {
+  inviteId: string;
+  workspaceId: WorkspaceId;
+  email: string;
+  role: WorkspaceRole;
+  expiresAt: string | null;
+};
+
+export async function resendWorkspaceInvite(params: {
+  workspaceId: WorkspaceId;
+  inviteToken: string;
+  requesterUserId: UserId;
+}): Promise<WorkspaceInviteActionResult> {
+  const { workspaceId, inviteToken, requesterUserId } = params;
+  const client = getSupabaseClient();
+
+  await assertCanManageWorkspaceInvites({
+    client,
+    workspaceId,
+    userId: requesterUserId,
+  });
+
+  const { data: inviteRow, error: inviteError } = await client
+    .from("workspace_member_invites")
+    .select("*")
+    .eq("workspace_id", workspaceId)
+    .eq("token", inviteToken)
+    .maybeSingle();
+
+  if (inviteError) {
+    throw new Error(`Failed to load invite: ${inviteError.message}`);
+  }
+  if (!inviteRow) {
+    throw new Error("Invite not found.");
+  }
+
+  const invite = inviteRow as Tables["workspace_member_invites"]["Row"];
+
+  if (invite.accepted_at) {
+    throw new Error("Cannot resend an already accepted invite.");
+  }
+
+  const newToken = randomUUID();
+  const nextExpiry = new Date();
+  nextExpiry.setDate(nextExpiry.getDate() + 7);
+  const nowIso = new Date().toISOString();
+
+  const { data: updatedRow, error: updateError } = await client
+    .from("workspace_member_invites")
+    .update({
+      token: newToken,
+      expires_at: nextExpiry.toISOString(),
+      declined_at: null,
+      declined_by_user_id: null,
+      revoked_at: null,
+      revoked_by_user_id: null,
+      resend_count: (invite.resend_count ?? 0) + 1,
+      last_sent_at: nowIso,
+    })
+    .eq("workspace_id", workspaceId)
+    .eq("token", inviteToken)
+    .select("*")
+    .single();
+
+  if (updateError || !updatedRow) {
+    throw new Error(
+      `Failed to resend invite: ${updateError?.message ?? "Unknown error"}`,
+    );
+  }
+
+  const updated = updatedRow as WorkspaceMemberInvite;
+
+  return {
+    inviteId: updated.token,
+    workspaceId,
+    email: updated.email,
+    role: updated.role,
+    expiresAt: updated.expires_at,
+  };
+}
+
+export async function revokeWorkspaceInvite(params: {
+  workspaceId: WorkspaceId;
+  inviteToken: string;
+  requesterUserId: UserId;
+}): Promise<void> {
+  const { workspaceId, inviteToken, requesterUserId } = params;
+  const client = getSupabaseClient();
+
+  await assertCanManageWorkspaceInvites({
+    client,
+    workspaceId,
+    userId: requesterUserId,
+  });
+
+  const { data: inviteRow, error: inviteError } = await client
+    .from("workspace_member_invites")
+    .select("*")
+    .eq("workspace_id", workspaceId)
+    .eq("token", inviteToken)
+    .maybeSingle();
+
+  if (inviteError) {
+    throw new Error(`Failed to load invite: ${inviteError.message}`);
+  }
+  if (!inviteRow) {
+    throw new Error("Invite not found.");
+  }
+
+  const invite = inviteRow as Tables["workspace_member_invites"]["Row"];
+
+  if (invite.accepted_at) {
+    throw new Error("Cannot revoke an accepted invite.");
+  }
+  if (invite.revoked_at) {
+    return;
+  }
+
+  const { error: revokeError } = await client
+    .from("workspace_member_invites")
+    .update({
+      revoked_at: new Date().toISOString(),
+      revoked_by_user_id: requesterUserId,
+    })
+    .eq("workspace_id", workspaceId)
+    .eq("token", inviteToken);
+
+  if (revokeError) {
+    throw new Error(`Failed to revoke invite: ${revokeError.message}`);
+  }
 }
 
 // ========== REMOVE MEMBER ==========

@@ -16,7 +16,22 @@ type RegisterPayload = {
   password: string;
 };
 
-type LoadingKey = "login" | "register" | "google" | "facebook";
+type ForgotPasswordStartPayload = {
+  email: string;
+};
+
+type ForgotPasswordResetPayload = {
+  code: string;
+  password: string;
+};
+
+type LoadingKey =
+  | "login"
+  | "register"
+  | "google"
+  | "facebook"
+  | "forgotRequest"
+  | "forgotReset";
 
 type LoadingState = Record<LoadingKey, boolean>;
 
@@ -71,6 +86,8 @@ export function useAuthCardController() {
     register: false,
     google: false,
     facebook: false,
+    forgotRequest: false,
+    forgotReset: false,
   });
 
   const [error, setError] = useState<string | null>(null);
@@ -171,6 +188,65 @@ export function useAuthCardController() {
   const handleGoogle = (): Promise<void> => handleProvider("google");
   const handleFacebook = (): Promise<void> => handleProvider("facebook");
 
+  const handleForgotPasswordSendCode = async ({
+    email,
+  }: ForgotPasswordStartPayload): Promise<boolean> => {
+    if (!isSignInLoaded || !signIn) return false;
+
+    resetError();
+    setLoading((prev) => ({ ...prev, forgotRequest: true }));
+
+    try {
+      await signIn.create({
+        strategy: "reset_password_email_code",
+        identifier: email.trim(),
+      });
+      return true;
+    } catch (err: unknown) {
+      setError(extractClerkErrorMessage(err));
+      return false;
+    } finally {
+      setLoading((prev) => ({ ...prev, forgotRequest: false }));
+    }
+  };
+
+  const handleForgotPasswordReset = async ({
+    code,
+    password,
+  }: ForgotPasswordResetPayload): Promise<boolean> => {
+    if (!isSignInLoaded || !signIn) return false;
+
+    resetError();
+    setLoading((prev) => ({ ...prev, forgotReset: true }));
+
+    try {
+      const result = await signIn.attemptFirstFactor({
+        strategy: "reset_password_email_code",
+        code: code.trim(),
+        password,
+      });
+
+      if (result.status === "complete") {
+        await setActiveFromSignIn({ session: result.createdSessionId });
+        router.replace("/");
+        return true;
+      }
+
+      if (result.status === "needs_second_factor") {
+        setError("Additional verification is required to complete reset.");
+      } else {
+        setError("Could not reset password. Please try again.");
+      }
+
+      return false;
+    } catch (err: unknown) {
+      setError(extractClerkErrorMessage(err));
+      return false;
+    } finally {
+      setLoading((prev) => ({ ...prev, forgotReset: false }));
+    }
+  };
+
   return {
     isSignedIn: Boolean(isSignedIn),
     loading,
@@ -180,5 +256,7 @@ export function useAuthCardController() {
     handleRegister,
     handleGoogle,
     handleFacebook,
+    handleForgotPasswordSendCode,
+    handleForgotPasswordReset,
   };
 }

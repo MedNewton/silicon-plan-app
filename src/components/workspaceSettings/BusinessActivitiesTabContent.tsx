@@ -12,22 +12,83 @@ import {
   Typography,
 } from "@mui/material";
 import type { SelectChangeEvent } from "@mui/material/Select";
-import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { toast } from "react-toastify";
 
 import type { WorkspaceBusinessProfile } from "@/types/workspaces";
+import AiFieldActionButton, {
+  type AiFieldAssistAction,
+} from "@/components/workspaceSettings/AiFieldActionButton";
 
 type BusinessProfileResponse = {
   businessProfile: WorkspaceBusinessProfile | null;
+};
+
+const INDUSTRY_OPTIONS = [
+  "Business Software / SaaS",
+  "E-commerce",
+  "FinTech",
+  "Health & Wellness",
+] as const;
+
+const COMPANY_STAGE_OPTIONS = [
+  "Idea / Pre-seed",
+  "Early Growth (Seed to Series A)",
+  "Scale-up",
+  "Established",
+] as const;
+
+const PROBLEM_SHORT_OPTIONS = [
+  "Founders who need structured business plans",
+  "Small businesses needing funding-ready docs",
+  "Consultants serving SME clients",
+] as const;
+
+const pickSelectAndCustom = (
+  storedValue: string,
+  allowedValues: readonly string[],
+  rawOption: unknown,
+  rawCustom: unknown,
+): { selected: string; custom: string } => {
+  const optionFromRaw =
+    typeof rawOption === "string" ? rawOption.trim() : "";
+  const customFromRaw = typeof rawCustom === "string" ? rawCustom : "";
+
+  if (optionFromRaw) {
+    if (optionFromRaw === "Other") {
+      return {
+        selected: "Other",
+        custom: customFromRaw || storedValue,
+      };
+    }
+    if (allowedValues.includes(optionFromRaw)) {
+      return {
+        selected: optionFromRaw,
+        custom: customFromRaw,
+      };
+    }
+  }
+
+  if (!storedValue) return { selected: "", custom: "" };
+  if (allowedValues.includes(storedValue)) {
+    return { selected: storedValue, custom: "" };
+  }
+
+  return {
+    selected: "Other",
+    custom: storedValue,
+  };
 };
 
 export type BizFormState = {
   tagline: string;
   isOperating: string;
   industry: string;
+  industryOther: string;
   companyStage: string;
+  companyStageOther: string;
   problemShort: string;
+  problemShortOther: string;
   problemLong: string;
   solutionAndUniqueness: string;
   teamAndRoles: string;
@@ -41,8 +102,11 @@ const emptyBizForm: BizFormState = {
   tagline: "",
   isOperating: "",
   industry: "",
+  industryOther: "",
   companyStage: "",
+  companyStageOther: "",
   problemShort: "",
+  problemShortOther: "",
   problemLong: "",
   solutionAndUniqueness: "",
   teamAndRoles: "",
@@ -56,6 +120,15 @@ type BusinessActivitiesTabContentProps = {
   workspaceId: string;
 };
 
+type AiAssistFieldKey =
+  | "problemLong"
+  | "solutionAndUniqueness"
+  | "teamAndRoles"
+  | "financialProjections"
+  | "risksAndMitigation"
+  | "successMetrics"
+  | "growthPartnerships";
+
 const BusinessActivitiesTabContent = ({
   workspaceId,
 }: BusinessActivitiesTabContentProps) => {
@@ -63,6 +136,7 @@ const BusinessActivitiesTabContent = ({
   const [bizSaving, setBizSaving] = useState<boolean>(false);
   const [biz, setBiz] = useState<BizFormState>(emptyBizForm);
   const [bizInitial, setBizInitial] = useState<BizFormState>(emptyBizForm);
+  const [aiBusyField, setAiBusyField] = useState<AiAssistFieldKey | null>(null);
 
   useEffect(() => {
     if (!workspaceId) return;
@@ -87,6 +161,26 @@ const BusinessActivitiesTabContent = ({
         if (cancelled) return;
 
         if (profile) {
+          const raw = profile.raw_form_data ?? {};
+          const industryMapped = pickSelectAndCustom(
+            profile.industry ?? "",
+            INDUSTRY_OPTIONS,
+            raw.industryOption,
+            raw.industryCustom,
+          );
+          const companyStageMapped = pickSelectAndCustom(
+            profile.company_stage ?? "",
+            COMPANY_STAGE_OPTIONS,
+            raw.companyStageOption,
+            raw.companyStageCustom,
+          );
+          const problemShortMapped = pickSelectAndCustom(
+            profile.problem_short ?? "",
+            PROBLEM_SHORT_OPTIONS,
+            raw.problemShortOption,
+            raw.problemShortCustom,
+          );
+
           const mapped: BizFormState = {
             tagline: profile.tagline ?? "",
             isOperating:
@@ -95,9 +189,12 @@ const BusinessActivitiesTabContent = ({
                 : profile.is_operating === false
                 ? "no"
                 : "",
-            industry: profile.industry ?? "",
-            companyStage: profile.company_stage ?? "",
-            problemShort: profile.problem_short ?? "",
+            industry: industryMapped.selected,
+            industryOther: industryMapped.custom,
+            companyStage: companyStageMapped.selected,
+            companyStageOther: companyStageMapped.custom,
+            problemShort: problemShortMapped.selected,
+            problemShortOther: problemShortMapped.custom,
             problemLong: profile.problem_long ?? "",
             solutionAndUniqueness: profile.solution_and_uniqueness ?? "",
             teamAndRoles: profile.team_and_roles ?? "",
@@ -143,15 +240,27 @@ const BusinessActivitiesTabContent = ({
   };
 
   const handleIndustryChange = (event: SelectChangeEvent) => {
-    updateBizField("industry", event.target.value);
+    const next = event.target.value;
+    updateBizField("industry", next);
+    if (next !== "Other") {
+      updateBizField("industryOther", "");
+    }
   };
 
   const handleStageChange = (event: SelectChangeEvent) => {
-    updateBizField("companyStage", event.target.value);
+    const next = event.target.value;
+    updateBizField("companyStage", next);
+    if (next !== "Other") {
+      updateBizField("companyStageOther", "");
+    }
   };
 
   const handleProblemShortChange = (event: SelectChangeEvent) => {
-    updateBizField("problemShort", event.target.value);
+    const next = event.target.value;
+    updateBizField("problemShort", next);
+    if (next !== "Other") {
+      updateBizField("problemShortOther", "");
+    }
   };
 
   const handleBusinessSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -160,6 +269,19 @@ const BusinessActivitiesTabContent = ({
 
     try {
       setBizSaving(true);
+
+      const normalizedIndustry =
+        biz.industry === "Other"
+          ? biz.industryOther.trim() || "Other"
+          : biz.industry;
+      const normalizedCompanyStage =
+        biz.companyStage === "Other"
+          ? biz.companyStageOther.trim() || "Other"
+          : biz.companyStage;
+      const normalizedProblemShort =
+        biz.problemShort === "Other"
+          ? biz.problemShortOther.trim() || "Other"
+          : biz.problemShort;
 
       const payload = {
         workspaceId,
@@ -170,9 +292,9 @@ const BusinessActivitiesTabContent = ({
             : biz.isOperating === "yes"
             ? true
             : false,
-        industry: biz.industry || undefined,
-        companyStage: biz.companyStage || undefined,
-        problemShort: biz.problemShort || undefined,
+        industry: normalizedIndustry || undefined,
+        companyStage: normalizedCompanyStage || undefined,
+        problemShort: normalizedProblemShort || undefined,
         problemLong: biz.problemLong || undefined,
         solutionAndUniqueness: biz.solutionAndUniqueness || undefined,
         teamAndRoles: biz.teamAndRoles || undefined,
@@ -182,6 +304,12 @@ const BusinessActivitiesTabContent = ({
         growthPartnerships: biz.growthPartnerships || undefined,
         rawFormData: {
           ...biz,
+          industryOption: biz.industry,
+          industryCustom: biz.industryOther,
+          companyStageOption: biz.companyStage,
+          companyStageCustom: biz.companyStageOther,
+          problemShortOption: biz.problemShort,
+          problemShortCustom: biz.problemShortOther,
         },
       };
 
@@ -204,6 +332,26 @@ const BusinessActivitiesTabContent = ({
       const profile = json.businessProfile;
 
       if (profile) {
+        const raw = profile.raw_form_data ?? {};
+        const industryMapped = pickSelectAndCustom(
+          profile.industry ?? "",
+          INDUSTRY_OPTIONS,
+          raw.industryOption,
+          raw.industryCustom,
+        );
+        const companyStageMapped = pickSelectAndCustom(
+          profile.company_stage ?? "",
+          COMPANY_STAGE_OPTIONS,
+          raw.companyStageOption,
+          raw.companyStageCustom,
+        );
+        const problemShortMapped = pickSelectAndCustom(
+          profile.problem_short ?? "",
+          PROBLEM_SHORT_OPTIONS,
+          raw.problemShortOption,
+          raw.problemShortCustom,
+        );
+
         const mapped: BizFormState = {
           tagline: profile.tagline ?? "",
           isOperating:
@@ -212,9 +360,12 @@ const BusinessActivitiesTabContent = ({
               : profile.is_operating === false
               ? "no"
               : "",
-          industry: profile.industry ?? "",
-          companyStage: profile.company_stage ?? "",
-          problemShort: profile.problem_short ?? "",
+          industry: industryMapped.selected,
+          industryOther: industryMapped.custom,
+          companyStage: companyStageMapped.selected,
+          companyStageOther: companyStageMapped.custom,
+          problemShort: problemShortMapped.selected,
+          problemShortOther: problemShortMapped.custom,
           problemLong: profile.problem_long ?? "",
           solutionAndUniqueness: profile.solution_and_uniqueness ?? "",
           teamAndRoles: profile.team_and_roles ?? "",
@@ -273,18 +424,59 @@ const BusinessActivitiesTabContent = ({
     },
   };
 
-  const magicIconAdornment = (
-    <Box
-      sx={{
-        display: "flex",
-        alignItems: "center",
-        pr: 1.2,
-        color: "#8A9FE4",
-        cursor: "pointer",
+  const handleAiAssist = async (
+    field: AiAssistFieldKey,
+    fieldLabel: string,
+    action: AiFieldAssistAction,
+  ): Promise<void> => {
+    if (!workspaceId || aiBusyField) return;
+
+    try {
+      setAiBusyField(field);
+
+      const res = await fetch(
+        `/api/workspaces/${workspaceId}/business-profile/ai-assist`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action,
+            fieldLabel,
+            text: biz[field],
+          }),
+        },
+      );
+
+      const data = (await res.json().catch(() => null)) as
+        | { text?: string; error?: string }
+        | null;
+
+      if (!res.ok || !data?.text) {
+        toast.error(data?.error ?? "Failed to run AI action.");
+        return;
+      }
+
+      updateBizField(field, data.text);
+      toast.success("Field updated with AI.");
+    } catch (error) {
+      console.error("Failed to run AI business action", error);
+      toast.error("Something went wrong while running AI action.");
+    } finally {
+      setAiBusyField(null);
+    }
+  };
+
+  const renderAiAdornment = (
+    field: AiAssistFieldKey,
+    label: string,
+  ) => (
+    <AiFieldActionButton
+      loading={aiBusyField === field}
+      disabled={bizLoading || bizSaving}
+      onAction={(action) => {
+        void handleAiAssist(field, label, action);
       }}
-    >
-      <AutoAwesomeOutlinedIcon sx={{ fontSize: 20 }} />
-    </Box>
+    />
   );
 
   const disabled = isBusinessSaveDisabled;
@@ -362,15 +554,28 @@ const BusinessActivitiesTabContent = ({
             <MenuItem disabled value="">
               <Typography color="text.secondary">Select</Typography>
             </MenuItem>
-            <MenuItem value="Business Software / SaaS">
-              Business Software / SaaS
-            </MenuItem>
-            <MenuItem value="E-commerce">E-commerce</MenuItem>
-            <MenuItem value="FinTech">FinTech</MenuItem>
-            <MenuItem value="Health & Wellness">Health &amp; Wellness</MenuItem>
+            {INDUSTRY_OPTIONS.map((option) => (
+              <MenuItem key={option} value={option}>
+                {option}
+              </MenuItem>
+            ))}
             <MenuItem value="Other">Other</MenuItem>
           </Select>
         </Box>
+        {biz.industry === "Other" && (
+          <Box mb={3}>
+            <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
+              Custom industry
+            </Typography>
+            <TextField
+              fullWidth
+              placeholder="Type your industry"
+              value={biz.industryOther}
+              onChange={(e) => updateBizField("industryOther", e.target.value)}
+              InputProps={{ sx: inputBaseSx }}
+            />
+          </Box>
+        )}
 
         <Box mb={3}>
           <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
@@ -387,14 +592,30 @@ const BusinessActivitiesTabContent = ({
             <MenuItem disabled value="">
               <Typography color="text.secondary">Select</Typography>
             </MenuItem>
-            <MenuItem value="Idea / Pre-seed">Idea / Pre-seed</MenuItem>
-            <MenuItem value="Early Growth (Seed to Series A)">
-              Early Growth (Seed to Series A)
-            </MenuItem>
-            <MenuItem value="Scale-up">Scale-up</MenuItem>
-            <MenuItem value="Established">Established</MenuItem>
+            {COMPANY_STAGE_OPTIONS.map((option) => (
+              <MenuItem key={option} value={option}>
+                {option}
+              </MenuItem>
+            ))}
+            <MenuItem value="Other">Other</MenuItem>
           </Select>
         </Box>
+        {biz.companyStage === "Other" && (
+          <Box mb={3}>
+            <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
+              Custom company stage
+            </Typography>
+            <TextField
+              fullWidth
+              placeholder="Type your company stage"
+              value={biz.companyStageOther}
+              onChange={(e) =>
+                updateBizField("companyStageOther", e.target.value)
+              }
+              InputProps={{ sx: inputBaseSx }}
+            />
+          </Box>
+        )}
 
         <Box mb={3}>
           <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
@@ -411,18 +632,30 @@ const BusinessActivitiesTabContent = ({
             <MenuItem disabled value="">
               <Typography color="text.secondary">Select</Typography>
             </MenuItem>
-            <MenuItem value="Founders who need structured business plans">
-              Founders who need structured business plans
-            </MenuItem>
-            <MenuItem value="Small businesses needing funding-ready docs">
-              Small businesses needing funding-ready docs
-            </MenuItem>
-            <MenuItem value="Consultants serving SME clients">
-              Consultants serving SME clients
-            </MenuItem>
+            {PROBLEM_SHORT_OPTIONS.map((option) => (
+              <MenuItem key={option} value={option}>
+                {option}
+              </MenuItem>
+            ))}
             <MenuItem value="Other">Other</MenuItem>
           </Select>
         </Box>
+        {biz.problemShort === "Other" && (
+          <Box mb={3}>
+            <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
+              Custom problem solved
+            </Typography>
+            <TextField
+              fullWidth
+              placeholder="Type the problem and target"
+              value={biz.problemShortOther}
+              onChange={(e) =>
+                updateBizField("problemShortOther", e.target.value)
+              }
+              InputProps={{ sx: inputBaseSx }}
+            />
+          </Box>
+        )}
 
         <Box mb={3}>
           <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
@@ -437,7 +670,10 @@ const BusinessActivitiesTabContent = ({
             onChange={(e) => updateBizField("problemLong", e.target.value)}
             InputProps={{
               sx: multilineFieldSx,
-              endAdornment: magicIconAdornment,
+              endAdornment: renderAiAdornment(
+                "problemLong",
+                "Problem details",
+              ),
             }}
           />
         </Box>
@@ -457,7 +693,10 @@ const BusinessActivitiesTabContent = ({
             }
             InputProps={{
               sx: multilineFieldSx,
-              endAdornment: magicIconAdornment,
+              endAdornment: renderAiAdornment(
+                "solutionAndUniqueness",
+                "Solution and uniqueness",
+              ),
             }}
           />
         </Box>
@@ -475,7 +714,10 @@ const BusinessActivitiesTabContent = ({
             onChange={(e) => updateBizField("teamAndRoles", e.target.value)}
             InputProps={{
               sx: multilineFieldSx,
-              endAdornment: magicIconAdornment,
+              endAdornment: renderAiAdornment(
+                "teamAndRoles",
+                "Team roles and responsibilities",
+              ),
             }}
           />
         </Box>
@@ -495,7 +737,10 @@ const BusinessActivitiesTabContent = ({
             }
             InputProps={{
               sx: multilineFieldSx,
-              endAdornment: magicIconAdornment,
+              endAdornment: renderAiAdornment(
+                "financialProjections",
+                "Financial projections",
+              ),
             }}
           />
         </Box>
@@ -515,7 +760,10 @@ const BusinessActivitiesTabContent = ({
             }
             InputProps={{
               sx: multilineFieldSx,
-              endAdornment: magicIconAdornment,
+              endAdornment: renderAiAdornment(
+                "risksAndMitigation",
+                "Risks and mitigation",
+              ),
             }}
           />
         </Box>
@@ -535,7 +783,10 @@ const BusinessActivitiesTabContent = ({
             }
             InputProps={{
               sx: multilineFieldSx,
-              endAdornment: magicIconAdornment,
+              endAdornment: renderAiAdornment(
+                "successMetrics",
+                "Success metrics",
+              ),
             }}
           />
         </Box>
@@ -555,7 +806,10 @@ const BusinessActivitiesTabContent = ({
             }
             InputProps={{
               sx: multilineFieldSx,
-              endAdornment: magicIconAdornment,
+              endAdornment: renderAiAdornment(
+                "growthPartnerships",
+                "Growth partnerships",
+              ),
             }}
           />
         </Box>

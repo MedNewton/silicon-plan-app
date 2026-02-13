@@ -22,6 +22,9 @@ const CHANGE_LABELS: Record<string, string> = {
   add_chapter: "Add chapter",
   update_chapter: "Update chapter",
   delete_chapter: "Delete chapter",
+  add_task: "Add task",
+  update_task: "Update task",
+  delete_task: "Delete task",
   add_section: "Add section",
   update_section: "Update section",
   delete_section: "Delete section",
@@ -65,6 +68,11 @@ const getTargetLabel = (
       : `Section ID: ${change.target_id}`;
   }
 
+  if (change.change_type.includes("task")) {
+    if (!change.target_id) return "New task";
+    return `Task ID: ${change.target_id}`;
+  }
+
   return "Pending change";
 };
 
@@ -85,6 +93,30 @@ const getPreviewText = (
     const sectionType =
       typeof data.section_type === "string" ? data.section_type : "section";
     return `Add ${sectionType} to ${chapter ? chapter.title : "selected chapter"}`;
+  }
+
+  if (change.change_type === "add_task") {
+    const title = typeof data.title === "string" ? data.title : "Untitled task";
+    const level =
+      typeof data.hierarchy_level === "string"
+        ? data.hierarchy_level.toUpperCase()
+        : "TASK";
+    return `${level}: ${title}`;
+  }
+
+  if (change.change_type === "update_task") {
+    const parts: string[] = [];
+    if (typeof data.title === "string") parts.push(`Title: ${data.title}`);
+    if (typeof data.status === "string") parts.push(`Status: ${data.status}`);
+    if (typeof data.hierarchy_level === "string") {
+      parts.push(`Level: ${data.hierarchy_level.toUpperCase()}`);
+    }
+    if (parts.length > 0) return parts.join(" | ");
+    return "Update task details";
+  }
+
+  if (change.change_type === "delete_task") {
+    return "Remove this task";
   }
 
   if (change.change_type === "update_section") {

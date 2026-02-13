@@ -1,9 +1,15 @@
 // src/server/businessPlan.ts
 import { getSupabaseClient, type SupabaseDb } from "@/lib/supabaseServer";
+import {
+  createBusinessPlanTask,
+  updateBusinessPlanTask,
+  deleteBusinessPlanTask,
+} from "@/server/businessPlanTasks";
 import type {
   BusinessPlan,
   BusinessPlanChapter,
   BusinessPlanSection,
+  BusinessPlanTask,
   BusinessPlanAiConversation,
   BusinessPlanAiMessage,
   BusinessPlanPendingChange,
@@ -1018,7 +1024,7 @@ export async function resolvePendingChange(
 export async function applyPendingChange(params: {
   pendingChangeId: BusinessPlanPendingChangeId;
   userId: UserId;
-}): Promise<{ chapter?: BusinessPlanChapter; section?: BusinessPlanSection }> {
+}): Promise<{ chapter?: BusinessPlanChapter; section?: BusinessPlanSection; task?: BusinessPlanTask }> {
   const { pendingChangeId, userId } = params;
   const client = getSupabaseClient();
 
@@ -1068,7 +1074,7 @@ export async function applyPendingChange(params: {
 
   await ensureUserHasWorkspaceAccess(client, workspaceId, userId);
 
-  const result: { chapter?: BusinessPlanChapter; section?: BusinessPlanSection } = {};
+  const result: { chapter?: BusinessPlanChapter; section?: BusinessPlanSection; task?: BusinessPlanTask } = {};
 
   // Apply the change based on change_type
   switch (change.change_type) {
@@ -1178,6 +1184,75 @@ export async function applyPendingChange(params: {
         }
       }
       break;
+    case "add_task": {
+      const proposedData = change.proposed_data as {
+        title?: string;
+        instructions?: string;
+        ai_prompt?: string;
+        hierarchy_level?: "h1" | "h2";
+        parent_task_id?: string | null;
+        status?: "todo" | "in_progress" | "done";
+        order_index?: number;
+      };
+      const task = await createBusinessPlanTask({
+        businessPlanId,
+        userId,
+        title: proposedData.title ?? "New Task",
+        instructions: proposedData.instructions,
+        aiPrompt: proposedData.ai_prompt,
+        hierarchyLevel: proposedData.hierarchy_level ?? "h2",
+        parentTaskId: proposedData.parent_task_id ?? null,
+        status: proposedData.status,
+        orderIndex: proposedData.order_index,
+      });
+      result.task = task;
+      break;
+    }
+    case "update_task": {
+      if (change.target_id) {
+        const proposedData = change.proposed_data as {
+          title?: string;
+          instructions?: string;
+          ai_prompt?: string;
+          hierarchy_level?: "h1" | "h2";
+          parent_task_id?: string | null;
+          status?: "todo" | "in_progress" | "done";
+          order_index?: number;
+        };
+        const hasUpdate =
+          proposedData.title !== undefined ||
+          proposedData.instructions !== undefined ||
+          proposedData.ai_prompt !== undefined ||
+          proposedData.hierarchy_level !== undefined ||
+          proposedData.parent_task_id !== undefined ||
+          proposedData.status !== undefined ||
+          proposedData.order_index !== undefined;
+        if (hasUpdate) {
+          const task = await updateBusinessPlanTask({
+            taskId: change.target_id,
+            userId,
+            title: proposedData.title,
+            instructions: proposedData.instructions,
+            aiPrompt: proposedData.ai_prompt,
+            hierarchyLevel: proposedData.hierarchy_level,
+            parentTaskId: proposedData.parent_task_id,
+            status: proposedData.status,
+            orderIndex: proposedData.order_index,
+          });
+          result.task = task;
+        }
+      }
+      break;
+    }
+    case "delete_task": {
+      if (change.target_id) {
+        await deleteBusinessPlanTask({
+          taskId: change.target_id,
+          userId,
+        });
+      }
+      break;
+    }
   }
 
   // Mark as approved

@@ -77,6 +77,20 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       );
     }
 
+    if (invite.revoked_at) {
+      return NextResponse.json(
+        { error: "This invitation has been revoked." },
+        { status: 400 },
+      );
+    }
+
+    if (invite.declined_at) {
+      return NextResponse.json(
+        { error: "This invitation was declined." },
+        { status: 400 },
+      );
+    }
+
     if (invite.expires_at && new Date(invite.expires_at) < new Date()) {
       return NextResponse.json(
         { error: "This invitation has expired." },

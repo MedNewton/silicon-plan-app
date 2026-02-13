@@ -101,6 +101,68 @@ type UpsertKnowledgeBody = {
   orderIndex?: number;
 };
 
+const normalizeKeyName = (value: string): string =>
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+const ensureUniqueKeyName = async (
+  client: Supa,
+  workspaceId: string,
+  requestedKeyName: string,
+): Promise<string> => {
+  const base = normalizeKeyName(requestedKeyName) || "custom_note";
+
+  const { data, error } = await client
+    .from("workspace_ai_knowledge")
+    .select("key_name")
+    .eq("workspace_id", workspaceId)
+    .ilike("key_name", `${base}%`);
+
+  if (error) {
+    throw new Error(`Failed to validate key_name uniqueness: ${error.message}`);
+  }
+
+  const existing = new Set(
+    (data ?? [])
+      .map((row) => (typeof row?.key_name === "string" ? row.key_name : ""))
+      .filter(Boolean),
+  );
+
+  if (!existing.has(base)) {
+    return base;
+  }
+
+  let suffix = 2;
+  while (existing.has(`${base}_${suffix}`)) {
+    suffix += 1;
+  }
+  return `${base}_${suffix}`;
+};
+
+const resolveNextOrderIndex = async (
+  client: Supa,
+  workspaceId: string,
+): Promise<number> => {
+  const { data, error } = await client
+    .from("workspace_ai_knowledge")
+    .select("order_index")
+    .eq("workspace_id", workspaceId)
+    .order("order_index", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error && error.code !== "PGRST116") {
+    throw new Error(`Failed to resolve knowledge order index: ${error.message}`);
+  }
+
+  const current =
+    data && typeof data.order_index === "number" ? data.order_index : -1;
+  return current + 1;
+};
+
 export async function POST(
   req: Request,
   ctx: { params: Promise<{ workspaceId: string }> },
@@ -110,39 +172,41 @@ export async function POST(
     const { workspaceId } = await ctx.params;
 
     if (!userId) {
-      return new NextResponse("Unauthorized", { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     if (!workspaceId) {
-      return new NextResponse("Workspace id is required", { status: 400 });
+      return NextResponse.json(
+        { error: "Workspace id is required" },
+        { status: 400 },
+      );
     }
 
     const body = (await req.json()) as UpsertKnowledgeBody;
-
-    const keyName = body.keyName?.trim();
     const label = body.label?.trim();
     const value = body.value?.trim();
-    const orderIndex =
-      typeof body.orderIndex === "number" ? body.orderIndex : 0;
-
-    if (!keyName) {
-      return new NextResponse("keyName is required", { status: 400 });
-    }
+    const rawKeyName = body.keyName?.trim() || label || "custom_note";
 
     if (!label) {
-      return new NextResponse("label is required", { status: 400 });
+      return NextResponse.json({ error: "label is required" }, { status: 400 });
     }
 
     if (!value) {
-      return new NextResponse("value is required", { status: 400 });
+      return NextResponse.json({ error: "value is required" }, { status: 400 });
     }
 
     const client = getSupabaseClient();
 
     const hasAccess = await ensureWorkspaceAccess(client, workspaceId, userId);
     if (!hasAccess) {
-      return new NextResponse("Forbidden", { status: 403 });
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    const keyName = await ensureUniqueKeyName(client, workspaceId, rawKeyName);
+    const orderIndex =
+      typeof body.orderIndex === "number"
+        ? body.orderIndex
+        : await resolveNextOrderIndex(client, workspaceId);
 
     type KnowledgeInsert = Tables["workspace_ai_knowledge"]["Insert"];
 
@@ -166,7 +230,10 @@ export async function POST(
       } else {
         console.error("Failed to insert AI knowledge:", error);
       }
-      return new NextResponse("Failed to save knowledge", { status: 500 });
+      return NextResponse.json(
+        { error: "Failed to save knowledge" },
+        { status: 500 },
+      );
     }
 
     const knowledge = data as WorkspaceAiKnowledge;
@@ -210,6 +277,6 @@ export async function POST(
     } else {
       console.error("Unexpected error in POST /ai-library/knowledge:", error);
     }
-    return new NextResponse("Internal server error", { status: 500 });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

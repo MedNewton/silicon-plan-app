@@ -22,12 +22,14 @@ type InviteMembersModalProps = {
   open: boolean;
   workspaceId: string;
   onClose: () => void;
+  onInvited?: () => void;
 };
 
 const InviteMembersModal = ({
   open,
   workspaceId,
   onClose,
+  onInvited,
 }: InviteMembersModalProps) => {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<WorkspaceRole>("viewer");
@@ -85,6 +87,7 @@ const InviteMembersModal = ({
       }
 
       toast.success("Invitation sent");
+      if (onInvited) onInvited();
       handleCloseInvite();
     } catch (error) {
       console.error("Error sending invite", error);
