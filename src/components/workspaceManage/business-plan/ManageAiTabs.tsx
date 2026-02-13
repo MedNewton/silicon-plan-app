@@ -232,11 +232,21 @@ const PlanChaptersPane: FC = () => {
   const [openChapterIds, setOpenChapterIds] = useState<string[]>([]);
 
   useEffect(() => {
-    const first = chapters[0];
-    if (first && openChapterIds.length === 0) {
-      setOpenChapterIds([first.id]);
-    }
-  }, [chapters, openChapterIds.length]);
+    const collectIds = (nodes: BusinessPlanChapterWithSections[]): string[] =>
+      nodes.flatMap((node) => [node.id, ...collectIds(node.children ?? [])]);
+
+    const chapterIds = new Set(collectIds(chapters));
+
+    setOpenChapterIds((prev) => {
+      const filtered = prev.filter((id) => chapterIds.has(id));
+      if (filtered.length > 0) {
+        return filtered;
+      }
+
+      const first = chapters[0];
+      return first ? [first.id] : [];
+    });
+  }, [chapters]);
 
   const toggleChapterOpen = (chapterId: string) => {
     setOpenChapterIds((prev) =>
@@ -511,11 +521,19 @@ const ChapterCard: FC<ChapterCardProps> = ({
 };
 
 const PlanTasksPane: FC = () => {
-  const { tasks, isTasksLoading, addTask, updateTask, deleteTask } = useBusinessPlan();
+  const {
+    tasks,
+    isTasksLoading,
+    addTask,
+    updateTask,
+    deleteTask,
+    lastAppliedTaskChange,
+  } = useBusinessPlan();
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [openTaskIds, setOpenTaskIds] = useState<string[]>([]);
   const [hasAutoOpenedTask, setHasAutoOpenedTask] = useState(false);
+  const [lastHandledTaskChangeAt, setLastHandledTaskChangeAt] = useState<number>(0);
 
   useEffect(() => {
     const first = tasks[0];
@@ -524,6 +542,17 @@ const PlanTasksPane: FC = () => {
       setHasAutoOpenedTask(true);
     }
   }, [tasks, openTaskIds.length, hasAutoOpenedTask]);
+
+  useEffect(() => {
+    if (!lastAppliedTaskChange) return;
+    if (lastAppliedTaskChange.changedAt <= lastHandledTaskChangeAt) return;
+
+    const parentOrSelf = lastAppliedTaskChange.parentTaskId ?? lastAppliedTaskChange.taskId;
+    setOpenTaskIds((prev) =>
+      prev.includes(parentOrSelf) ? prev : [...prev, parentOrSelf]
+    );
+    setLastHandledTaskChangeAt(lastAppliedTaskChange.changedAt);
+  }, [lastAppliedTaskChange, lastHandledTaskChangeAt]);
 
   const toggleTaskOpen = (taskId: string) => {
     setOpenTaskIds((prev) =>

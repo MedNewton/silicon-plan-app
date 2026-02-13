@@ -424,27 +424,192 @@ const findTaskByNormalizedTitle = (
 
 const flattenChapterRefs = (
   chapters: BusinessPlanChapterWithSections[]
-): Array<{ id: string; title: string }> => {
-  const refs: Array<{ id: string; title: string }> = [];
-  const stack = [...chapters];
+): Array<{ id: string; title: string; parentId: string | null }> => {
+  const refs: Array<{ id: string; title: string; parentId: string | null }> = [];
+  const visit = (
+    nodes: BusinessPlanChapterWithSections[],
+    parentId: string | null
+  ) => {
+    for (const chapter of nodes) {
+      refs.push({ id: chapter.id, title: chapter.title, parentId });
+      if (chapter.children?.length) {
+        visit(chapter.children, chapter.id);
+      }
+    }
+  };
 
-  while (stack.length > 0) {
-    const chapter = stack.shift();
-    if (!chapter) continue;
+  visit(chapters, null);
+  return refs;
+};
 
-    refs.push({ id: chapter.id, title: chapter.title });
-    if (chapter.children?.length) {
-      stack.push(...chapter.children);
+const resolveChapterFromArgs = (params: {
+  args: Record<string, unknown>;
+  chapterRefs: Array<{ id: string; title: string; parentId: string | null }>;
+}): { id: string; title: string; parentId: string | null } | null => {
+  const { args, chapterRefs } = params;
+  if (chapterRefs.length === 0) return null;
+
+  const requestedChapterId = readStringArg(args, ["chapterId", "chapter_id"]);
+  if (requestedChapterId) {
+    const byId = chapterRefs.find((chapter) => chapter.id === requestedChapterId);
+    if (byId) return byId;
+  }
+
+  const requestedChapterTitle = readStringArg(args, [
+    "chapterTitle",
+    "chapter_title",
+    "chapterName",
+    "chapter",
+  ]);
+  if (requestedChapterTitle) {
+    const needle = normalizeLookupText(requestedChapterTitle);
+    const exact = chapterRefs.find((chapter) => normalizeLookupText(chapter.title) === needle);
+    if (exact) return exact;
+
+    const partial = chapterRefs.filter((chapter) => {
+      const hay = normalizeLookupText(chapter.title);
+      return hay.includes(needle) || needle.includes(hay);
+    });
+    if (partial.length === 1) {
+      return partial[0] ?? null;
     }
   }
 
-  return refs;
+  if (chapterRefs.length === 1) {
+    return chapterRefs[0] ?? null;
+  }
+
+  return null;
+};
+
+const resolveParentChapterFromArgs = (params: {
+  args: Record<string, unknown>;
+  chapterRefs: Array<{ id: string; title: string; parentId: string | null }>;
+}): { id: string; title: string; parentId: string | null } | null => {
+  const { args, chapterRefs } = params;
+  if (chapterRefs.length === 0) return null;
+
+  const parentChapterId = readStringArg(args, [
+    "parentChapterId",
+    "parent_chapter_id",
+    "parentId",
+    "parent_id",
+  ]);
+  if (parentChapterId) {
+    const byId = chapterRefs.find((chapter) => chapter.id === parentChapterId);
+    if (byId) return byId;
+  }
+
+  const parentChapterTitle = readStringArg(args, [
+    "parentChapterTitle",
+    "parent_chapter_title",
+    "parentTitle",
+    "parentChapter",
+    "parent",
+  ]);
+  if (parentChapterTitle) {
+    return resolveChapterFromArgs({
+      args: { chapterTitle: parentChapterTitle },
+      chapterRefs,
+    });
+  }
+
+  return null;
+};
+
+const isLikelyChapterCreationIntent = (params: {
+  messageText: string;
+  args: Record<string, unknown>;
+}): boolean => {
+  const { messageText, args } = params;
+  const mentionsChapter = /\b(chapter|subchapter)\b/i.test(messageText);
+  const mentionsTask = /\b(task|subtask|h1|h2)\b/i.test(messageText);
+
+  if (mentionsChapter && !mentionsTask) {
+    return true;
+  }
+
+  const explicitTaskIdHint = readStringArg(args, [
+    "taskId",
+    "task_id",
+    "parentTaskId",
+    "parent_task_id",
+    "parentId",
+    "parent_id",
+  ]);
+  const explicitHierarchyHint = normalizeTaskHierarchyLevel(
+    args.hierarchyLevel ?? args.hierarchy_level ?? args.level
+  );
+  const explicitChapterHint = readStringArg(args, [
+    "chapterTitle",
+    "chapter_title",
+    "chapterName",
+    "chapter",
+    "parentChapterId",
+    "parent_chapter_id",
+  ]);
+
+  if (!explicitTaskIdHint && !explicitHierarchyHint && explicitChapterHint && !mentionsTask) {
+    return true;
+  }
+
+  return false;
+};
+
+const extractQuotedUnderTitle = (messageText: string): string | null => {
+  const quotedUnder =
+    /\bunder\s+["“](.+?)["”]/i.exec(messageText) ??
+    /\bin\s+["“](.+?)["”]/i.exec(messageText);
+  const title = quotedUnder?.[1]?.trim();
+  return title && title.length > 0 ? title : null;
+};
+
+const extractChapterCreationIntent = (messageText: string): {
+  title: string;
+  parentTitle: string | null;
+} | null => {
+  const subchapterMatch =
+    /\b(?:add|create)\s+(?:a\s+)?subchapter\s+["“](.+?)["”](?:\s+under\s+["“](.+?)["”])?/i.exec(
+      messageText
+    );
+  if (subchapterMatch?.[1]) {
+    const title = subchapterMatch[1].trim();
+    const parentTitle = subchapterMatch[2]?.trim() ?? null;
+    return title.length > 0 ? { title, parentTitle } : null;
+  }
+
+  const chapterMatch =
+    /\b(?:add|create)\s+(?:a\s+)?(?:top[-\s]?level\s+)?chapter\s+["“](.+?)["”](?:\s+under\s+["“](.+?)["”])?/i.exec(
+      messageText
+    );
+  if (chapterMatch?.[1]) {
+    const title = chapterMatch[1].trim();
+    const parentTitle = chapterMatch[2]?.trim() ?? null;
+    return title.length > 0 ? { title, parentTitle } : null;
+  }
+
+  return null;
+};
+
+const isChapterOnlyIntent = (messageText: string): boolean => {
+  const mentionsChapter = /\b(chapter|subchapter)\b/i.test(messageText);
+  const mentionsTask = /\b(task|subtask|h1|h2)\b/i.test(messageText);
+  const mentionsSection = /\b(section|paragraph|text|content)\b/i.test(messageText);
+  return mentionsChapter && !mentionsTask && !mentionsSection;
+};
+
+const buildChapterSignature = (params: {
+  title: string;
+  parentId: string | null;
+}): string => {
+  const { title, parentId } = params;
+  return `${normalizeLookupText(title)}::${parentId ?? "root"}`;
 };
 
 const resolveH1TaskFromArgs = (params: {
   args: Record<string, unknown>;
   flattenedTasks: Array<{ id: string; title: string; hierarchy_level: string; parentTaskId: string | null }>;
-  chapterRefs: Array<{ id: string; title: string }>;
+  chapterRefs: Array<{ id: string; title: string; parentId: string | null }>;
 }): { id: string; title: string; hierarchy_level: string; parentTaskId: string | null } | null => {
   const { args, flattenedTasks, chapterRefs } = params;
   const h1Tasks = flattenedTasks.filter((task) => task.hierarchy_level === "h1");
@@ -585,6 +750,22 @@ export async function POST(
     const taskContextLines = buildTaskContextLines(taskTree?.tasks ?? []);
     const flattenedTasks = flattenTasks(taskTree?.tasks ?? []);
     const chapterRefs = flattenChapterRefs(planData?.chapters ?? []);
+    const chapterOnlyIntent = isChapterOnlyIntent(messageText);
+    const chapterCreationIntent = extractChapterCreationIntent(messageText);
+    const chapterToolNames = new Set([
+      "propose_add_chapter",
+      "propose_update_chapter",
+      "propose_delete_chapter",
+    ]);
+    const existingChapterSignatures = new Set(
+      chapterRefs.map((chapter) =>
+        buildChapterSignature({
+          title: chapter.title,
+          parentId: chapter.parentId ?? null,
+        })
+      )
+    );
+    const plannedChapterSignatures = new Set<string>();
 
     const context = buildBusinessPlanContext({
       businessPlan: planData?.businessPlan ?? null,
@@ -679,8 +860,12 @@ If the request is ambiguous, ask a concise clarifying question.`,
     for (const toolCall of toolCalls) {
       if (toolCall.type !== "function") continue;
       const functionName = toolCall.function.name;
-      const changeType = TOOL_TO_CHANGE[functionName];
-      if (!changeType) continue;
+      if (chapterOnlyIntent && !chapterToolNames.has(functionName)) {
+        continue;
+      }
+      const mappedChangeType = TOOL_TO_CHANGE[functionName];
+      if (!mappedChangeType) continue;
+      let changeType: PendingChangeType = mappedChangeType;
 
       const args = parseToolArguments(toolCall.function.arguments);
       let targetId: string | null = null;
@@ -688,9 +873,65 @@ If the request is ambiguous, ask a concise clarifying question.`,
 
       switch (functionName) {
         case "propose_add_chapter": {
+          if (
+            chapterOnlyIntent &&
+            chapterCreationIntent &&
+            pendingChangeInputs.some((input) => input.changeType === "add_chapter")
+          ) {
+            break;
+          }
+
+          const title =
+            chapterCreationIntent?.title ??
+            readStringArg(args, ["title", "chapterTitle", "newTitle", "chapter"]) ??
+            "New Chapter";
+          let parentChapter = resolveParentChapterFromArgs({ args, chapterRefs });
+          if (!parentChapter && chapterCreationIntent?.parentTitle) {
+            parentChapter = resolveChapterFromArgs({
+              args: { chapterTitle: chapterCreationIntent.parentTitle },
+              chapterRefs,
+            });
+          }
+          if (
+            chapterOnlyIntent &&
+            chapterCreationIntent?.parentTitle &&
+            !parentChapter
+          ) {
+            skippedUpdates.push(
+              `I couldn't find the parent chapter "${chapterCreationIntent.parentTitle}".`
+            );
+            break;
+          }
+          if (!parentChapter) {
+            const parentTitleInMessage = extractQuotedUnderTitle(messageText);
+            if (parentTitleInMessage) {
+              parentChapter = resolveChapterFromArgs({
+                args: { chapterTitle: parentTitleInMessage },
+                chapterRefs,
+              });
+            }
+          }
+          const parentId = parentChapter?.id ?? null;
+          const signature = buildChapterSignature({
+            title,
+            parentId,
+          });
+          if (
+            existingChapterSignatures.has(signature) ||
+            plannedChapterSignatures.has(signature)
+          ) {
+            skippedUpdates.push(
+              `Chapter "${title}" already exists${
+                parentChapter ? ` under "${parentChapter.title}"` : ""
+              }, so I skipped duplicate creation.`
+            );
+            break;
+          }
+          plannedChapterSignatures.add(signature);
           proposedData = {
-            title: args.title ?? "New Chapter",
-            parent_id: args.parentChapterId ?? null,
+            title,
+            parent_id: parentId,
+            parent_title: parentChapter?.title ?? null,
           };
           break;
         }
@@ -707,13 +948,22 @@ If the request is ambiguous, ask a concise clarifying question.`,
           break;
         }
         case "propose_add_section": {
+          const resolvedChapter = resolveChapterFromArgs({ args, chapterRefs });
+          if (!resolvedChapter) {
+            skippedUpdates.push(
+              "I couldn't determine which chapter should receive the new section."
+            );
+            break;
+          }
+
           const normalizedType = normalizeSectionType(args.sectionType);
           const content =
             args.content && typeof args.content === "object"
               ? { type: normalizedType, ...(args.content as Record<string, unknown>) }
               : buildDefaultContent(normalizedType);
           proposedData = {
-            chapter_id: args.chapterId,
+            chapter_id: resolvedChapter.id,
+            chapter_title: resolvedChapter.title,
             section_type: normalizedType,
             content,
           };
@@ -775,6 +1025,63 @@ If the request is ambiguous, ask a concise clarifying question.`,
           break;
         }
         case "propose_add_task": {
+          if (isLikelyChapterCreationIntent({ messageText, args })) {
+            if (
+              chapterOnlyIntent &&
+              chapterCreationIntent &&
+              pendingChangeInputs.some((input) => input.changeType === "add_chapter")
+            ) {
+              break;
+            }
+
+            let resolvedParentChapter = resolveParentChapterFromArgs({
+              args,
+              chapterRefs,
+            });
+            if (!resolvedParentChapter && chapterCreationIntent?.parentTitle) {
+              resolvedParentChapter = resolveChapterFromArgs({
+                args: { chapterTitle: chapterCreationIntent.parentTitle },
+                chapterRefs,
+              });
+            }
+            if (!resolvedParentChapter) {
+              const parentTitleInMessage = extractQuotedUnderTitle(messageText);
+              if (parentTitleInMessage) {
+                resolvedParentChapter = resolveChapterFromArgs({
+                  args: { chapterTitle: parentTitleInMessage },
+                  chapterRefs,
+                });
+              }
+            }
+            const title =
+              chapterCreationIntent?.title ??
+              readStringArg(args, ["title", "chapterTitle", "newTitle", "chapter"]) ??
+              "New Chapter";
+            const signature = buildChapterSignature({
+              title,
+              parentId: resolvedParentChapter?.id ?? null,
+            });
+            if (
+              existingChapterSignatures.has(signature) ||
+              plannedChapterSignatures.has(signature)
+            ) {
+              skippedUpdates.push(
+                `Chapter "${title}" already exists${
+                  resolvedParentChapter ? ` under "${resolvedParentChapter.title}"` : ""
+                }, so I skipped duplicate creation.`
+              );
+              break;
+            }
+            plannedChapterSignatures.add(signature);
+            proposedData = {
+              title,
+              parent_id: resolvedParentChapter?.id ?? null,
+              parent_title: resolvedParentChapter?.title ?? null,
+            };
+            changeType = "add_chapter";
+            break;
+          }
+
           const explicitHierarchyLevel = normalizeTaskHierarchyLevel(
             args.hierarchyLevel ?? args.hierarchy_level ?? args.level
           );
@@ -958,6 +1265,45 @@ If the request is ambiguous, ask a concise clarifying question.`,
       }
       if (hasProposedData || targetId) {
         pendingChangeInputs.push({ changeType, targetId, proposedData });
+      }
+    }
+
+    if (
+      chapterOnlyIntent &&
+      chapterCreationIntent &&
+      !pendingChangeInputs.some((input) => input.changeType === "add_chapter")
+    ) {
+      const resolvedParent = chapterCreationIntent.parentTitle
+        ? resolveChapterFromArgs({
+            args: { chapterTitle: chapterCreationIntent.parentTitle },
+            chapterRefs,
+          })
+        : null;
+
+      if (chapterCreationIntent.parentTitle && !resolvedParent) {
+        skippedUpdates.push(
+          `I couldn't find the parent chapter "${chapterCreationIntent.parentTitle}".`
+        );
+      } else {
+        const signature = buildChapterSignature({
+          title: chapterCreationIntent.title,
+          parentId: resolvedParent?.id ?? null,
+        });
+        if (
+          !existingChapterSignatures.has(signature) &&
+          !plannedChapterSignatures.has(signature)
+        ) {
+          pendingChangeInputs.push({
+            changeType: "add_chapter",
+            targetId: null,
+            proposedData: {
+              title: chapterCreationIntent.title,
+              parent_id: resolvedParent?.id ?? null,
+              parent_title: resolvedParent?.title ?? null,
+            },
+          });
+          plannedChapterSignatures.add(signature);
+        }
       }
     }
 

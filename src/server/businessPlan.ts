@@ -33,6 +33,7 @@ import type {
   BusinessPlanAiMessageId,
   BusinessPlanPendingChangeId,
   BusinessPlanSectionContent,
+  PendingChangeType,
 } from "@/types/workspaces";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -201,6 +202,325 @@ function mapPendingChangeRow(row: unknown): BusinessPlanPendingChange {
     reviewed_at: r.reviewed_at,
   };
 }
+
+const getStringField = (
+  data: Record<string, unknown>,
+  keys: string[]
+): string | undefined => {
+  for (const key of keys) {
+    const value = data[key];
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+  return undefined;
+};
+
+const normalizeTaskHierarchyLevelValue = (
+  value: unknown
+): "h1" | "h2" | undefined => {
+  if (typeof value !== "string") return undefined;
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "h1" || normalized === "h2") {
+    return normalized;
+  }
+  return undefined;
+};
+
+const normalizeTaskStatusValue = (
+  value: unknown
+): "todo" | "in_progress" | "done" | undefined => {
+  if (typeof value !== "string") return undefined;
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "todo" || normalized === "in_progress" || normalized === "done") {
+    return normalized;
+  }
+  return undefined;
+};
+
+const normalizeLookupText = (value: string): string =>
+  value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+async function resolveParentTaskIdForPendingTaskChange(params: {
+  client: Supa;
+  businessPlanId: BusinessPlanId;
+  proposedData: Record<string, unknown>;
+  hierarchyLevel: "h1" | "h2";
+}): Promise<string | null | undefined> {
+  const { client, businessPlanId, proposedData, hierarchyLevel } = params;
+
+  const explicitParentId = getStringField(proposedData, [
+    "parent_task_id",
+    "parentTaskId",
+    "parent_id",
+    "parentId",
+  ]);
+
+  if (hierarchyLevel === "h1") {
+    return null;
+  }
+
+  if (explicitParentId) {
+    const { data: explicitParentRow, error: explicitParentError } = await client
+      .from("business_plan_tasks")
+      .select("id,hierarchy_level,parent_task_id")
+      .eq("id", explicitParentId)
+      .eq("business_plan_id", businessPlanId)
+      .maybeSingle();
+
+    if (explicitParentError && explicitParentError.code !== "PGRST116") {
+      throw new Error(`Failed to validate explicit parent task: ${explicitParentError.message}`);
+    }
+
+    if (explicitParentRow) {
+      if (explicitParentRow.hierarchy_level === "h1") {
+        return explicitParentRow.id;
+      }
+      if (
+        explicitParentRow.hierarchy_level === "h2" &&
+        typeof explicitParentRow.parent_task_id === "string" &&
+        explicitParentRow.parent_task_id.length > 0
+      ) {
+        return explicitParentRow.parent_task_id;
+      }
+    }
+  }
+
+  const { data: h1Rows, error: h1Error } = await client
+    .from("business_plan_tasks")
+    .select("id,title")
+    .eq("business_plan_id", businessPlanId)
+    .eq("hierarchy_level", "h1");
+
+  if (h1Error) {
+    throw new Error(`Failed to resolve parent task: ${h1Error.message}`);
+  }
+
+  const h1Tasks = (h1Rows ?? []) as Array<{ id: string; title: string }>;
+  if (h1Tasks.length === 0) {
+    return undefined;
+  }
+
+  const parentTaskTitle = getStringField(proposedData, [
+    "parent_task_title",
+    "parentTaskTitle",
+    "parentTitle",
+    "parentTask",
+  ]);
+
+  if (parentTaskTitle) {
+    const needle = normalizeLookupText(parentTaskTitle);
+    const exact = h1Tasks.find((task) => normalizeLookupText(task.title) === needle);
+    if (exact) return exact.id;
+    const partial = h1Tasks.filter((task) => {
+      const hay = normalizeLookupText(task.title);
+      return hay.includes(needle) || needle.includes(hay);
+    });
+    if (partial.length === 1) {
+      return partial[0]?.id;
+    }
+  }
+
+  const chapterId = getStringField(proposedData, ["chapter_id", "chapterId"]);
+  let chapterTitle = getStringField(proposedData, [
+    "chapter_title",
+    "chapterTitle",
+    "chapterName",
+    "chapter",
+  ]);
+
+  if (!chapterTitle && chapterId) {
+    const { data: chapterRow, error: chapterError } = await client
+      .from("business_plan_chapters")
+      .select("title")
+      .eq("id", chapterId)
+      .maybeSingle();
+
+    if (chapterError && chapterError.code !== "PGRST116") {
+      throw new Error(`Failed to resolve chapter title for task parent: ${chapterError.message}`);
+    }
+
+    if (chapterRow?.title && typeof chapterRow.title === "string") {
+      chapterTitle = chapterRow.title;
+    }
+  }
+
+  if (chapterTitle) {
+    const chapterNeedle = normalizeLookupText(chapterTitle);
+    const exactByChapter = h1Tasks.find(
+      (task) => normalizeLookupText(task.title) === chapterNeedle
+    );
+    if (exactByChapter) return exactByChapter.id;
+
+    const partialByChapter = h1Tasks.filter((task) => {
+      const hay = normalizeLookupText(task.title);
+      return hay.includes(chapterNeedle) || chapterNeedle.includes(hay);
+    });
+    if (partialByChapter.length === 1) {
+      return partialByChapter[0]?.id;
+    }
+  }
+
+  if (h1Tasks.length === 1) {
+    return h1Tasks[0]?.id;
+  }
+
+  return undefined;
+}
+
+async function resolveParentChapterIdForPendingChange(params: {
+  client: Supa;
+  businessPlanId: BusinessPlanId;
+  proposedData: Record<string, unknown>;
+}): Promise<string | null> {
+  const { client, businessPlanId, proposedData } = params;
+  const rawParentChapterId = getStringField(proposedData, [
+    "parent_id",
+    "parentChapterId",
+    "parent_chapter_id",
+    "parentId",
+  ]);
+
+  if (!rawParentChapterId) {
+    return null;
+  }
+
+  const { data: parentRow, error: parentError } = await client
+    .from("business_plan_chapters")
+    .select("id")
+    .eq("id", rawParentChapterId)
+    .eq("business_plan_id", businessPlanId)
+    .maybeSingle();
+
+  if (parentError && parentError.code !== "PGRST116") {
+    throw new Error(`Failed to validate parent chapter: ${parentError.message}`);
+  }
+
+  if (!parentRow) {
+    return null;
+  }
+
+  return parentRow.id;
+}
+
+async function resolveChapterIdForPendingSectionChange(params: {
+  client: Supa;
+  businessPlanId: BusinessPlanId;
+  proposedData: Record<string, unknown>;
+}): Promise<string | undefined> {
+  const { client, businessPlanId, proposedData } = params;
+
+  const chapterId = getStringField(proposedData, ["chapter_id", "chapterId"]);
+  if (chapterId) {
+    const { data: chapterById, error: chapterByIdError } = await client
+      .from("business_plan_chapters")
+      .select("id")
+      .eq("id", chapterId)
+      .eq("business_plan_id", businessPlanId)
+      .maybeSingle();
+
+    if (chapterByIdError && chapterByIdError.code !== "PGRST116") {
+      throw new Error(`Failed to validate section chapter: ${chapterByIdError.message}`);
+    }
+
+    if (chapterById) {
+      return chapterById.id;
+    }
+  }
+
+  const chapterTitle = getStringField(proposedData, [
+    "chapter_title",
+    "chapterTitle",
+    "chapterName",
+    "chapter",
+  ]);
+  if (!chapterTitle) {
+    return undefined;
+  }
+
+  const { data: chapterRows, error: chapterRowsError } = await client
+    .from("business_plan_chapters")
+    .select("id,title")
+    .eq("business_plan_id", businessPlanId);
+
+  if (chapterRowsError) {
+    throw new Error(`Failed to resolve section chapter: ${chapterRowsError.message}`);
+  }
+
+  const chapters = (chapterRows ?? []) as Array<{ id: string; title: string }>;
+  if (chapters.length === 0) {
+    return undefined;
+  }
+
+  const needle = normalizeLookupText(chapterTitle);
+  const exact = chapters.find((item) => normalizeLookupText(item.title) === needle);
+  if (exact) return exact.id;
+
+  const partial = chapters.filter((item) => {
+    const hay = normalizeLookupText(item.title);
+    return hay.includes(needle) || needle.includes(hay);
+  });
+
+  if (partial.length === 1) {
+    return partial[0]?.id;
+  }
+
+  return undefined;
+}
+
+const normalizePendingChangeType = (
+  rawChangeType: unknown,
+  rawTargetType: unknown
+): PendingChangeType | null => {
+  if (typeof rawChangeType !== "string") {
+    return null;
+  }
+
+  const normalizedType = rawChangeType.trim();
+  const normalizedTarget =
+    typeof rawTargetType === "string" ? rawTargetType.trim() : null;
+
+  if (normalizedType === "create") {
+    if (normalizedTarget === "chapter") return "add_chapter";
+    if (normalizedTarget === "section") return "add_section";
+    return null;
+  }
+
+  if (normalizedType === "update") {
+    if (normalizedTarget === "chapter") return "update_chapter";
+    if (normalizedTarget === "section") return "update_section";
+    return null;
+  }
+
+  if (normalizedType === "delete") {
+    if (normalizedTarget === "chapter") return "delete_chapter";
+    if (normalizedTarget === "section") return "delete_section";
+    return null;
+  }
+
+  const allowed: PendingChangeType[] = [
+    "add_section",
+    "update_section",
+    "delete_section",
+    "reorder_sections",
+    "add_chapter",
+    "update_chapter",
+    "delete_chapter",
+    "reorder_chapters",
+    "add_task",
+    "update_task",
+    "delete_task",
+  ];
+
+  return allowed.includes(normalizedType as PendingChangeType)
+    ? (normalizedType as PendingChangeType)
+    : null;
+};
 
 // ========== BUSINESS PLAN CRUD ==========
 
@@ -1075,15 +1395,37 @@ export async function applyPendingChange(params: {
   await ensureUserHasWorkspaceAccess(client, workspaceId, userId);
 
   const result: { chapter?: BusinessPlanChapter; section?: BusinessPlanSection; task?: BusinessPlanTask } = {};
+  const changeType = normalizePendingChangeType(
+    (changeRow as { change_type?: unknown }).change_type,
+    (changeRow as { target_type?: unknown }).target_type
+  );
+
+  if (!changeType) {
+    throw new Error(
+      `Unsupported pending change type: ${String(
+        (changeRow as { change_type?: unknown }).change_type
+      )}`
+    );
+  }
 
   // Apply the change based on change_type
-  switch (change.change_type) {
+  switch (changeType) {
     case "add_chapter": {
+      const proposedData = change.proposed_data ?? {};
+      const title =
+        getStringField(proposedData, ["title", "newTitle", "chapterTitle"]) ??
+        "New Chapter";
+      const parentChapterId = await resolveParentChapterIdForPendingChange({
+        client,
+        businessPlanId,
+        proposedData,
+      });
+
       const chapter = await createChapter({
         businessPlanId,
         userId,
-        title: (change.proposed_data as { title: string }).title ?? "New Chapter",
-        parentChapterId: (change.proposed_data as { parent_id?: string }).parent_id ?? null,
+        title,
+        parentChapterId,
       });
       result.chapter = chapter;
       break;
@@ -1110,16 +1452,30 @@ export async function applyPendingChange(params: {
       break;
     }
     case "add_section": {
-      const proposedData = change.proposed_data as {
-        chapter_id: string;
-        section_type: string;
-        content: BusinessPlanSectionContent;
-      };
+      const proposedData = change.proposed_data ?? {};
+      const resolvedChapterId = await resolveChapterIdForPendingSectionChange({
+        client,
+        businessPlanId,
+        proposedData,
+      });
+      if (!resolvedChapterId) {
+        throw new Error(
+          "Cannot apply add_section pending change: chapter could not be resolved."
+        );
+      }
+
+      const sectionType =
+        getStringField(proposedData, ["section_type", "sectionType"]) ?? "text";
+      const content =
+        typeof proposedData.content === "object" && proposedData.content !== null
+          ? (proposedData.content as BusinessPlanSectionContent)
+          : ({ type: "text", text: "Draft content" } as BusinessPlanSectionContent);
+
       const section = await createSection({
-        chapterId: proposedData.chapter_id,
+        chapterId: resolvedChapterId,
         userId,
-        sectionType: proposedData.section_type as BusinessPlanSection["section_type"],
-        content: proposedData.content,
+        sectionType: sectionType as BusinessPlanSection["section_type"],
+        content,
       });
       result.section = section;
       break;
@@ -1185,72 +1541,141 @@ export async function applyPendingChange(params: {
       }
       break;
     case "add_task": {
-      const proposedData = change.proposed_data as {
-        title?: string;
-        instructions?: string;
-        ai_prompt?: string;
-        hierarchy_level?: "h1" | "h2";
-        parent_task_id?: string | null;
-        status?: "todo" | "in_progress" | "done";
-        order_index?: number;
-      };
+      const proposedData = change.proposed_data ?? {};
+      const hierarchyLevel =
+        normalizeTaskHierarchyLevelValue(
+          proposedData.hierarchy_level ?? proposedData.hierarchyLevel
+        ) ?? "h1";
+      const parentTaskId = await resolveParentTaskIdForPendingTaskChange({
+        client,
+        businessPlanId,
+        proposedData,
+        hierarchyLevel,
+      });
+
+      if (hierarchyLevel === "h2" && !parentTaskId) {
+        throw new Error(
+          "Cannot apply add_task pending change: parent H1 task could not be resolved."
+        );
+      }
+
       const task = await createBusinessPlanTask({
         businessPlanId,
         userId,
-        title: proposedData.title ?? "New Task",
-        instructions: proposedData.instructions,
-        aiPrompt: proposedData.ai_prompt,
-        hierarchyLevel: proposedData.hierarchy_level ?? "h2",
-        parentTaskId: proposedData.parent_task_id ?? null,
-        status: proposedData.status,
-        orderIndex: proposedData.order_index,
+        title:
+          getStringField(proposedData, ["title", "taskTitle", "task_title"]) ??
+          "New Task",
+        instructions: getStringField(proposedData, [
+          "instructions",
+          "taskInstructions",
+          "task_instructions",
+        ]),
+        aiPrompt: getStringField(proposedData, ["ai_prompt", "aiPrompt", "prompt"]),
+        hierarchyLevel,
+        parentTaskId: hierarchyLevel === "h2" ? parentTaskId ?? null : null,
+        status: normalizeTaskStatusValue(proposedData.status ?? proposedData.taskStatus),
+        orderIndex:
+          typeof proposedData.order_index === "number"
+            ? proposedData.order_index
+            : typeof proposedData.orderIndex === "number"
+              ? proposedData.orderIndex
+              : undefined,
       });
       result.task = task;
       break;
     }
     case "update_task": {
-      if (change.target_id) {
-        const proposedData = change.proposed_data as {
-          title?: string;
-          instructions?: string;
-          ai_prompt?: string;
-          hierarchy_level?: "h1" | "h2";
-          parent_task_id?: string | null;
-          status?: "todo" | "in_progress" | "done";
-          order_index?: number;
-        };
-        const hasUpdate =
-          proposedData.title !== undefined ||
-          proposedData.instructions !== undefined ||
-          proposedData.ai_prompt !== undefined ||
-          proposedData.hierarchy_level !== undefined ||
-          proposedData.parent_task_id !== undefined ||
-          proposedData.status !== undefined ||
-          proposedData.order_index !== undefined;
-        if (hasUpdate) {
-          const task = await updateBusinessPlanTask({
-            taskId: change.target_id,
-            userId,
-            title: proposedData.title,
-            instructions: proposedData.instructions,
-            aiPrompt: proposedData.ai_prompt,
-            hierarchyLevel: proposedData.hierarchy_level,
-            parentTaskId: proposedData.parent_task_id,
-            status: proposedData.status,
-            orderIndex: proposedData.order_index,
-          });
-          result.task = task;
-        }
+      const proposedData = change.proposed_data ?? {};
+      const targetTaskId =
+        change.target_id ??
+        getStringField(proposedData, ["task_id", "taskId"]) ??
+        null;
+
+      if (!targetTaskId) {
+        throw new Error("Cannot apply update_task pending change: target task is missing.");
       }
+
+      const hierarchyLevel = normalizeTaskHierarchyLevelValue(
+        proposedData.hierarchy_level ?? proposedData.hierarchyLevel
+      );
+      const parentTaskId =
+        hierarchyLevel !== undefined
+          ? await resolveParentTaskIdForPendingTaskChange({
+              client,
+              businessPlanId,
+              proposedData,
+              hierarchyLevel,
+            })
+          : getStringField(proposedData, [
+              "parent_task_id",
+              "parentTaskId",
+              "parent_id",
+              "parentId",
+            ]);
+
+      if (hierarchyLevel === "h2" && parentTaskId === undefined) {
+        throw new Error(
+          "Cannot apply update_task pending change: parent H1 task could not be resolved."
+        );
+      }
+
+      const title = getStringField(proposedData, ["title", "taskTitle", "task_title"]);
+      const instructions = getStringField(proposedData, [
+        "instructions",
+        "taskInstructions",
+        "task_instructions",
+      ]);
+      const aiPrompt = getStringField(proposedData, ["ai_prompt", "aiPrompt", "prompt"]);
+      const status = normalizeTaskStatusValue(proposedData.status ?? proposedData.taskStatus);
+      const orderIndex =
+        typeof proposedData.order_index === "number"
+          ? proposedData.order_index
+          : typeof proposedData.orderIndex === "number"
+            ? proposedData.orderIndex
+            : undefined;
+
+      const hasUpdate =
+        title !== undefined ||
+        instructions !== undefined ||
+        aiPrompt !== undefined ||
+        hierarchyLevel !== undefined ||
+        parentTaskId !== undefined ||
+        status !== undefined ||
+        orderIndex !== undefined;
+
+      if (!hasUpdate) {
+        throw new Error("Cannot apply update_task pending change: no updates provided.");
+      }
+
+      const task = await updateBusinessPlanTask({
+        taskId: targetTaskId,
+        userId,
+        title,
+        instructions,
+        aiPrompt,
+        hierarchyLevel,
+        parentTaskId,
+        status,
+        orderIndex,
+      });
+      result.task = task;
       break;
     }
     case "delete_task": {
-      if (change.target_id) {
-        await deleteBusinessPlanTask({
-          taskId: change.target_id,
-          userId,
-        });
+      const proposedData = change.proposed_data ?? {};
+      const targetTaskId =
+        change.target_id ??
+        getStringField(proposedData, ["task_id", "taskId"]) ??
+        null;
+
+      if (!targetTaskId) {
+        throw new Error("Cannot apply delete_task pending change: target task is missing.");
       }
+
+      await deleteBusinessPlanTask({
+        taskId: targetTaskId,
+        userId,
+      });
       break;
     }
   }

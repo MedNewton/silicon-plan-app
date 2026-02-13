@@ -11,6 +11,9 @@ import {
 } from "react";
 import type {
   BusinessPlan,
+  BusinessPlanChapter,
+  BusinessPlanSection,
+  BusinessPlanTask,
   BusinessPlanChapterWithSections,
   BusinessPlanTaskWithChildren,
   BusinessPlanTaskStatus,
@@ -81,6 +84,11 @@ type BusinessPlanContextValue = {
   conversationId: BusinessPlanAiConversationId | null;
   messages: BusinessPlanAiMessage[];
   pendingChanges: BusinessPlanPendingChange[];
+  lastAppliedTaskChange: {
+    taskId: string;
+    parentTaskId: string | null;
+    changedAt: number;
+  } | null;
   isChatLoading: boolean;
   isChatSending: boolean;
   chatError: string | null;
@@ -122,6 +130,11 @@ export const BusinessPlanProvider: FC<BusinessPlanProviderProps> = ({
   const [conversationId, setConversationId] = useState<BusinessPlanAiConversationId | null>(null);
   const [messages, setMessages] = useState<BusinessPlanAiMessage[]>([]);
   const [pendingChanges, setPendingChanges] = useState<BusinessPlanPendingChange[]>([]);
+  const [lastAppliedTaskChange, setLastAppliedTaskChange] = useState<{
+    taskId: string;
+    parentTaskId: string | null;
+    changedAt: number;
+  } | null>(null);
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [isChatSending, setIsChatSending] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
@@ -655,7 +668,34 @@ export const BusinessPlanProvider: FC<BusinessPlanProviderProps> = ({
         );
 
         if (!response.ok) {
-          throw new Error("Failed to accept change");
+          const errorMessage = (await response.text()).trim();
+          throw new Error(errorMessage || "Failed to accept change");
+        }
+
+        const data = (await response.json()) as {
+          success: boolean;
+          action: "accepted";
+          result?: {
+            chapter?: BusinessPlanChapter;
+            section?: BusinessPlanSection;
+            task?: BusinessPlanTask;
+          };
+        };
+
+        if (data.result?.section) {
+          setSelectedChapterId(data.result.section.chapter_id);
+          setSelectedSectionId(data.result.section.id);
+        } else if (data.result?.chapter) {
+          setSelectedChapterId(data.result.chapter.id);
+          setSelectedSectionId(null);
+        }
+
+        if (data.result?.task) {
+          setLastAppliedTaskChange({
+            taskId: data.result.task.id,
+            parentTaskId: data.result.task.parent_task_id ?? null,
+            changedAt: Date.now(),
+          });
         }
 
         await refreshData();
@@ -722,6 +762,7 @@ export const BusinessPlanProvider: FC<BusinessPlanProviderProps> = ({
     conversationId,
     messages,
     pendingChanges,
+    lastAppliedTaskChange,
     isChatLoading,
     isChatSending,
     chatError,
