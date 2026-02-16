@@ -618,12 +618,15 @@ export const BusinessPlanProvider: FC<BusinessPlanProviderProps> = ({
             body: JSON.stringify({
               conversationId,
               message: content.trim(),
+              selectedChapterId,
+              selectedTaskId: null, // TODO: Add selectedTaskId to context if needed
             }),
           }
         );
 
         if (!response.ok) {
-          throw new Error("Failed to send message");
+          const errorText = await response.text();
+          throw new Error(errorText || "Failed to send message");
         }
 
         const data = (await response.json()) as {
@@ -652,7 +655,7 @@ export const BusinessPlanProvider: FC<BusinessPlanProviderProps> = ({
         setIsChatSending(false);
       }
     },
-    [workspaceId, conversationId]
+    [workspaceId, conversationId, selectedChapterId]
   );
 
   const acceptPendingChange = useCallback(
@@ -668,8 +671,9 @@ export const BusinessPlanProvider: FC<BusinessPlanProviderProps> = ({
         );
 
         if (!response.ok) {
-          const errorMessage = (await response.text()).trim();
-          throw new Error(errorMessage || "Failed to accept change");
+          const errorText = await response.text();
+          const actionableError = parseActionableError(errorText);
+          throw new Error(actionableError);
         }
 
         const data = (await response.json()) as {
@@ -703,14 +707,44 @@ export const BusinessPlanProvider: FC<BusinessPlanProviderProps> = ({
         await refreshChat();
       } catch (err) {
         console.error("Error accepting pending change:", err);
-        setChatError(err instanceof Error ? err.message : "Failed to accept change");
+        const errorMessage = err instanceof Error ? err.message : "Failed to accept change";
+        setChatError(errorMessage);
       }
     },
     [workspaceId, refreshData, refreshTasks, refreshChat]
   );
 
+  // Helper to parse server errors into actionable messages
+  const parseActionableError = (errorText: string): string => {
+    // Map common server errors to user-friendly messages
+    if (errorText.includes("target chapter could not be resolved")) {
+      return "Could not find the target chapter. It may have been deleted or renamed. Please try again with the correct chapter.";
+    }
+    if (errorText.includes("target section ID is missing")) {
+      return "Could not identify the section to update. Please try again.";
+    }
+    if (errorText.includes("target task is missing")) {
+      return "Could not find the target task. It may have been deleted. Please try again.";
+    }
+    if (errorText.includes("no updates provided")) {
+      return "No changes were specified. Please provide the updates you want to make.";
+    }
+    if (errorText.includes("parent H1 task could not be resolved")) {
+      return "Could not find the parent task for this subtask. Please ensure the parent task exists.";
+    }
+    if (errorText.includes("chapter could not be resolved")) {
+      return "Could not find the target chapter. Please ensure the chapter exists or specify it more precisely.";
+    }
+    if (errorText.includes("already been resolved")) {
+      return "This change has already been processed. Please refresh to see the latest state.";
+    }
+    // Return original if no specific mapping
+    return errorText || "An unexpected error occurred. Please try again.";
+  };
+
   const rejectPendingChange = useCallback(
     async (changeId: string) => {
+      setChatError(null);
       try {
         const response = await fetch(
           `/api/workspaces/${workspaceId}/business-plan/ai/pending-changes/${changeId}`,
@@ -722,13 +756,15 @@ export const BusinessPlanProvider: FC<BusinessPlanProviderProps> = ({
         );
 
         if (!response.ok) {
-          throw new Error("Failed to reject change");
+          const errorText = await response.text();
+          throw new Error(errorText || "Failed to reject change");
         }
 
         await refreshChat();
       } catch (err) {
         console.error("Error rejecting pending change:", err);
-        setChatError(err instanceof Error ? err.message : "Failed to reject change");
+        const errorMessage = err instanceof Error ? err.message : "Failed to reject change";
+        setChatError(errorMessage);
       }
     },
     [workspaceId, refreshChat]

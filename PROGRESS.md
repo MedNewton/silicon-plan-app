@@ -1,15 +1,16 @@
 # Progress Tracker
-Last updated: 2026-02-13
+Last updated: 2026-02-16
 Source of truth for tasks: `TASKS.md`
 
 ## Summary
 - Total scoped tasks: 47
-- `done`: 37
-- `in_progress`: 0
-- `todo`: 10
+- `done`: 38
+- `in_progress`: 1
+- `todo`: 8
 - `blocked`: 0
+- **Note:** CORE-005 and CORE-008 marked as `done` in TASKS.md (completed 2026-02-16)
 
-## Completed (This Batch)
+## Completed (This Batch - Updated 2026-02-16)
 1. `CORE-001` - Define onboarding canonical data contract
 2. `CORE-002` - Implement wizard shell for 12-step onboarding
 3. `CORE-003` - Implement Step 1-4 in wizard
@@ -37,13 +38,21 @@ Source of truth for tasks: `TASKS.md`
 25. `WS-002` - Add invitation lifecycle statuses
 26. `WS-007` - Rename confusing section labels
 27. `WS-004` - Add workspace delete capability
-28. `WS-016` - Fix AI Chat + Plan Chapters task creation gap
+28. `WS-016` - Initial hardening pass for AI Chat + Plan Chapters task creation gap (reopened, now complete with chapter selection UI)
+29. `CORE-005` - Implement ATECO code search with autocomplete (Step 4 in business setup)
+30. `CORE-008` - Build Damodaran <-> onboarding sector mapping layer for valuation multiples
+
+## Reopened / Not Fully Done
+1. `WS-016` - Fix AI Chat + Plan Chapters task creation gap (`pending_qa`)
+2. Code implementation complete, database migration applied
+3. Awaiting manual QA validation using `docs/qa/ws-016-manual-qa-script.md`
 
 ## Todo (Immediate Next)
-1. `CORE-005` - Implement Step 6 ATECO (optional) with search
-2. `CORE-008` - Build Damodaran <-> onboarding sector mapping layer
-3. `CORE-009` - Add ATECO mapping scaffolding
-4. `CORE-018` - Add pitch preset sections template
+1. `CORE-009` - Add ATECO mapping scaffolding
+2. `CORE-018` - Add pitch preset sections template
+3. `CORE-019` - Reuse BP/Canvas data for pitch generation
+4. `WS-005` - Implement EN/IT language toggle
+5. `WS-017` - Implement workspace/library -> task automation
 
 ## Recent Validation
 - `npm run typecheck`: pass
@@ -107,3 +116,53 @@ Source of truth for tasks: `TASKS.md`
 - 2026-02-13: Fixed AI tool-intent ambiguity where "subchapter/chapter" requests could be mis-routed to `add_task`; chapter-language requests now force `add_chapter` proposal flow with optional parent chapter resolution.
 - 2026-02-13: Added chapter-intent guardrails in AI chat parsing: chapter-only requests now ignore non-chapter tool outputs, duplicate chapter proposals are skipped (existing + same-response dedupe), and `"under \"...\""` parent-title phrasing is resolved to the correct parent chapter.
 - 2026-02-13: Added deterministic chapter-creation parsing for chapter-only prompts (e.g., `add subchapter "X" under "Y"`), forcing a single `add_chapter` proposal with duplicate suppression against existing chapters and same-turn proposals.
+- 2026-02-16: Reopened `WS-016` as not fully complete after validation feedback; status set back to `in_progress` until reliability/QA gaps are closed.
+- 2026-02-16: Added remediation checklist `docs/qa/ws-016-hardening-checklist.md` to track remaining WS-016 hardening work.
+- 2026-02-16: Completed WS-016 code implementation with all 8 goals addressed:
+  - Fixed status schema mismatch (accepted vs approved) with backward-compatible migration
+  - Added robust chapter resolution by title+parent for update/delete operations
+  - Blocked no-op approvals with explicit validation and clear error messages
+  - Improved apply flow safety with compensation logging for inconsistent states
+  - Extended AI tool-call retry logic to handle wrong tool types, not just missing tools
+  - Passed UI context (selectedChapterId) to chat API for better resolution
+  - Implemented actionable error messages throughout accept/reject flows
+  - Created comprehensive manual QA script with 22 test cases
+- 2026-02-16: Applied database migration `20260216_status_schema_alignment.sql` successfully.
+- 2026-02-16: Status changed to `pending_qa` - awaiting manual QA validation before marking as `done`.
+- 2026-02-16: **CORE-005 Complete** - Implemented ATECO code autocomplete search in business setup Step 5. Features:
+  - Full dropdown showing all 52 ATECO codes on click (no typing required)
+  - Search by code (e.g., "62"), category (e.g., "ICT"), or description (e.g., "programming")
+  - Descriptive labels: "62 - Computer programming and consultancy" (not repetitive "62 - ICT")
+  - All ATECO macro names translated to English (Agriculture, Manufacturing, ICT, etc.)
+  - Search filters results dynamically without auto-clearing input
+  - Optional/skippable field - doesn't block onboarding completion
+  - Selected ATECO code and description saved to business profile
+- 2026-02-16: **CORE-008 Complete** - Built complete Damodaran <-> onboarding sector mapping layer for accurate startup valuation:
+  - Created `src/lib/sectorMapping.ts` with comprehensive mapping service
+  - 16 user-friendly onboarding sectors in Step 4 (all English): Software/SaaS, E-commerce, FinTech, Health/MedTech, Education, Media, Tourism, Transport, Manufacturing, Agri-food, Energy, Construction, Professional Services, Business Services, Other
+  - 52 ATECO 2-digit codes with specific descriptions (e.g., "62 - Computer programming and consultancy")
+  - 95 Damodaran industries for valuation multiples
+  - Each sector maps to 3 weighted Damodaran industries (e.g., 70%, 20%, 10%)
+  - Example: "Software / SaaS / IT" → 70% Software (System & Application), 20% Software (Internet), 10% Information Services
+  - ATECO code selection refines mapping for more accurate industry classification
+- 2026-02-16: Created API endpoints:
+  - `GET /api/sectors/ateco/search?q=<query>` - Returns all 52 codes when query empty, filtered results when query provided
+  - `POST /api/sectors/damodaran` - Resolves weighted Damodaran industries from onboarding sector + optional ATECO code
+  - `GET /api/sectors/damodaran` - Returns all 95 Damodaran industries
+- 2026-02-16: Created `src/components/onboarding/AtecoSearchField.tsx` with Material-UI Autocomplete:
+  - Loads all codes on mount for instant dropdown
+  - Debounced server-side search for filtering
+  - Visual feedback with loading states
+  - Prevents input clearing on blur/selection
+  - Shows code chips and descriptions in dropdown
+- 2026-02-16: Integrated into business setup page:
+  - Step 4: 16 English onboarding sectors (user-friendly macro categories)
+  - Step 5: ATECO search field (optional, with full dropdown and search)
+- 2026-02-16: Created comprehensive types in `src/types/sectors.ts`:
+  - `OnboardingSector`, `Ateco2Digit`, `AtecoMacro`, `DamodaranIndustry`
+  - `SectorMapping`, `SectorResolution`, `AtecoSearchResult`
+- 2026-02-16: Added comprehensive implementation documentation in `docs/CORE-005-008-IMPLEMENTATION.md`.
+- 2026-02-16: Damodaran valuation multiples data integrated (95 industries with EV/EBITDA ratios) - ready for future valuation calculator features.
+- 2026-02-16: Files created/modified for CORE-005 & CORE-008:
+  - Created: `src/types/sectors.ts`, `src/lib/sectorMapping.ts`, `src/app/api/sectors/ateco/search/route.ts`, `src/app/api/sectors/damodaran/route.ts`, `src/components/onboarding/AtecoSearchField.tsx`, `docs/CORE-005-008-IMPLEMENTATION.md`
+  - Modified: `src/app/workspaces/[workspaceId]/business-setup/page.tsx`, `TASKS.md`, `PROGRESS.md`

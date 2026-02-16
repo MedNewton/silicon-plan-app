@@ -304,7 +304,7 @@ type ChapterBlockProps = {
 };
 
 const ChapterBlock: FC<ChapterBlockProps> = ({ chapter, onOpenAi }) => {
-  const { reorderSections } = useBusinessPlan();
+  const { reorderSections, selectedChapterId, setSelectedChapterId } = useBusinessPlan();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -324,19 +324,58 @@ const ChapterBlock: FC<ChapterBlockProps> = ({ chapter, onOpenAi }) => {
   };
 
   const sectionIds = chapter.sections.map((section) => section.id);
+  const isSelected = selectedChapterId === chapter.id;
+
+  const handleChapterClick = (event: React.MouseEvent) => {
+    // Don't select if clicking on a child element (section)
+    if (event.target !== event.currentTarget) return;
+    setSelectedChapterId(isSelected ? null : chapter.id);
+  };
 
   return (
     <Box sx={{ mb: 2 }}>
-      {/* Chapter Title */}
+      {/* Chapter Title - Now clickable for selection */}
       <Typography
+        onClick={handleChapterClick}
         sx={{
           fontSize: 20,
           fontWeight: 700,
-          color: "#111827",
+          color: isSelected ? "#4C6AD2" : "#111827",
+          bgcolor: isSelected ? "rgba(76,106,210,0.08)" : "transparent",
           mb: 1.5,
+          px: 1.5,
+          py: 0.75,
+          mx: -1.5,
+          borderRadius: 2,
+          cursor: "pointer",
+          transition: "all 0.2s ease",
+          border: isSelected ? "2px solid #4C6AD2" : "2px solid transparent",
+          "&:hover": {
+            bgcolor: isSelected ? "rgba(76,106,210,0.12)" : "rgba(76,106,210,0.04)",
+            borderColor: isSelected ? "#4C6AD2" : "rgba(76,106,210,0.2)",
+          },
         }}
       >
         {chapter.title}
+        {isSelected && (
+          <Box
+            component="span"
+            sx={{
+              ml: 1.5,
+              fontSize: 11,
+              fontWeight: 600,
+              color: "#4C6AD2",
+              bgcolor: "#FFFFFF",
+              px: 1,
+              py: 0.25,
+              borderRadius: 1,
+              textTransform: "uppercase",
+              letterSpacing: 0.5,
+            }}
+          >
+            Selected
+          </Box>
+        )}
       </Typography>
 
       {/* Sections */}

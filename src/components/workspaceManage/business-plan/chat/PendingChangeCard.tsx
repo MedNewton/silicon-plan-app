@@ -35,7 +35,14 @@ const CHANGE_LABELS: Record<string, string> = {
 const STATUS_COLORS: Record<string, "default" | "success" | "error" | "warning"> = {
   pending: "warning",
   approved: "success",
+  accepted: "success", // backward compatibility with legacy DB status
   rejected: "error",
+};
+
+// Normalize status for display (both 'accepted' and 'approved' → 'approved')
+const normalizeDisplayStatus = (status: string): string => {
+  if (status === "accepted") return "approved";
+  return status;
 };
 
 const summarizeContent = (content: unknown): string => {
@@ -152,8 +159,9 @@ const PendingChangeCard: FC<PendingChangeCardProps> = ({
   onAccept,
   onReject,
 }) => {
-  const status = change.status;
-  const isPending = status === "pending";
+  const rawStatus = change.status;
+  const status = normalizeDisplayStatus(rawStatus);
+  const isPending = rawStatus === "pending";
   const [isResolving, setIsResolving] = useState(false);
 
   const handleAccept = async () => {
@@ -193,7 +201,7 @@ const PendingChangeCard: FC<PendingChangeCardProps> = ({
           <Chip
             size="small"
             label={status}
-            color={STATUS_COLORS[status] ?? "default"}
+            color={STATUS_COLORS[rawStatus] ?? STATUS_COLORS[status] ?? "default"}
             sx={{ textTransform: "capitalize" }}
           />
         </Stack>

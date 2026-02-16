@@ -64,6 +64,36 @@ export async function POST(
   } catch (error) {
     console.error("Unexpected error in POST /ai/pending-changes/[changeId]:", error);
     const message = error instanceof Error ? error.message : "Internal server error";
-    return new NextResponse(message, { status: 500 });
+
+    // Determine appropriate status code based on error type
+    let statusCode = 500;
+    if (
+      message.includes("not found") ||
+      message.includes("could not be resolved")
+    ) {
+      statusCode = 404;
+    } else if (
+      message.includes("already been resolved") ||
+      message.includes("no updates provided") ||
+      message.includes("is missing")
+    ) {
+      statusCode = 422;
+    } else if (message.includes("does not have access")) {
+      statusCode = 403;
+    }
+
+    return new NextResponse(
+      JSON.stringify({
+        error: message,
+        code: statusCode === 404 ? "TARGET_NOT_FOUND" :
+              statusCode === 422 ? "INVALID_CHANGE" :
+              statusCode === 403 ? "ACCESS_DENIED" :
+              "INTERNAL_ERROR",
+      }),
+      {
+        status: statusCode,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
   }
 }

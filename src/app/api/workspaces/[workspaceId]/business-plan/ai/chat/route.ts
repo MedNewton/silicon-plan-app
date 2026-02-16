@@ -28,6 +28,8 @@ import type {
 type ChatBody = {
   message: string;
   conversationId?: string | null;
+  selectedChapterId?: string | null;
+  selectedTaskId?: string | null;
 };
 
 const tools: ChatCompletionTool[] = [
@@ -704,6 +706,8 @@ export async function POST(
 
     const body = (await req.json()) as ChatBody;
     const messageText = body.message?.trim();
+    const selectedChapterId = body.selectedChapterId ?? null;
+    const selectedTaskId = body.selectedTaskId ?? null;
 
     if (!messageText) {
       return new NextResponse("Message is required", { status: 400 });
@@ -750,6 +754,26 @@ export async function POST(
     const taskContextLines = buildTaskContextLines(taskTree?.tasks ?? []);
     const flattenedTasks = flattenTasks(taskTree?.tasks ?? []);
     const chapterRefs = flattenChapterRefs(planData?.chapters ?? []);
+
+    // Build selected context labels for AI prompt enrichment
+    const selectedChapterRef = selectedChapterId
+      ? chapterRefs.find((c) => c.id === selectedChapterId) ?? null
+      : null;
+    const selectedTaskRef = selectedTaskId
+      ? flattenedTasks.find((t) => t.id === selectedTaskId) ?? null
+      : null;
+    const selectedContextLines: string[] = [];
+    if (selectedChapterRef) {
+      selectedContextLines.push(
+        `User has selected chapter: "${selectedChapterRef.title}" (id: ${selectedChapterRef.id})`
+      );
+    }
+    if (selectedTaskRef) {
+      selectedContextLines.push(
+        `User has selected task: "${selectedTaskRef.title}" (id: ${selectedTaskRef.id}, level: ${selectedTaskRef.hierarchy_level})`
+      );
+    }
+
     const chapterOnlyIntent = isChapterOnlyIntent(messageText);
     const chapterCreationIntent = extractChapterCreationIntent(messageText);
     const chapterToolNames = new Set([
@@ -776,7 +800,11 @@ export async function POST(
       "Current task hierarchy:",
       taskContextLines.length > 0 ? taskContextLines.join("\n") : "- No tasks yet",
     ].join("\n");
-    const combinedContext = [context, tasksContext, workspaceContext.context]
+    const selectedContextBlock =
+      selectedContextLines.length > 0
+        ? ["Selected UI context:", ...selectedContextLines].join("\n")
+        : "";
+    const combinedContext = [context, tasksContext, workspaceContext.context, selectedContextBlock]
       .filter(Boolean)
       .join("\n\n");
     const systemPrompt = buildBusinessPlanSystemPrompt(combinedContext);
@@ -823,7 +851,39 @@ export async function POST(
       messageText
     );
 
-    if (toolCalls.length === 0 && looksLikeStructuralRequest) {
+    // Retry logic: handles both "no tool call" and "wrong tool type" scenarios
+    const hasWrongToolType = (calls: typeof toolCalls): boolean => {
+      if (calls.length === 0) return false;
+      // If user asked about chapters but only got task tools (or vice versa)
+      const mentionsChapter = /\b(chapter|subchapter)\b/i.test(messageText);
+      const mentionsTask = /\b(task|subtask|h1|h2)\b/i.test(messageText);
+      const mentionsSection = /\b(section|paragraph|text|content)\b/i.test(messageText);
+
+      const hasChapterTool = calls.some((c) => c.type === "function" && c.function.name.includes("chapter"));
+      const hasTaskTool = calls.some((c) => c.type === "function" && c.function.name.includes("task"));
+      const hasSectionTool = calls.some((c) => c.type === "function" && c.function.name.includes("section"));
+
+      // Wrong: user said "chapter" but only got task tools, no chapter tools
+      if (mentionsChapter && !mentionsTask && !hasChapterTool && hasTaskTool) return true;
+      // Wrong: user said "task" but only got chapter tools, no task tools
+      if (mentionsTask && !mentionsChapter && !hasTaskTool && hasChapterTool) return true;
+      // Wrong: user said "section" but got no section tools
+      if (mentionsSection && !mentionsChapter && !mentionsTask && !hasSectionTool && (hasChapterTool || hasTaskTool)) return true;
+
+      return false;
+    };
+
+    const needsRetry = toolCalls.length === 0 || hasWrongToolType(toolCalls);
+
+    if (needsRetry && looksLikeStructuralRequest) {
+      const retryHint = hasWrongToolType(toolCalls)
+        ? `\nIMPORTANT: Your previous response used the wrong tool type. Re-read the user request carefully:
+- "chapter"/"subchapter" → use chapter tools (propose_add_chapter, propose_update_chapter, propose_delete_chapter)
+- "task"/"subtask"/"h1"/"h2" → use task tools (propose_add_task, propose_update_task, propose_delete_task)
+- "section"/"paragraph"/"content" → use section tools (propose_add_section, propose_update_section, propose_delete_section)
+Do NOT mix tool types unless the user explicitly asks for multiple entity types.`
+        : "";
+
       const strictCompletion = await openai.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
@@ -832,7 +892,7 @@ export async function POST(
             content: `${systemPrompt}
 
 You must call one or more tools when the user asks to create, update, delete, or structure chapters/sections/tasks.
-If the request is ambiguous, ask a concise clarifying question.`,
+If the request is ambiguous, ask a concise clarifying question.${retryHint}`,
           },
           ...historyMessages,
           { role: "user", content: messageText },
@@ -844,7 +904,11 @@ If the request is ambiguous, ask a concise clarifying question.`,
       });
 
       const strictToolCalls = strictCompletion.choices[0]?.message?.tool_calls ?? [];
-      if (strictToolCalls.length > 0) {
+      if (strictToolCalls.length > 0 && !hasWrongToolType(strictToolCalls)) {
+        completion = strictCompletion;
+        toolCalls = strictToolCalls;
+      } else if (strictToolCalls.length > 0 && toolCalls.length === 0) {
+        // Even if wrong type, prefer having some tool calls over none
         completion = strictCompletion;
         toolCalls = strictToolCalls;
       }
@@ -870,6 +934,19 @@ If the request is ambiguous, ask a concise clarifying question.`,
       const args = parseToolArguments(toolCall.function.arguments);
       let targetId: string | null = null;
       let proposedData: Record<string, unknown> = {};
+
+      // Use selected UI context for resolution when args lack explicit IDs
+      if (selectedChapterId && !readStringArg(args, ["chapterId", "chapter_id"])) {
+        // Inject selected chapter as fallback context for section/chapter operations
+        if (functionName.includes("section") && !args.chapterId && !args.chapter_id) {
+          args.chapterId = selectedChapterId;
+        }
+      }
+      if (selectedTaskId && !readStringArg(args, ["taskId", "task_id"])) {
+        if (functionName.includes("task") && functionName !== "propose_add_task" && !args.taskId && !args.task_id) {
+          args.taskId = selectedTaskId;
+        }
+      }
 
       switch (functionName) {
         case "propose_add_chapter": {
@@ -936,15 +1013,109 @@ If the request is ambiguous, ask a concise clarifying question.`,
           break;
         }
         case "propose_update_chapter": {
-          targetId = (args.chapterId as string) ?? null;
+          // Try to resolve chapter by ID first, then by title
+          const requestedId = readStringArg(args, ["chapterId", "chapter_id"]);
+          if (requestedId) {
+            const byId = chapterRefs.find((c) => c.id === requestedId);
+            targetId = byId?.id ?? requestedId;
+          }
+
+          // If no ID, try title-based resolution
+          if (!targetId) {
+            const requestedTitle = readStringArg(args, ["chapterTitle", "chapter_title", "title", "chapter"]);
+            if (requestedTitle) {
+              const resolved = resolveChapterFromArgs({
+                args: { chapterTitle: requestedTitle },
+                chapterRefs,
+              });
+              targetId = resolved?.id ?? null;
+            }
+          }
+
+          // If still no target, try selected chapter from UI
+          if (!targetId && selectedChapterId) {
+            targetId = selectedChapterId;
+          }
+
+          if (!targetId) {
+            skippedUpdates.push(
+              "I couldn't determine which chapter to update. Please specify the chapter name or select it in the sidebar."
+            );
+            break;
+          }
+
+          const newTitle = readStringArg(args, ["newTitle", "title", "chapterTitle"]);
+          if (!newTitle) {
+            skippedUpdates.push(
+              "I couldn't determine the new title for the chapter update."
+            );
+            break;
+          }
+
           proposedData = {
-            title: args.newTitle ?? undefined,
+            title: newTitle,
           };
           break;
         }
         case "propose_delete_chapter": {
-          targetId = (args.chapterId as string) ?? null;
-          proposedData = {};
+          // Try to resolve chapter by ID first, then by title
+          const requestedId = readStringArg(args, ["chapterId", "chapter_id"]);
+          let resolvedChapter: { id: string; title: string; parentId: string | null } | null = null;
+          
+          if (requestedId) {
+            const byId = chapterRefs.find((c) => c.id === requestedId);
+            if (byId) {
+              resolvedChapter = byId;
+              targetId = byId.id;
+            } else {
+              targetId = requestedId;
+            }
+          }
+
+          // If no ID, try title-based resolution
+          if (!resolvedChapter) {
+            const requestedTitle = readStringArg(args, ["chapterTitle", "chapter_title", "title", "chapter"]);
+            if (requestedTitle) {
+              const resolved = resolveChapterFromArgs({
+                args: { chapterTitle: requestedTitle },
+                chapterRefs,
+              });
+              if (resolved) {
+                resolvedChapter = resolved;
+                targetId = resolved.id;
+              } else {
+                // Ambiguous - report to user
+                skippedUpdates.push(
+                  `I couldn't find an unambiguous chapter matching "${requestedTitle}". Please specify more precisely.`
+                );
+                break;
+              }
+            }
+          }
+
+          // If still no target, try selected chapter from UI
+          if (!resolvedChapter && selectedChapterId) {
+            const selectedChapter = chapterRefs.find((c) => c.id === selectedChapterId);
+            if (selectedChapter) {
+              resolvedChapter = selectedChapter;
+              targetId = selectedChapter.id;
+            }
+          }
+
+          if (!resolvedChapter && !targetId) {
+            skippedUpdates.push(
+              "I couldn't determine which chapter to delete. Please specify the chapter name or select it in the sidebar."
+            );
+            break;
+          }
+
+          // Store chapter title and parent in proposedData for later resolution
+          proposedData = {
+            title: resolvedChapter?.title ?? "",
+            parent_title: resolvedChapter?.parentId 
+              ? chapterRefs.find((c) => c.id === resolvedChapter?.parentId)?.title ?? null
+              : null,
+          };
           break;
         }
         case "propose_add_section": {

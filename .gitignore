@@ -46,3 +46,9 @@ yarn-error.log*
 .idea
 # clerk configuration (can include secrets)
 /.clerk/
+
+# Ignore Markdown files…
+*.md
+
+# …except README
+!README.md

@@ -34,6 +34,8 @@ import SettingsTopTabs, {
 import AiFieldActionButton, {
   type AiFieldAssistAction,
 } from "@/components/workspaceSettings/AiFieldActionButton";
+import AtecoSearchField from "@/components/onboarding/AtecoSearchField";
+import { getOnboardingSectors } from "@/lib/sectorMapping";
 
 type GetWorkspaceResponse = {
   workspace: Workspace;
@@ -65,22 +67,9 @@ type AiAssistFieldKey =
   | "successMetrics"
   | "growthPartnerships";
 
-const INDUSTRY_OPTIONS = [
-  "Software & SaaS",
-  "E-commerce & Retail",
-  "FinTech & InsurTech",
-  "Healthcare & MedTech",
-  "Education & EdTech",
-  "Manufacturing & Industry 4.0",
-  "Logistics & Supply Chain",
-  "Energy & CleanTech",
-  "Food & Beverage",
-  "Real Estate & PropTech",
-  "Media, Marketing & Advertising",
-  "Professional Services",
-  "Travel & Hospitality",
-  "Agriculture & AgriTech",
-] as const;
+// Use 16 macro-level onboarding sectors that map to Damodaran industries
+// These sectors are user-friendly and map to weighted Damodaran industries via CORE-008
+const INDUSTRY_OPTIONS = getOnboardingSectors();
 
 const COMPANY_STAGE_OPTIONS = [
   "Idea / Pre-seed",
@@ -958,30 +947,39 @@ export default function WorkspaceBusinessSetupPage() {
 
           <Box>
             <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
-              ATECO code (optional)
+              ATECO code (optional but recommended)
             </Typography>
-            <TextField
-              fullWidth
-              placeholder="Ex. 62.01.00"
+            <Typography sx={{ fontSize: 12, color: "text.secondary", mb: 1 }}>
+              Search by code or category name. This helps us provide accurate industry benchmarks and valuation multiples.
+            </Typography>
+            <AtecoSearchField
               value={data.atecoCode}
-              onChange={(e) => updateField("atecoCode", e.target.value)}
-              InputProps={{ sx: inputBaseSx }}
+              onChange={(code, description) => {
+                updateField("atecoCode", code);
+                updateField("atecoDescription", description);
+              }}
+              disabled={isBusy}
+              error={Boolean(fieldErrors.atecoCode)}
+              helperText={fieldErrors.atecoCode}
             />
-          </Box>
-
-          <Box>
-            <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
-              ATECO description (optional)
-            </Typography>
-            <TextField
-              fullWidth
-              multiline
-              minRows={2}
-              placeholder="Describe the ATECO activity"
-              value={data.atecoDescription}
-              onChange={(e) => updateField("atecoDescription", e.target.value)}
-              InputProps={{ sx: multilineFieldSx }}
-            />
+            {data.atecoCode && data.atecoDescription ? (
+              <Box
+                sx={{
+                  mt: 1.5,
+                  p: 1.5,
+                  borderRadius: 2,
+                  bgcolor: "#F0F9FF",
+                  border: "1px solid #BAE6FD",
+                }}
+              >
+                <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#0369A1", mb: 0.5 }}>
+                  Selected ATECO:
+                </Typography>
+                <Typography sx={{ fontSize: 13, color: "#075985" }}>
+                  {data.atecoDescription}
+                </Typography>
+              </Box>
+            ) : null}
           </Box>
         </Stack>
       );
