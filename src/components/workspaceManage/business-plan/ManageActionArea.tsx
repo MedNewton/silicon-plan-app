@@ -14,6 +14,8 @@ import {
   Alert,
   CircularProgress,
   Menu,
+  FormControlLabel,
+  Switch,
   type SelectChangeEvent,
 } from "@mui/material";
 import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
@@ -37,11 +39,18 @@ import type {
   BusinessPlanSectionContent,
 } from "@/types/workspaces";
 import { buildBusinessPlanHtml, buildBusinessPlanDocx } from "@/lib/businessPlanExport";
+import { A4_MARGIN_CM, A4_MARGIN_MM, mmToPx, sanitizeFileName } from "@/lib/exportStyles";
+import {
+  fetchWorkspaceBranding,
+  fetchImageAsDataUrl,
+  fetchImageAsUint8Array,
+} from "@/lib/workspaceBranding";
 
 type RightPlanTab = "sections" | "finance" | "charts";
 
 export type ManageActionAreaProps = Readonly<{
   activeTopTab: ManageTopTab;
+  workspaceId: string;
 }>;
 
 type SectionTool = {
@@ -143,13 +152,14 @@ const sectionTools: SectionTool[] = [
   },
 ];
 
-const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab }) => {
+const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId }) => {
   const { selectedChapterId, addSection, businessPlan, chapters } = useBusinessPlan();
   const [rightTab, setRightTab] = useState<RightPlanTab>("sections");
   const [paperSize, setPaperSize] = useState("A4");
   const [headingColor, setHeadingColor] = useState("Blue");
   const [fontFamily, setFontFamily] = useState("Roboto");
   const [fontSize, setFontSize] = useState("15");
+  const [includeBrandingExport, setIncludeBrandingExport] = useState(true);
   const [isAddingSection, setIsAddingSection] = useState(false);
   const [exportAnchorEl, setExportAnchorEl] = useState<null | HTMLElement>(null);
   const [isExporting, setIsExporting] = useState(false);
@@ -175,7 +185,7 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab }) => {
     URL.revokeObjectURL(url);
   };
 
-  const handleExport = async (format: "pdf" | "html" | "docx") => {
+  const handleExport = async (format: "pdf" | "docx") => {
     if (!businessPlan) {
       toast.error("No business plan to export yet.");
       return;
@@ -183,21 +193,36 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab }) => {
 
     setIsExporting(true);
     try {
+      const safeName = sanitizeFileName(businessPlan.title || "business-plan", "business-plan");
+      const branding = includeBrandingExport
+        ? await fetchWorkspaceBranding(workspaceId)
+        : null;
+      const workspaceName = includeBrandingExport ? branding?.workspaceName ?? null : null;
+      const logoUrl = includeBrandingExport ? branding?.logoUrl ?? null : null;
+      const [logoDataUrl, logoBytes] = includeBrandingExport
+        ? await Promise.all([fetchImageAsDataUrl(logoUrl), fetchImageAsUint8Array(logoUrl)])
+        : [null, null];
+
       const html = buildBusinessPlanHtml(businessPlan, chapters, {
         headingColor: headingColorValue,
+        fontFamily,
         fontSize: Number(fontSize),
         paperSize: paperSize as "A4" | "Letter" | "A3",
+        marginCm: A4_MARGIN_CM,
+        logoDataUrl,
+        workspaceName,
       });
 
-      if (format === "html") {
-        const blob = new Blob([html], { type: "text/html" });
-        downloadBlob(blob, `${businessPlan.title || "business-plan"}.html`);
-        return;
-      }
-
       if (format === "docx") {
-        const blob = await buildBusinessPlanDocx(businessPlan, chapters);
-        downloadBlob(blob, `${businessPlan.title || "business-plan"}.docx`);
+        const blob = await buildBusinessPlanDocx(businessPlan, chapters, {
+          headingColor: headingColorValue,
+          fontFamily,
+          paperSize: paperSize as "A4" | "Letter" | "A3",
+          logoBytes,
+          workspaceName,
+        });
+        downloadBlob(blob, `${safeName}.docx`);
+        toast.success("Exported as DOCX successfully");
         return;
       }
 
@@ -206,7 +231,7 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab }) => {
       container.style.left = "-9999px";
       container.style.top = "0";
       container.style.width = `${paperSizePx.width}px`;
-      container.style.padding = "32px";
+      container.style.padding = `${mmToPx(A4_MARGIN_MM)}px`;
       container.style.background = "#FFFFFF";
       container.style.fontFamily = fontFamily;
       container.innerHTML = html;
@@ -239,11 +264,13 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab }) => {
         heightLeft -= paperSizePx.height;
       }
 
-      pdf.save(`${businessPlan.title || "business-plan"}.pdf`);
+      const safeName2 = sanitizeFileName(businessPlan.title || "business-plan", "business-plan");
+      pdf.save(`${safeName2}.pdf`);
       container.remove();
+      toast.success("Exported as PDF successfully");
     } catch (error) {
       console.error("Failed to export:", error);
-      toast.error("Failed to export business plan.");
+      toast.error("Failed to export business plan. Please try again.");
     } finally {
       setIsExporting(false);
     }
@@ -425,6 +452,34 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab }) => {
                 </Select>
               </FormControl>
             </Box>
+
+            <Box>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={includeBrandingExport}
+                    onChange={(event) => setIncludeBrandingExport(event.target.checked)}
+                    sx={{
+                      "& .MuiSwitch-switchBase.Mui-checked": {
+                        color: "#4C6AD2",
+                      },
+                      "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
+                        bgcolor: "#4C6AD2",
+                      },
+                    }}
+                  />
+                }
+                label="Include Branding"
+                sx={{
+                  m: 0,
+                  "& .MuiFormControlLabel-label": {
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "#4B5563",
+                  },
+                }}
+              />
+            </Box>
           </Stack>
         </Box>
 
@@ -472,6 +527,7 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab }) => {
                 setExportAnchorEl(null);
                 void handleExport("pdf");
               }}
+              sx={{ fontSize: 14, py: 1.2 }}
             >
               PDF
             </MenuItem>
@@ -480,16 +536,9 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab }) => {
                 setExportAnchorEl(null);
                 void handleExport("docx");
               }}
+              sx={{ fontSize: 14, py: 1.2 }}
             >
               DOCX
-            </MenuItem>
-            <MenuItem
-              onClick={() => {
-                setExportAnchorEl(null);
-                void handleExport("html");
-              }}
-            >
-              HTML
             </MenuItem>
           </Menu>
         </Box>

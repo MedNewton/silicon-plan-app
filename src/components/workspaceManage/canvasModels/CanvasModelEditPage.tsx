@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
+import AutoFixHighRoundedIcon from "@mui/icons-material/AutoFixHighRounded";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
 import CheckIcon from "@mui/icons-material/Check";
@@ -14,6 +15,7 @@ import CloseIcon from "@mui/icons-material/Close";
 
 import ManageSidebar from "@/components/workspaceManage/business-plan/ManageSidebar";
 import ExportSettingsSidebar from "./ExportSettingsSidebar";
+import CanvasAskAiPanel from "./CanvasAskAiPanel";
 import type { AiSuggestion } from "./CanvasSection";
 import {
   BusinessModelCanvasLayout,
@@ -45,6 +47,7 @@ const CanvasModelEditPage: FC<CanvasModelEditPageProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showExportSidebar, setShowExportSidebar] = useState(false);
+  const [showAiPanel, setShowAiPanel] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState("");
   const [aiSuggestions, setAiSuggestions] = useState<Record<string, AiSuggestion[]>>({});
@@ -122,6 +125,12 @@ const CanvasModelEditPage: FC<CanvasModelEditPageProps> = ({
 
   const handleDownloadClick = () => {
     setShowExportSidebar(!showExportSidebar);
+    if (!showExportSidebar) setShowAiPanel(false);
+  };
+
+  const handleAiPanelToggle = () => {
+    setShowAiPanel(!showAiPanel);
+    if (!showAiPanel) setShowExportSidebar(false);
   };
 
   const handleSaveModel = async () => {
@@ -585,8 +594,28 @@ const CanvasModelEditPage: FC<CanvasModelEditPageProps> = ({
             </Button>
           </Stack>
 
-          {/* Right side - empty for balance */}
-          <Box sx={{ width: 60 }} />
+          {/* Right side - Ask AI button */}
+          <Button
+            variant="outlined"
+            onClick={handleAiPanelToggle}
+            startIcon={<AutoFixHighRoundedIcon sx={{ fontSize: 18 }} />}
+            sx={{
+              borderColor: showAiPanel ? "#4C6AD2" : "#E5E7EB",
+              bgcolor: showAiPanel ? "#F0F4FF" : "transparent",
+              color: showAiPanel ? "#4C6AD2" : "#374151",
+              fontSize: 13,
+              fontWeight: 600,
+              textTransform: "none",
+              borderRadius: 2,
+              px: 2,
+              "&:hover": {
+                borderColor: "#4C6AD2",
+                bgcolor: showAiPanel ? "#E8EDFF" : "rgba(76,106,210,0.04)",
+              },
+            }}
+          >
+            Ask AI
+          </Button>
         </Box>
 
         {/* Secondary header with title and Generate With AI */}
@@ -708,6 +737,17 @@ const CanvasModelEditPage: FC<CanvasModelEditPageProps> = ({
             overflow: "hidden",
           }}
         >
+          {/* Ask AI Panel */}
+          {showAiPanel && canvas && (
+            <CanvasAskAiPanel
+              workspaceId={workspaceId}
+              templateType={canvas.template_type}
+              sectionsData={canvas.sections_data ?? {}}
+              onAddItem={handleAddItem}
+              onClose={() => setShowAiPanel(false)}
+            />
+          )}
+
           {/* Canvas grid */}
           <Box
             sx={{
@@ -727,8 +767,11 @@ const CanvasModelEditPage: FC<CanvasModelEditPageProps> = ({
           {/* Export Settings Sidebar */}
           {showExportSidebar && (
             <ExportSettingsSidebar
+              workspaceId={workspaceId}
               canvasRef={canvasLayoutRef}
               canvasTitle={canvas?.title}
+              templateType={canvas?.template_type}
+              sectionsData={canvas?.sections_data}
               onClose={() => setShowExportSidebar(false)}
             />
           )}

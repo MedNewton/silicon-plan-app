@@ -43,8 +43,8 @@ Status legend: `todo`, `in_progress`, `blocked`, `done`
 | CORE-015 | P1 | done | Keep completed tasks editable and AI-regenerable | No lock after completion; explicit regenerate flow | CORE-014 | Completed tasks remain editable without workaround |
 | CORE-016 | P1 | done | Enable AI Chat to create tasks from pasted summary | Summary parsing -> proposed tasks/actions | CORE-011, CORE-013 | Pasted structured summary creates or suggests matching tasks |
 | CORE-017 | P1 | done | Implement auto-context reuse in tasks | No retyping of workspace/library info per task | CORE-010, CORE-014 | Task drafting uses existing project info automatically |
-| CORE-018 | P1 | todo | Add pitch preset sections template | Problem, Solution, Product, TAM/SAM/SOM, Business Model, Traction, Competitors, GTM, Financial Forecast, Team, Ask | None | New pitch starts with required preset sections |
-| CORE-019 | P1 | todo | Reuse BP/Canvas data for pitch generation | Pull from business plan/canvas state before asking for extra input | CORE-018, CORE-017 | Pitch generation does not redundantly request known data |
+| CORE-018 | P1 | done | Add pitch preset sections template | Problem, Solution, Product, TAM/SAM/SOM, Business Model, Traction, Competitors, GTM, Financial Forecast, Team, Ask | None | New pitch starts with required preset sections |
+| CORE-019 | P1 | done | Reuse BP/Canvas data for pitch generation | Pull from business plan/canvas state before asking for extra input | CORE-018, CORE-017 | Pitch generation does not redundantly request known data |
 | CORE-020 | P1 | todo | Add core missing features QA suite | E2E flows for onboarding, task system, pitch preset generation | CORE-003..CORE-019 | All critical scenarios pass on desktop/mobile |
 
 ## 3) Workspace Structure & Usability
@@ -84,12 +84,12 @@ Status legend: `todo`, `in_progress`, `blocked`, `done`
 | ID | Priority | Status | Task | Deliverable | Dependencies | Acceptance Criteria |
 |---|---|---|---|---|---|---|
 | AF-001 | P1 | todo | Add AI tone of voice settings | Workspace/user AI settings: professional, academic, conversational, technical | None | Selected tone is applied consistently across AI outputs |
-| AF-002 | P1 | todo | Add workspace logo support for exports | Logo upload + inclusion in BP/Pitch/Canvas exports | None | Exported assets include correctly sized workspace logo |
-| AF-003 | P1 | todo | Standardize export margins and A4 print layout | Export layout layer enforces 2.5cm margins and valid page settings | AF-006 | PDF/DOCX exports print correctly without clipped content |
-| AF-004 | P1 | todo | Implement typography hierarchy in exports | Clear font scale for titles/headings/body/descriptions | AF-006 | Export documents have consistent visual hierarchy |
-| AF-005 | P1 | in_progress | Promote AI assistant UX via dedicated `Ask AI` pattern in left panel | Discoverable AI entry point per core area | WS-015, WS-016 | AI entry is obvious and section-specific actions are easy to access |
-| AF-006 | P1 | in_progress | Complete and harden export formats matrix | BP: PDF/DOCX, Pitch: PDF/PPTX, Canvas: PDF/PPTX with reliable formatting | None | All required export formats succeed without major formatting defects |
-| AF-007 | P1 | todo | Add pitch preset sections template | Preset pitch sections from problem to financial forecast/team/ask | CORE-018 | New pitch starts with complete required section set |
+| AF-002 | P1 | done | Add workspace logo support for exports | Logo upload + inclusion in BP/Pitch/Canvas exports | None | Exported assets include correctly sized workspace logo |
+| AF-003 | P1 | done | Standardize export margins and A4 print layout | Export layout layer enforces 2.5cm margins and valid page settings | AF-006 | PDF/DOCX exports print correctly without clipped content |
+| AF-004 | P1 | done | Implement typography hierarchy in exports | Clear font scale for titles/headings/body/descriptions | AF-006 | Export documents have consistent visual hierarchy |
+| AF-005 | P1 | done | Promote AI assistant UX via dedicated `Ask AI` pattern in left panel | Discoverable AI entry point per core area | WS-015, WS-016 | AI entry is obvious and section-specific actions are easy to access |
+| AF-006 | P1 | done | Complete and harden export formats matrix | BP: PDF/DOCX, Pitch: PDF/PPTX, Canvas: PDF/PPTX with reliable formatting | None | All required export formats succeed without major formatting defects |
+| AF-007 | P1 | done | Add pitch preset sections template (covered by CORE-018) | Preset pitch sections from problem to financial forecast/team/ask | CORE-018 | New pitch starts with complete required section set |
 | AF-008 | P1 | todo | Make financial plan editable and multi-currency | Editable financial tables + currency selection support | None | Users can revise AI financial outputs and switch currency |
 | AF-009 | P1 | todo | Make generated pitch and SWOT outputs editable | Inline edit/save flow for generated pitch/SWOT blocks | None | Users can modify generated outputs before export |
 | AF-010 | P1 | todo | Resolve DOCX/PPTX formatting regressions | Word/PPT exports preserve spacing, sizing, and layout fidelity | AF-006 | Generated files remain visually consistent with in-app content |

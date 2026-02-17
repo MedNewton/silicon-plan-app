@@ -2,7 +2,7 @@
 "use client";
 
 import type { FC } from "react";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Box,
@@ -15,6 +15,9 @@ import {
   Select,
   MenuItem,
   FormControl,
+  Menu,
+  FormControlLabel,
+  Switch,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import AddIcon from "@mui/icons-material/Add";
@@ -24,6 +27,10 @@ import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import AutoFixHighRoundedIcon from "@mui/icons-material/AutoFixHighRounded";
+import SlideshowOutlinedIcon from "@mui/icons-material/SlideshowOutlined";
+import PictureAsPdfOutlinedIcon from "@mui/icons-material/PictureAsPdfOutlined";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import {
   DndContext,
   closestCenter,
@@ -41,11 +48,15 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { toast } from "react-toastify";
 import { usePitchDeck } from "./PitchDeckContext";
 import SlidePreview, { type SlideEditTarget } from "./SlidePreview";
 import SlideEditorModal from "./SlideEditorModal";
 import SlideAiDrawer from "./SlideAiDrawer";
-import type { PitchDeckSlide, PitchDeckSettings } from "@/types/workspaces";
+import PitchAskAiPanel from "./PitchAskAiPanel";
+import { sanitizeFileName, downloadBlob } from "@/lib/pitchDeckExport";
+import type { PitchDeckSlide, PitchDeckSettings, PitchDeckSlideContent } from "@/types/workspaces";
+import { fetchWorkspaceBranding, fetchImageAsDataUrl } from "@/lib/workspaceBranding";
 
 type PitchDeckEditorProps = {
   workspaceId: string;
@@ -160,12 +171,22 @@ const PitchDeckEditor: FC<PitchDeckEditorProps> = ({ workspaceId }) => {
   } = usePitchDeck();
 
   const [showSettings, setShowSettings] = useState(false);
+  const [showAiPanel, setShowAiPanel] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleValue, setTitleValue] = useState("");
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [exportMenuAnchor, setExportMenuAnchor] = useState<null | HTMLElement>(null);
   const [aiTarget, setAiTarget] = useState<SlideEditTarget | null>(null);
   const [isAiOpen, setIsAiOpen] = useState(false);
+  const [includeBrandingExport, setIncludeBrandingExport] = useState(true);
+  const [branding, setBranding] = useState<{
+    workspaceName: string | null;
+    workspaceLogoDataUrl: string | null;
+  }>({
+    workspaceName: null,
+    workspaceLogoDataUrl: null,
+  });
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -173,6 +194,28 @@ const PitchDeckEditor: FC<PitchDeckEditorProps> = ({ workspaceId }) => {
   );
 
   const selectedSlide = slides.find((s) => s.id === selectedSlideId);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadBranding = async () => {
+      const workspaceBranding = await fetchWorkspaceBranding(workspaceId);
+      const logoDataUrl = await fetchImageAsDataUrl(workspaceBranding?.logoUrl ?? null);
+
+      if (!active) return;
+
+      setBranding({
+        workspaceName: workspaceBranding?.workspaceName ?? null,
+        workspaceLogoDataUrl: logoDataUrl,
+      });
+    };
+
+    void loadBranding();
+
+    return () => {
+      active = false;
+    };
+  }, [workspaceId]);
 
   // Handle drag end for reordering
   const handleDragEnd = useCallback(
@@ -222,32 +265,86 @@ const PitchDeckEditor: FC<PitchDeckEditorProps> = ({ workspaceId }) => {
     await updatePitchDeck({ settings: { [key]: value } });
   };
 
-  const handleDownload = useCallback(async () => {
+  const handleDownloadPptx = useCallback(async () => {
     if (!pitchDeck) return;
     setIsDownloading(true);
     try {
       const res = await fetch(
         `/api/workspaces/${workspaceId}/pitch-deck/${pitchDeck.id}/export`,
-        { method: "POST" }
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ includeBranding: includeBrandingExport }),
+        }
       );
       if (!res.ok) {
         throw new Error("Failed to export pitch deck");
       }
       const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `${pitchDeck.title || "pitch-deck"}.pptx`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      const safeName = sanitizeFileName(pitchDeck.title || "pitch-deck");
+      downloadBlob(blob, `${safeName}.pptx`);
+      toast.success("Exported as PPTX successfully");
     } catch (err) {
       console.error("Failed to download pitch deck:", err);
+      toast.error("Failed to export. Please try again.");
     } finally {
       setIsDownloading(false);
     }
-  }, [pitchDeck, workspaceId]);
+  }, [pitchDeck, workspaceId, includeBrandingExport]);
+
+  const handleDownloadPdf = useCallback(async () => {
+    if (!pitchDeck) return;
+    setIsDownloading(true);
+    try {
+      // Dynamically import to avoid SSR issues
+      const { exportPitchDeckToPdf } = await import("@/lib/pitchDeckExport");
+
+      // Collect all slide preview elements from the DOM
+      const slideElements = Array.from(
+        document.querySelectorAll<HTMLElement>("[data-slide-export-preview]")
+      );
+
+      if (slideElements.length === 0) {
+        // Fallback: try to capture the current preview
+        const previewEl = document.querySelector<HTMLElement>("[data-slide-current-preview]");
+        if (previewEl) {
+          slideElements.push(previewEl);
+        }
+      }
+
+      if (slideElements.length === 0) {
+        throw new Error("No slide elements found to export");
+      }
+
+      const blob = await exportPitchDeckToPdf({
+        title: pitchDeck.title || "pitch-deck",
+        paperSize: pitchDeck.settings.paperSize,
+        slideElements,
+      });
+
+      const safeName = sanitizeFileName(pitchDeck.title || "pitch-deck");
+      downloadBlob(blob, `${safeName}.pdf`);
+      toast.success("Exported as PDF successfully");
+    } catch (err) {
+      console.error("Failed to export PDF:", err);
+      toast.error("Failed to export PDF. Please try again.");
+    } finally {
+      setIsDownloading(false);
+    }
+  }, [pitchDeck]);
+
+  const handleDownload = useCallback(
+    async (format: "pptx" | "pdf") => {
+      const fmt = format;
+      setExportMenuAnchor(null);
+      if (fmt === "pdf") {
+        await handleDownloadPdf();
+      } else {
+        await handleDownloadPptx();
+      }
+    },
+    [handleDownloadPdf, handleDownloadPptx]
+  );
 
   const handleAiRequest = useCallback((target: SlideEditTarget) => {
     setAiTarget(target);
@@ -261,6 +358,14 @@ const PitchDeckEditor: FC<PitchDeckEditorProps> = ({ workspaceId }) => {
       await updateSlide(aiTarget.slideId, { content: nextContent });
     },
     [aiTarget, updateSlide]
+  );
+
+  // Handler for the left-side AI panel
+  const handleAiPanelApply = useCallback(
+    async (slideId: string, content: PitchDeckSlideContent) => {
+      await updateSlide(slideId, { content });
+    },
+    [updateSlide]
   );
 
   if (isLoading) {
@@ -356,7 +461,23 @@ const PitchDeckEditor: FC<PitchDeckEditorProps> = ({ workspaceId }) => {
         </Stack>
         <Stack direction="row" spacing={1}>
           <IconButton
-            onClick={() => setShowSettings(!showSettings)}
+            onClick={() => {
+              setShowAiPanel(!showAiPanel);
+              if (!showAiPanel) setShowSettings(false);
+            }}
+            sx={{
+              color: showAiPanel ? "#4C6AD2" : "#6B7280",
+              bgcolor: showAiPanel ? "#F0F4FF" : "transparent",
+            }}
+            title="Ask AI"
+          >
+            <AutoFixHighRoundedIcon />
+          </IconButton>
+          <IconButton
+            onClick={() => {
+              setShowSettings(!showSettings);
+              if (!showSettings) setShowAiPanel(false);
+            }}
             sx={{
               color: showSettings ? "#4C6AD2" : "#6B7280",
               bgcolor: showSettings ? "#F0F4FF" : "transparent",
@@ -366,8 +487,9 @@ const PitchDeckEditor: FC<PitchDeckEditorProps> = ({ workspaceId }) => {
           </IconButton>
           <Button
             variant="contained"
-            startIcon={<DownloadIcon />}
-            onClick={handleDownload}
+            startIcon={isDownloading ? <CircularProgress size={16} sx={{ color: "#FFFFFF" }} /> : <DownloadIcon />}
+            endIcon={<KeyboardArrowDownIcon />}
+            onClick={(e) => setExportMenuAnchor(e.currentTarget)}
             disabled={isDownloading}
             sx={{
               bgcolor: "#4C6AD2",
@@ -377,11 +499,53 @@ const PitchDeckEditor: FC<PitchDeckEditorProps> = ({ workspaceId }) => {
           >
             {isDownloading ? "Preparing..." : "Download"}
           </Button>
+          <Menu
+            anchorEl={exportMenuAnchor}
+            open={Boolean(exportMenuAnchor)}
+            onClose={() => setExportMenuAnchor(null)}
+            anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+            transformOrigin={{ vertical: "top", horizontal: "right" }}
+            slotProps={{
+              paper: {
+                sx: {
+                  mt: 0.5,
+                  borderRadius: 2,
+                  minWidth: 180,
+                  boxShadow: "0 4px 20px rgba(0,0,0,0.12)",
+                },
+              },
+            }}
+          >
+            <MenuItem
+              onClick={() => void handleDownload("pptx")}
+              sx={{ fontSize: 14, gap: 1.5, py: 1.2 }}
+            >
+              <SlideshowOutlinedIcon sx={{ fontSize: 18, color: "#4C6AD2" }} />
+              Download as PPTX
+            </MenuItem>
+            <MenuItem
+              onClick={() => void handleDownload("pdf")}
+              sx={{ fontSize: 14, gap: 1.5, py: 1.2 }}
+            >
+              <PictureAsPdfOutlinedIcon sx={{ fontSize: 18, color: "#EF4444" }} />
+              Download as PDF
+            </MenuItem>
+          </Menu>
         </Stack>
       </Box>
 
       {/* Main content */}
       <Box sx={{ flex: 1, display: "flex", minHeight: 0 }}>
+        {/* Ask AI Panel */}
+        {showAiPanel && (
+          <PitchAskAiPanel
+            workspaceId={workspaceId}
+            selectedSlide={selectedSlide ?? null}
+            onApply={handleAiPanelApply}
+            onClose={() => setShowAiPanel(false)}
+          />
+        )}
+
         {/* Slides list */}
         <Box
           sx={{
@@ -456,6 +620,7 @@ const PitchDeckEditor: FC<PitchDeckEditorProps> = ({ workspaceId }) => {
         >
           {selectedSlide ? (
             <Box
+              data-slide-current-preview
               sx={{
                 position: "relative",
                 p: 1,
@@ -471,6 +636,8 @@ const PitchDeckEditor: FC<PitchDeckEditorProps> = ({ workspaceId }) => {
                 template={template}
                 paperSize={pitchDeck.settings.paperSize}
                 onEditRequest={handleAiRequest}
+                workspaceName={branding.workspaceName}
+                workspaceLogoDataUrl={branding.workspaceLogoDataUrl}
               />
               <Button
                 variant="contained"
@@ -609,36 +776,116 @@ const PitchDeckEditor: FC<PitchDeckEditorProps> = ({ workspaceId }) => {
                     </Select>
                   </FormControl>
                 </Box>
+
+                <Box>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={includeBrandingExport}
+                        onChange={(event) => setIncludeBrandingExport(event.target.checked)}
+                        sx={{
+                          "& .MuiSwitch-switchBase.Mui-checked": {
+                            color: "#4C6AD2",
+                          },
+                          "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
+                            bgcolor: "#4C6AD2",
+                          },
+                        }}
+                      />
+                    }
+                    label="Include Branding"
+                    sx={{
+                      m: 0,
+                      "& .MuiFormControlLabel-label": {
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: "#4B5563",
+                      },
+                    }}
+                  />
+                </Box>
               </Stack>
             </Box>
 
             <Box sx={{ px: 3, py: 2.5, borderTop: "1px solid #E5E7EB" }}>
-              <Button
-                fullWidth
-                variant="contained"
-                startIcon={<DownloadIcon />}
-                onClick={handleDownload}
-                disabled={isDownloading}
-                sx={{
-                  textTransform: "none",
-                  fontSize: 15,
-                  fontWeight: 600,
-                  borderRadius: 999,
-                  py: 1.1,
-                  backgroundImage: "linear-gradient(90deg, #4C6AD2 0%, #7B4FD6 100%)",
-                  boxShadow: "none",
-                  "&:hover": {
-                    boxShadow: "none",
-                    opacity: 0.96,
+              <Stack spacing={1}>
+                <Button
+                  fullWidth
+                  variant="contained"
+                  startIcon={isDownloading ? <CircularProgress size={16} sx={{ color: "#FFFFFF" }} /> : <SlideshowOutlinedIcon />}
+                  onClick={() => { void handleDownloadPptx(); }}
+                  disabled={isDownloading}
+                  sx={{
+                    textTransform: "none",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    borderRadius: 999,
+                    py: 1,
                     backgroundImage: "linear-gradient(90deg, #4C6AD2 0%, #7B4FD6 100%)",
-                  },
-                }}
-              >
-                {isDownloading ? "Preparing..." : "Download"}
-              </Button>
+                    boxShadow: "none",
+                    "&:hover": {
+                      boxShadow: "none",
+                      opacity: 0.96,
+                      backgroundImage: "linear-gradient(90deg, #4C6AD2 0%, #7B4FD6 100%)",
+                    },
+                  }}
+                >
+                  {isDownloading ? "Preparing..." : "Download PPTX"}
+                </Button>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  startIcon={isDownloading ? <CircularProgress size={16} sx={{ color: "#4C6AD2" }} /> : <PictureAsPdfOutlinedIcon />}
+                  onClick={() => { void handleDownloadPdf(); }}
+                  disabled={isDownloading}
+                  sx={{
+                    textTransform: "none",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    borderRadius: 999,
+                    py: 1,
+                    borderColor: "#E5E7EB",
+                    color: "#4C6AD2",
+                    "&:hover": {
+                      borderColor: "#4C6AD2",
+                      bgcolor: "rgba(76,106,210,0.04)",
+                    },
+                  }}
+                >
+                  Download PDF
+                </Button>
+              </Stack>
             </Box>
           </Box>
         ) : null}
+      </Box>
+
+      <Box
+        aria-hidden
+        sx={{
+          position: "fixed",
+          top: 0,
+          left: -20000,
+          width: 1360,
+          p: 2,
+          pointerEvents: "none",
+        }}
+      >
+        <Stack spacing={2}>
+          {slides.map((slide) => (
+            <Box key={slide.id} data-slide-export-preview sx={{ width: 1280 }}>
+              <SlidePreview
+                slide={slide}
+                template={template}
+                paperSize={pitchDeck.settings.paperSize}
+                workspaceName={includeBrandingExport ? branding.workspaceName : null}
+                workspaceLogoDataUrl={
+                  includeBrandingExport ? branding.workspaceLogoDataUrl : null
+                }
+              />
+            </Box>
+          ))}
+        </Stack>
       </Box>
 
       <SlideEditorModal

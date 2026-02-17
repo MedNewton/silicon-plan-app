@@ -63,7 +63,7 @@ export default function ManageBusinessPlanPage({ workspaceId }: Props) {
               onAiTabChange={setActiveAiTab}
             />
 
-            <ManageActionArea activeTopTab={activeTopTab} />
+            <ManageActionArea activeTopTab={activeTopTab} workspaceId={workspaceId} />
           </Box>
         </Box>
       </Box>

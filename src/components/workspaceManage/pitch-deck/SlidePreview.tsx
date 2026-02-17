@@ -31,6 +31,8 @@ type SlidePreviewProps = {
   template: PitchDeckTemplate | null;
   paperSize?: "16:9" | "4:3" | "A4";
   onEditRequest?: (target: SlideEditTarget) => void;
+  workspaceName?: string | null;
+  workspaceLogoDataUrl?: string | null;
 };
 
 export type SlideEditTarget = {
@@ -193,6 +195,73 @@ const getTextColors = (template: PitchDeckTemplate | null, isCover: boolean) => 
     title: design?.titleStyle?.color ?? "#FFFFFF",
     content: isCover ? design?.titleStyle?.color : template?.slide_design?.contentStyle?.color ?? "#E5E7EB",
   };
+};
+
+const SlideBranding: FC<{
+  workspaceName?: string | null;
+  workspaceLogoDataUrl?: string | null;
+}> = ({ workspaceName, workspaceLogoDataUrl }) => {
+  const hasName = Boolean(workspaceName && workspaceName.trim().length > 0);
+  const hasLogo = Boolean(workspaceLogoDataUrl);
+
+  if (!hasName && !hasLogo) {
+    return null;
+  }
+
+  return (
+    <Box
+      sx={{
+        position: "absolute",
+        top: 10,
+        right: 10,
+        zIndex: 5,
+        maxWidth: "38%",
+        px: 1,
+        py: 0.5,
+        borderRadius: 1.2,
+        bgcolor: "rgba(255,255,255,0.84)",
+        border: "1px solid rgba(148, 163, 184, 0.36)",
+        backdropFilter: "blur(3px)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "flex-end",
+        gap: 0.25,
+        pointerEvents: "none",
+      }}
+    >
+      {hasLogo ? (
+          <Box
+          component="img"
+          src={workspaceLogoDataUrl ?? undefined}
+          alt={workspaceName?.trim() ?? "Workspace Logo"}
+          sx={{
+            maxWidth: 120,
+            maxHeight: 22,
+            objectFit: "contain",
+          }}
+        />
+      ) : null}
+      {hasName ? (
+        <Typography
+          sx={{
+            fontSize: 10,
+            lineHeight: 1.1,
+            fontWeight: 700,
+            color: "#334155",
+            textTransform: "uppercase",
+            letterSpacing: 0.3,
+            textAlign: "right",
+            maxWidth: "100%",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {workspaceName!.trim()}
+        </Typography>
+      ) : null}
+    </Box>
+  );
 };
 
 // Content renderers for each slide type
@@ -1083,6 +1152,8 @@ const SlidePreview: FC<SlidePreviewProps> = ({
   template,
   paperSize = "16:9",
   onEditRequest,
+  workspaceName,
+  workspaceLogoDataUrl,
 }) => {
   const isCover = slide.slide_type === "cover";
   const backgroundStyle = getBackgroundStyle(template, isCover);
@@ -1207,11 +1278,16 @@ const SlidePreview: FC<SlidePreviewProps> = ({
     >
       <Box
         sx={{
+          position: "relative",
           width: "100%",
           height: "100%",
           ...backgroundStyle,
         }}
       >
+        <SlideBranding
+          workspaceName={workspaceName}
+          workspaceLogoDataUrl={workspaceLogoDataUrl}
+        />
         {renderContent(slide.content)}
       </Box>
     </Box>

@@ -4,13 +4,16 @@ import { auth } from "@clerk/nextjs/server";
 import pptxgen from "pptxgenjs";
 import path from "path";
 import { readFile } from "fs/promises";
+import { Buffer } from "buffer";
 import { getPitchDeck } from "@/server/pitchDeck";
+import { getSupabaseClient } from "@/lib/supabaseServer";
 import type {
   PitchDeckSlide,
   PitchDeckSlideContent,
   PitchDeckTemplate,
   PitchDeckSettings,
 } from "@/types/workspaces";
+import { PPTX_TYPOGRAPHY, sanitizeFileName } from "@/lib/exportStyles";
 
 export const runtime = "nodejs";
 
@@ -31,6 +34,11 @@ type TableCell = {
   };
 };
 type TableRow = TableCell[];
+
+type WorkspaceBranding = {
+  workspaceName: string;
+  logoDataUrl: string | null;
+};
 
 const getLayout = (settings: PitchDeckSettings): LayoutPreset => {
   switch (settings.paperSize) {
@@ -169,6 +177,43 @@ const addBodyText = (
   });
 };
 
+const addWorkspaceBranding = (
+  slide: Slide,
+  layout: LayoutPreset,
+  branding: WorkspaceBranding
+) => {
+  const rightPadding = layout.width * 0.05;
+  const topPadding = layout.height * 0.03;
+  const logoWidth = Math.max(Math.min(layout.width * 0.14, 2.1), 1.2);
+  const logoHeight = logoWidth * 0.33;
+  const textBlockWidth = Math.max(layout.width * 0.22, logoWidth + 0.2);
+  const logoX = layout.width - rightPadding - logoWidth;
+  const textX = layout.width - rightPadding - textBlockWidth;
+
+  if (branding.logoDataUrl) {
+    slide.addImage({
+      data: branding.logoDataUrl,
+      x: logoX,
+      y: topPadding,
+      w: logoWidth,
+      h: logoHeight,
+    });
+  }
+
+  if (branding.workspaceName.trim().length > 0) {
+    slide.addText(branding.workspaceName, {
+      x: textX,
+      y: branding.logoDataUrl ? topPadding + logoHeight + 0.04 : topPadding + 0.02,
+      w: textBlockWidth,
+      h: 0.2,
+      align: "right",
+      fontSize: PPTX_TYPOGRAPHY.caption,
+      color: "9CA3AF",
+      fontFace: "Roboto",
+    });
+  }
+};
+
 const bulletsToText = (bullets: string[]) => bullets.map((b) => `- ${b}`).join("\n");
 
 const renderSlideContent = (
@@ -187,7 +232,7 @@ const renderSlideContent = (
         w: layout.width * 0.8,
         h: layout.height * 0.2,
         fontFace,
-        fontSize: Math.max(fontSize * 2, 28),
+        fontSize: Math.max(fontSize * 2, PPTX_TYPOGRAPHY.title),
         color: colors.title,
         align: "center",
         valign: "middle",
@@ -199,7 +244,7 @@ const renderSlideContent = (
           w: layout.width * 0.8,
           h: layout.height * 0.1,
           fontFace,
-          fontSize: Math.max(fontSize * 1.2, 16),
+          fontSize: Math.max(fontSize * 1.2, PPTX_TYPOGRAPHY.subheading),
           color: colors.content,
           align: "center",
         });
@@ -207,17 +252,38 @@ const renderSlideContent = (
       return;
     }
     case "title_bullets": {
-      addTitle(slide, content.title, layout, colors, fontFace, Math.max(fontSize * 1.6, 22));
+      addTitle(
+        slide,
+        content.title,
+        layout,
+        colors,
+        fontFace,
+        Math.max(fontSize * 1.6, PPTX_TYPOGRAPHY.heading)
+      );
       addBodyText(slide, bulletsToText(content.bullets), layout, colors, fontFace, fontSize);
       return;
     }
     case "title_text": {
-      addTitle(slide, content.title, layout, colors, fontFace, Math.max(fontSize * 1.6, 22));
+      addTitle(
+        slide,
+        content.title,
+        layout,
+        colors,
+        fontFace,
+        Math.max(fontSize * 1.6, PPTX_TYPOGRAPHY.heading)
+      );
       addBodyText(slide, content.text, layout, colors, fontFace, fontSize);
       return;
     }
     case "title_image": {
-      addTitle(slide, content.title, layout, colors, fontFace, Math.max(fontSize * 1.6, 22));
+      addTitle(
+        slide,
+        content.title,
+        layout,
+        colors,
+        fontFace,
+        Math.max(fontSize * 1.6, PPTX_TYPOGRAPHY.heading)
+      );
       const marginX = layout.width * 0.08;
       const contentY = layout.height * 0.24;
       const contentHeight = layout.height - contentY - layout.height * 0.08;
@@ -227,7 +293,7 @@ const renderSlideContent = (
         w: layout.width - marginX * 2,
         h: contentHeight,
         fontFace,
-        fontSize: Math.max(fontSize, 12),
+        fontSize: Math.max(fontSize, PPTX_TYPOGRAPHY.bodySmall),
         color: colors.content,
         align: "center",
         valign: "middle",
@@ -237,7 +303,14 @@ const renderSlideContent = (
       return;
     }
     case "two_columns": {
-      addTitle(slide, content.title, layout, colors, fontFace, Math.max(fontSize * 1.6, 22));
+      addTitle(
+        slide,
+        content.title,
+        layout,
+        colors,
+        fontFace,
+        Math.max(fontSize * 1.6, PPTX_TYPOGRAPHY.heading)
+      );
       const marginX = layout.width * 0.08;
       const contentY = layout.height * 0.24;
       const contentHeight = layout.height - contentY - layout.height * 0.08;
@@ -276,7 +349,14 @@ const renderSlideContent = (
       return;
     }
     case "comparison": {
-      addTitle(slide, content.title, layout, colors, fontFace, Math.max(fontSize * 1.6, 22));
+      addTitle(
+        slide,
+        content.title,
+        layout,
+        colors,
+        fontFace,
+        Math.max(fontSize * 1.6, PPTX_TYPOGRAPHY.heading)
+      );
       const marginX = layout.width * 0.08;
       const contentY = layout.height * 0.24;
       const contentHeight = layout.height - contentY - layout.height * 0.1;
@@ -300,7 +380,14 @@ const renderSlideContent = (
       return;
     }
     case "timeline": {
-      addTitle(slide, content.title, layout, colors, fontFace, Math.max(fontSize * 1.6, 22));
+      addTitle(
+        slide,
+        content.title,
+        layout,
+        colors,
+        fontFace,
+        Math.max(fontSize * 1.6, PPTX_TYPOGRAPHY.heading)
+      );
       const lines = content.entries.map(
         (entry) => `${entry.date} - ${entry.title}${entry.description ? `: ${entry.description}` : ""}`
       );
@@ -308,7 +395,14 @@ const renderSlideContent = (
       return;
     }
     case "team_grid": {
-      addTitle(slide, content.title, layout, colors, fontFace, Math.max(fontSize * 1.6, 22));
+      addTitle(
+        slide,
+        content.title,
+        layout,
+        colors,
+        fontFace,
+        Math.max(fontSize * 1.6, PPTX_TYPOGRAPHY.heading)
+      );
       const lines = content.members.map(
         (member) => `${member.name} - ${member.role}${member.bio ? `: ${member.bio}` : ""}`
       );
@@ -316,7 +410,14 @@ const renderSlideContent = (
       return;
     }
     case "metrics": {
-      addTitle(slide, content.title, layout, colors, fontFace, Math.max(fontSize * 1.6, 22));
+      addTitle(
+        slide,
+        content.title,
+        layout,
+        colors,
+        fontFace,
+        Math.max(fontSize * 1.6, PPTX_TYPOGRAPHY.heading)
+      );
       const lines = content.metrics.map(
         (metric) => `${metric.value} ${metric.label}${metric.description ? ` (${metric.description})` : ""}`
       );
@@ -330,7 +431,7 @@ const renderSlideContent = (
         w: layout.width * 0.8,
         h: layout.height * 0.3,
         fontFace,
-        fontSize: Math.max(fontSize * 1.6, 22),
+        fontSize: Math.max(fontSize * 1.6, PPTX_TYPOGRAPHY.heading),
         color: colors.title,
         align: "center",
         valign: "middle",
@@ -342,7 +443,7 @@ const renderSlideContent = (
           w: layout.width * 0.7,
           h: layout.height * 0.1,
           fontFace,
-          fontSize: Math.max(fontSize, 14),
+          fontSize: Math.max(fontSize, PPTX_TYPOGRAPHY.body),
           color: colors.content,
           align: "center",
         });
@@ -362,7 +463,8 @@ const addSlideToDeck = (
   template: PitchDeckTemplate | null,
   layout: LayoutPreset,
   settings: PitchDeckSettings,
-  backgroundImageData: string | null
+  backgroundImageData: string | null,
+  branding: WorkspaceBranding
 ) => {
   const slide = pptx.addSlide();
   const isCover = slideData.slide_type === "cover";
@@ -373,14 +475,43 @@ const addSlideToDeck = (
     : { color: getBackgroundColor(template, isCover) };
 
   renderSlideContent(slide, slideData.content, layout, colors, settings.fontFamily, settings.fontSize);
+  addWorkspaceBranding(slide, layout, branding);
 };
 
-const sanitizeFileName = (value: string) =>
-  value
-    .replace(/[^a-z0-9-_]+/gi, " ")
-    .trim()
-    .replace(/\s+/g, "-")
-    .toLowerCase();
+const loadWorkspaceBranding = async (workspaceId: string): Promise<WorkspaceBranding> => {
+  const client = getSupabaseClient();
+  const { data } = await client
+    .from("workspaces")
+    .select("name,image_url")
+    .eq("id", workspaceId)
+    .maybeSingle();
+
+  const workspaceName =
+    data && typeof data.name === "string" && data.name.trim().length > 0
+      ? data.name.trim()
+      : "Workspace";
+
+  const imageUrl = data?.image_url;
+  if (!imageUrl || typeof imageUrl !== "string") {
+    return { workspaceName, logoDataUrl: null };
+  }
+
+  try {
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      return { workspaceName, logoDataUrl: null };
+    }
+    const contentType = response.headers.get("content-type") ?? "image/png";
+    const arrayBuffer = await response.arrayBuffer();
+    const base64 = Buffer.from(arrayBuffer).toString("base64");
+    return {
+      workspaceName,
+      logoDataUrl: `data:${contentType};base64,${base64}`,
+    };
+  } catch {
+    return { workspaceName, logoDataUrl: null };
+  }
+};
 
 export async function POST(
   req: Request,
@@ -398,6 +529,11 @@ export async function POST(
       return new NextResponse("Deck id is required", { status: 400 });
     }
 
+    const body = (await req.json().catch(() => null)) as
+      | { includeBranding?: boolean }
+      | null;
+    const includeBranding = body?.includeBranding ?? true;
+
     const deckData = await getPitchDeck({ pitchDeckId: deckId, userId, fresh: true });
 
     if (!deckData) {
@@ -406,6 +542,9 @@ export async function POST(
 
     const { pitchDeck, slides, template } = deckData;
     const layout = getLayout(pitchDeck.settings);
+    const branding = includeBranding
+      ? await loadWorkspaceBranding(pitchDeck.workspace_id)
+      : null;
 
     const pptx = new pptxgen();
     if (layout.isCustom) {
@@ -415,10 +554,18 @@ export async function POST(
 
     const backgroundImageData = await getBackgroundImageData(template);
     slides.forEach((slideData) => {
-      addSlideToDeck(pptx, slideData, template, layout, pitchDeck.settings, backgroundImageData);
+      addSlideToDeck(
+        pptx,
+        slideData,
+        template,
+        layout,
+        pitchDeck.settings,
+        backgroundImageData,
+        branding ?? { workspaceName: "", logoDataUrl: null }
+      );
     });
 
-    const fileName = `${sanitizeFileName(pitchDeck.title || "pitch-deck")}.pptx`;
+    const fileName = `${sanitizeFileName(pitchDeck.title || "pitch-deck", "pitch-deck")}.pptx`;
     const buffer = (await pptx.write({ outputType: "arraybuffer" })) as ArrayBuffer;
 
     return new NextResponse(buffer, {

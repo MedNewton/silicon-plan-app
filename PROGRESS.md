@@ -4,10 +4,10 @@ Source of truth for tasks: `TASKS.md`
 
 ## Summary
 - Total scoped tasks: 68
-- `done`: 51
-- `in_progress`: 2
+- `done`: 59
+- `in_progress`: 0
 - `pending_qa`: 0
-- `todo`: 15
+- `todo`: 9
 - `blocked`: 0
 - **Note:** Counts now reflect all rows in `TASKS.md` as of 2026-02-17.
 
@@ -49,15 +49,19 @@ Source of truth for tasks: `TASKS.md`
 35. `BPTS-007` - Add BP task structure QA pack
 36. `BPTS-006` - Stabilize AI chat chapter/task proposal reliability
 37. `WS-016` - Fix AI Chat + Plan Chapters task creation gap (manual QA pass)
+38. `CORE-018` - Add pitch preset sections template
+39. `AF-007` - Add pitch preset sections template (covered by CORE-018)
+40. `CORE-019` - Reuse BP/Canvas data for pitch generation
+41. `AF-002` - Add workspace logo support for exports
+42. `AF-003` - Standardize export margins and A4 print layout
+43. `AF-004` - Implement typography hierarchy in exports
 
 ## Reopened / Not Fully Done
 1. None (WS-016 and BPTS-006 passed manual QA on 2026-02-17)
 
 ## Todo (Immediate Next)
-1. `CORE-018` - Add pitch preset sections template
-2. `CORE-019` - Reuse BP/Canvas data for pitch generation
-3. `WS-005` - Implement EN/IT language toggle
-4. `WS-017` - Implement workspace/library -> task automation
+1. `WS-005` - Implement EN/IT language toggle
+2. `WS-017` - Implement workspace/library -> task automation
 
 ## Recent Validation
 - `npm run typecheck`: pass
@@ -65,6 +69,32 @@ Source of truth for tasks: `TASKS.md`
 - WS-016 / BPTS-006 manual QA: pass
 
 ## Change Log
+- 2026-02-17: **AF-002 / AF-003 / AF-004 Complete** - Export branding + layout standardization shipped across BP, Pitch, and Canvas exports.
+  - Added shared export design layer in `src/lib/exportStyles.ts` (A4 2.5cm margin constants, unified typography scales, shared filename sanitization).
+  - Added workspace branding helpers in `src/lib/workspaceBranding.ts` and wired logo/name into export flows.
+  - Business Plan exports (`src/lib/businessPlanExport.ts`, `src/components/workspaceManage/business-plan/ManageActionArea.tsx`):
+    - Added workspace logo + workspace name in exported documents.
+    - Enforced A4-friendly print layout via `@page` margins (2.5cm) and DOCX page margins (2.5cm twips).
+    - Implemented explicit export typography hierarchy (Title/H1/H2/H3/body/caption) in HTML and DOCX styles.
+  - Pitch exports (`src/lib/pitchDeckExport.ts`, `src/components/workspaceManage/pitch-deck/PitchDeckEditor.tsx`, `src/app/api/workspaces/[workspaceId]/pitch-deck/[deckId]/export/route.ts`):
+    - Added workspace logo + workspace name to PDF/PPTX outputs.
+    - Applied shared typography scale usage for PPTX rendering and A4-aware PDF margins.
+  - Canvas exports (`src/lib/canvasExport.ts`, `src/components/workspaceManage/canvasModels/ExportSettingsSidebar.tsx`, `src/components/workspaceManage/canvasModels/CanvasModelEditPage.tsx`, `src/components/workspaceManage/canvasModels/CanvasModelViewPage.tsx`):
+    - Added workspace logo + workspace name to PDF/PPTX outputs.
+    - Applied shared typography scale usage and A4-aware PDF margins.
+  - Validation: `npm run typecheck` pass, `npm run lint` pass.
+- 2026-02-17: **CORE-019 Complete** - Pitch deck default section seeding now reuses existing workspace Business Plan + Canvas data before falling back to placeholders.
+  - Updated `src/server/pitchDeck.ts` to build context-aware seed bullets for each preset pitch section using:
+    - Business plan chapter/section content (`getBusinessPlanWithChapters`)
+    - Latest canvas model entries (`workspace_canvas_models.sections_data`)
+  - Added deterministic slide-keyword mapping (`Problem`, `Solution`, `TAM/SAM/SOM`, `Business Model`, `Traction`, `Competitors`, `Go-To-Market`, `Financial Forecast`, `Team`, `Ask`) with safe dedupe/length limits and fallback bullets.
+  - Validation: `npm run typecheck` pass, `npm run lint` pass.
+- 2026-02-17: Marked `AF-007` as `done` in `TASKS.md` because it is duplicate scope covered by `CORE-018` preset pitch section seeding.
+- 2026-02-17: **CORE-018 Complete** - New pitch deck creation now seeds required preset sections automatically.
+  - Updated `createPitchDeck` in `src/server/pitchDeck.ts` to insert cover + 11 content slides on deck creation.
+  - Preset slide set now includes: Problem, Solution, Product, TAM/SAM/SOM, Business Model, Traction, Competitors, Go-To-Market, Financial Forecast (3-4 Years), Team, Ask.
+  - Added slide-seeding failure handling with rollback cleanup for partially created decks.
+  - Validation: `npm run typecheck` pass, `npm run lint` pass.
 - 2026-02-17: Manual QA sign-off completed for `WS-016` and `BPTS-006`; both tasks moved from `pending_qa` to `done` in `TASKS.md`.
 - 2026-02-17: TC-4.2 remediation for stale chapter-target approvals:
   - Pending-change accept route now classifies expected target-missing errors as handled (no "Unexpected error" stack-noise logging path).
@@ -197,3 +227,20 @@ Source of truth for tasks: `TASKS.md`
 - 2026-02-17: **BPTS-004 Complete** - Added section-specific prompts for all seeded chapter/task nodes, including explicit core prompt behavior for Business Idea, TAM SAM SOM Analysis, and Customer Acquisition Cost (COCA).
 - 2026-02-17: **BPTS-003 Complete** - Added runtime instruction-quality enforcement for default task templates (`MIN_TEMPLATE_INSTRUCTION_LINES = 3`) with validation wired into default-task seeding.
 - 2026-02-17: **BPTS-007 Complete** - Added `docs/qa/bpts-task-structure-qa-pack.md` covering regression checklist for hierarchy, prompts, approvals, and editability.
+- 2026-02-17: **AF-005 Complete** - Implemented "Ask AI" left-panel pattern for Pitch Deck and Canvas editors:
+  - Created `PitchAskAiPanel.tsx` (320px left panel with AI actions: summarize, rephrase, simplify, detail, grammar, translate)
+  - Created `CanvasAskAiPanel.tsx` (320px left panel with section selector and AI suggestions)
+  - Updated `PitchDeckEditor.tsx` to integrate AI panel toggle (mutual exclusion with settings)
+  - Updated `CanvasModelEditPage.tsx` to integrate AI panel toggle (mutual exclusion with export sidebar)
+  - Reuses existing APIs: `pitch-deck/ai/slide-suggest` and `canvas-models/ai-suggest`
+  - Business Plan already had left-panel AI pattern (ManageAiTabs) - no changes needed
+- 2026-02-17: **AF-006 Complete** - Completed export matrix and hardened export UX:
+  - **Business Plan**: Removed HTML from export menu, kept PDF + DOCX, added toast notifications
+  - **Pitch Deck**: Added PDF export (client-side html2canvas + jsPDF), kept PPTX, added format picker dropdown
+  - **Canvas Model**: Added PPTX export (client-side pptxgenjs), kept PDF, added format toggle
+  - Created `src/lib/pitchDeckExport.ts` (PDF export helper with sanitizeFileName)
+  - Created `src/lib/canvasExport.ts` (PPTX export helper with sanitizeFileName)
+  - Updated `ExportSettingsSidebar.tsx` with PDF/PPTX toggle and toast notifications
+  - Updated `ManageActionArea.tsx` to remove HTML option and add toast success
+  - All exports now have: loading states, toast success/error, filename sanitization
+  - Created `docs/qa/af-005-af-006-manual-qa-script.md` for QA validation

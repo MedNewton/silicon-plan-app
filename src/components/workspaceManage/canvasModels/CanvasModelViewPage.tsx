@@ -1,7 +1,7 @@
 "use client";
 
 import type { FC } from "react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Box, Typography, Stack, Button } from "@mui/material";
 import { useRouter } from "next/navigation";
 import AddIcon from "@mui/icons-material/Add";
@@ -20,6 +20,7 @@ import {
   StartupCanvasLayout,
   LeanCanvasLayout,
 } from "./layouts";
+import type { WorkspaceCanvasTemplateType } from "@/types/workspaces";
 
 export type CanvasModelViewPageProps = Readonly<{
   workspaceId: string;
@@ -42,8 +43,10 @@ const CanvasModelViewPage: FC<CanvasModelViewPageProps> = ({
 }) => {
   const router = useRouter();
   const [showExportSidebar, setShowExportSidebar] = useState(false);
+  const canvasLayoutRef = useRef<HTMLDivElement | null>(null);
 
   const canvasTitle = CANVAS_TITLES[canvasId] ?? "Canvas Model";
+  const templateType = canvasId as WorkspaceCanvasTemplateType;
 
   const handleBack = () => {
     router.push(`/workspaces/${workspaceId}/manage/canvas-models`);
@@ -275,12 +278,19 @@ const CanvasModelViewPage: FC<CanvasModelViewPageProps> = ({
               "&::-webkit-scrollbar": { display: "none" },
             }}
           >
-            {renderCanvasLayout()}
+            <Box ref={canvasLayoutRef}>{renderCanvasLayout()}</Box>
           </Box>
 
           {/* Export Settings Sidebar */}
           {showExportSidebar && (
-            <ExportSettingsSidebar onClose={() => setShowExportSidebar(false)} />
+            <ExportSettingsSidebar
+              workspaceId={workspaceId}
+              canvasRef={canvasLayoutRef}
+              canvasTitle={canvasTitle}
+              templateType={templateType}
+              sectionsData={{}}
+              onClose={() => setShowExportSidebar(false)}
+            />
           )}
         </Box>
       </Box>
