@@ -76,7 +76,7 @@ const downloadBlob = (blob: Blob, filename: string): void => {
 const parseFileNameFromContentDisposition = (value: string | null): string | null => {
   if (!value) return null;
 
-  const utfMatch = value.match(/filename\*=UTF-8''([^;]+)/i);
+  const utfMatch = /filename\*=UTF-8''([^;]+)/i.exec(value);
   if (utfMatch?.[1]) {
     try {
       return decodeURIComponent(utfMatch[1].trim());
@@ -85,12 +85,12 @@ const parseFileNameFromContentDisposition = (value: string | null): string | nul
     }
   }
 
-  const quotedMatch = value.match(/filename="([^"]+)"/i);
+  const quotedMatch = /filename="([^"]+)"/i.exec(value);
   if (quotedMatch?.[1]) {
     return quotedMatch[1].trim();
   }
 
-  const plainMatch = value.match(/filename=([^;]+)/i);
+  const plainMatch = /filename=([^;]+)/i.exec(value);
   return plainMatch?.[1]?.trim() ?? null;
 };
 
