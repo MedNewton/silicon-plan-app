@@ -20,7 +20,7 @@ import {
   StartupCanvasLayout,
   LeanCanvasLayout,
 } from "./layouts";
-import type { WorkspaceCanvasTemplateType } from "@/types/workspaces";
+import type { WorkspaceCanvasTemplateType, CanvasSectionItem } from "@/types/workspaces";
 
 export type CanvasModelViewPageProps = Readonly<{
   workspaceId: string;
@@ -56,7 +56,7 @@ const CanvasModelViewPage: FC<CanvasModelViewPageProps> = ({
     setShowExportSidebar(!showExportSidebar);
   };
 
-  const handleAddItem = (sectionId: string) => (item: { title: string; description: string }) => {
+  const handleAddItem = (sectionId: string) => (item: Omit<CanvasSectionItem, "id">) => {
     // TODO: Implement add item functionality
     console.log(`Adding item to ${sectionId}:`, item);
   };

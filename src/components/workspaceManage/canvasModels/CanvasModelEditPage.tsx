@@ -145,13 +145,14 @@ const CanvasModelEditPage: FC<CanvasModelEditPageProps> = ({
     setIsEditingTitle(false);
   };
 
-  const handleAddItem = (sectionId: string) => async (item: { title: string; description: string }) => {
+  const handleAddItem = (sectionId: string) => async (item: Omit<CanvasSectionItem, "id">) => {
     if (!canvas) return;
 
     const newItem: CanvasSectionItem = {
       id: crypto.randomUUID(),
       title: item.title,
       description: item.description,
+      generation_status: item.generation_status ?? "final",
     };
 
     const currentSections = canvas.sections_data ?? {};

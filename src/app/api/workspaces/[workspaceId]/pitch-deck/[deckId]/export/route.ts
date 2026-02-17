@@ -25,6 +25,7 @@ type LayoutPreset = {
 };
 
 type Slide = ReturnType<InstanceType<typeof pptxgen>["addSlide"]>;
+type SlideTextOptions = NonNullable<Parameters<Slide["addText"]>[1]>;
 type TableCell = {
   text?: string;
   options?: {
@@ -61,6 +62,34 @@ const normalizeColor = (color?: string | null): string | undefined => {
     return hexMatch[1]?.toUpperCase();
   }
   return trimmed.replace("#", "").toUpperCase();
+};
+
+const normalizePptxText = (
+  value: string | null | undefined,
+  maxChars = 2000
+): string => {
+  if (!value) return "";
+  const normalized = value
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .replace(/\t/g, "  ")
+    .replace(/\u0000/g, "")
+    .replace(/[ \u00A0]{2,}/g, " ")
+    .trim();
+  return normalized.length > maxChars ? `${normalized.slice(0, maxChars - 1)}…` : normalized;
+};
+
+const addSlideText = (
+  slide: Slide,
+  text: string | null | undefined,
+  options: SlideTextOptions
+) => {
+  slide.addText(normalizePptxText(text), {
+    fit: "shrink",
+    breakLine: true,
+    margin: 2,
+    ...options,
+  });
 };
 
 const TEMPLATE_BG_FILES: Record<string, string> = {
@@ -141,7 +170,7 @@ const addTitle = (
 ) => {
   const marginX = layout.width * 0.08;
   const titleHeight = layout.height * 0.12;
-  slide.addText(title, {
+  addSlideText(slide, title, {
     x: marginX,
     y: layout.height * 0.08,
     w: layout.width - marginX * 2,
@@ -165,7 +194,7 @@ const addBodyText = (
   const marginX = layout.width * 0.08;
   const contentY = layout.height * 0.24;
   const contentHeight = layout.height - contentY - layout.height * 0.08;
-  slide.addText(text, {
+  addSlideText(slide, text, {
     x: marginX,
     y: contentY,
     w: layout.width - marginX * 2,
@@ -201,7 +230,7 @@ const addWorkspaceBranding = (
   }
 
   if (branding.workspaceName.trim().length > 0) {
-    slide.addText(branding.workspaceName, {
+    addSlideText(slide, branding.workspaceName, {
       x: textX,
       y: branding.logoDataUrl ? topPadding + logoHeight + 0.04 : topPadding + 0.02,
       w: textBlockWidth,
@@ -212,6 +241,23 @@ const addWorkspaceBranding = (
       fontFace: "Roboto",
     });
   }
+};
+
+const addDraftBadge = (slide: Slide, layout: LayoutPreset) => {
+  addSlideText(slide, "DRAFT", {
+    x: layout.width * 0.03,
+    y: layout.height * 0.03,
+    w: Math.max(layout.width * 0.1, 0.95),
+    h: 0.3,
+    fontFace: "Roboto",
+    fontSize: PPTX_TYPOGRAPHY.caption,
+    bold: true,
+    color: "92400E",
+    align: "center",
+    valign: "middle",
+    fill: { color: "FEF3C7" },
+    line: { color: "F59E0B" },
+  });
 };
 
 const bulletsToText = (bullets: string[]) => bullets.map((b) => `- ${b}`).join("\n");
@@ -226,7 +272,7 @@ const renderSlideContent = (
 ) => {
   switch (content.type) {
     case "title_only": {
-      slide.addText(content.title, {
+      addSlideText(slide, content.title, {
         x: layout.width * 0.1,
         y: layout.height * 0.4,
         w: layout.width * 0.8,
@@ -238,7 +284,7 @@ const renderSlideContent = (
         valign: "middle",
       });
       if (content.subtitle) {
-        slide.addText(content.subtitle, {
+        addSlideText(slide, content.subtitle, {
           x: layout.width * 0.1,
           y: layout.height * 0.58,
           w: layout.width * 0.8,
@@ -287,7 +333,7 @@ const renderSlideContent = (
       const marginX = layout.width * 0.08;
       const contentY = layout.height * 0.24;
       const contentHeight = layout.height - contentY - layout.height * 0.08;
-      slide.addText(content.imageUrl ? `Image: ${content.imageUrl}` : "Image placeholder", {
+      addSlideText(slide, content.imageUrl ? `Image: ${content.imageUrl}` : "Image placeholder", {
         x: marginX,
         y: contentY,
         w: layout.width - marginX * 2,
@@ -326,7 +372,7 @@ const renderSlideContent = (
         content.rightColumn.text ?? "",
         ...((content.rightColumn.bullets ?? []).map((b) => `- ${b}`)),
       ].filter((line) => line.length > 0);
-      slide.addText(leftLines.join("\n"), {
+      addSlideText(slide, leftLines.join("\n"), {
         x: marginX,
         y: contentY,
         w: columnWidth,
@@ -336,7 +382,7 @@ const renderSlideContent = (
         color: colors.content,
         valign: "top",
       });
-      slide.addText(rightLines.join("\n"), {
+      addSlideText(slide, rightLines.join("\n"), {
         x: marginX + columnWidth + columnGap,
         y: contentY,
         w: columnWidth,
@@ -361,12 +407,17 @@ const renderSlideContent = (
       const contentY = layout.height * 0.24;
       const contentHeight = layout.height - contentY - layout.height * 0.1;
       const headerRow: TableRow = content.headers.map((header) => ({
-        text: header,
+        text: normalizePptxText(header, 220),
         options: { bold: true, color: colors.title, fill: { color: "EEF2FF" } },
       }));
       const rows: TableRow[] = [
         headerRow,
-        ...content.rows.map((row) => row.map((cell) => ({ text: cell, options: { color: colors.content } }))),
+        ...content.rows.map((row) =>
+          row.map((cell) => ({
+            text: normalizePptxText(cell, 420),
+            options: { color: colors.content },
+          }))
+        ),
       ];
       slide.addTable(rows, {
         x: marginX,
@@ -375,6 +426,7 @@ const renderSlideContent = (
         h: contentHeight,
         fontFace,
         fontSize,
+        margin: 2,
         border: { color: "E5E7EB", pt: 1 },
       });
       return;
@@ -425,7 +477,7 @@ const renderSlideContent = (
       return;
     }
     case "quote": {
-      slide.addText(`\"${content.quote}\"`, {
+      addSlideText(slide, `\"${content.quote}\"`, {
         x: layout.width * 0.1,
         y: layout.height * 0.35,
         w: layout.width * 0.8,
@@ -437,7 +489,10 @@ const renderSlideContent = (
         valign: "middle",
       });
       if (content.author) {
-        slide.addText(`- ${content.author}${content.authorTitle ? `, ${content.authorTitle}` : ""}`, {
+        addSlideText(
+          slide,
+          `- ${content.author}${content.authorTitle ? `, ${content.authorTitle}` : ""}`,
+          {
           x: layout.width * 0.15,
           y: layout.height * 0.62,
           w: layout.width * 0.7,
@@ -446,7 +501,8 @@ const renderSlideContent = (
           fontSize: Math.max(fontSize, PPTX_TYPOGRAPHY.body),
           color: colors.content,
           align: "center",
-        });
+          }
+        );
       }
       return;
     }
@@ -475,6 +531,9 @@ const addSlideToDeck = (
     : { color: getBackgroundColor(template, isCover) };
 
   renderSlideContent(slide, slideData.content, layout, colors, settings.fontFamily, settings.fontSize);
+  if (slideData.content.generation_status === "draft") {
+    addDraftBadge(slide, layout);
+  }
   addWorkspaceBranding(slide, layout, branding);
 };
 

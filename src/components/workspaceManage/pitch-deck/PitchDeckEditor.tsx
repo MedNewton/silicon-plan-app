@@ -73,6 +73,7 @@ const SortableSlideItem: FC<{
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: slide.id,
   });
+  const generationStatus = slide.content.generation_status === "draft" ? "draft" : "final";
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -117,9 +118,27 @@ const SortableSlideItem: FC<{
         >
           {slide.title}
         </Typography>
-        <Typography sx={{ fontSize: 11, color: "#9CA3AF", textTransform: "capitalize" }}>
-          {slide.slide_type}
-        </Typography>
+        <Stack direction="row" spacing={0.8} alignItems="center">
+          <Typography sx={{ fontSize: 11, color: "#9CA3AF", textTransform: "capitalize" }}>
+            {slide.slide_type}
+          </Typography>
+          <Typography
+            sx={{
+              fontSize: 10,
+              fontWeight: 700,
+              px: 0.7,
+              py: 0.15,
+              borderRadius: 999,
+              textTransform: "uppercase",
+              letterSpacing: 0.3,
+              bgcolor:
+                generationStatus === "draft" ? "rgba(245, 158, 11, 0.16)" : "rgba(22, 163, 74, 0.16)",
+              color: generationStatus === "draft" ? "#92400E" : "#166534",
+            }}
+          >
+            {generationStatus}
+          </Typography>
+        </Stack>
       </Box>
       <Stack
         direction="row"
@@ -194,6 +213,15 @@ const PitchDeckEditor: FC<PitchDeckEditorProps> = ({ workspaceId }) => {
   );
 
   const selectedSlide = slides.find((s) => s.id === selectedSlideId);
+  const selectedSlideStatus = selectedSlide?.content.generation_status === "draft" ? "draft" : "final";
+
+  const markContentAsDraft = useCallback((content: PitchDeckSlideContent): PitchDeckSlideContent => {
+    return {
+      ...content,
+      generation_status: "draft",
+      ai_generated_at: new Date().toISOString(),
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -354,19 +382,33 @@ const PitchDeckEditor: FC<PitchDeckEditorProps> = ({ workspaceId }) => {
   const handleAiApply = useCallback(
     async (text: string) => {
       if (!aiTarget) return;
-      const nextContent = aiTarget.apply(text);
+      const nextContent = markContentAsDraft(aiTarget.apply(text));
       await updateSlide(aiTarget.slideId, { content: nextContent });
     },
-    [aiTarget, updateSlide]
+    [aiTarget, markContentAsDraft, updateSlide]
   );
 
   // Handler for the left-side AI panel
   const handleAiPanelApply = useCallback(
     async (slideId: string, content: PitchDeckSlideContent) => {
-      await updateSlide(slideId, { content });
+      await updateSlide(slideId, { content: markContentAsDraft(content) });
     },
-    [updateSlide]
+    [markContentAsDraft, updateSlide]
   );
+
+  const handleSlideStatusToggle = useCallback(async () => {
+    if (!selectedSlide) return;
+    const nextStatus = selectedSlideStatus === "draft" ? "final" : "draft";
+    await updateSlide(selectedSlide.id, {
+      content: {
+        ...selectedSlide.content,
+        generation_status: nextStatus,
+      },
+    });
+    toast.success(
+      nextStatus === "final" ? "Slide marked as final" : "Slide marked as draft"
+    );
+  }, [selectedSlide, selectedSlideStatus, updateSlide]);
 
   if (isLoading) {
     return (
@@ -639,22 +681,49 @@ const PitchDeckEditor: FC<PitchDeckEditorProps> = ({ workspaceId }) => {
                 workspaceName={branding.workspaceName}
                 workspaceLogoDataUrl={branding.workspaceLogoDataUrl}
               />
-              <Button
-                variant="contained"
-                size="small"
-                startIcon={<EditOutlinedIcon />}
-                onClick={() => setIsEditorOpen(true)}
+              <Stack
+                direction="row"
+                spacing={1}
                 sx={{
                   position: "absolute",
                   top: 16,
                   right: 16,
-                  bgcolor: "rgba(17, 24, 39, 0.85)",
-                  "&:hover": { bgcolor: "rgba(17, 24, 39, 1)" },
-                  textTransform: "none",
                 }}
               >
-                Edit Slide
-              </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => {
+                    void handleSlideStatusToggle();
+                  }}
+                  sx={{
+                    borderColor: selectedSlideStatus === "draft" ? "#F59E0B" : "#10B981",
+                    color: selectedSlideStatus === "draft" ? "#92400E" : "#166534",
+                    bgcolor: "rgba(255, 255, 255, 0.92)",
+                    textTransform: "none",
+                    fontWeight: 700,
+                    "&:hover": {
+                      borderColor: selectedSlideStatus === "draft" ? "#D97706" : "#059669",
+                      bgcolor: "rgba(255, 255, 255, 1)",
+                    },
+                  }}
+                >
+                  {selectedSlideStatus === "draft" ? "Mark Final" : "Mark Draft"}
+                </Button>
+                <Button
+                  variant="contained"
+                  size="small"
+                  startIcon={<EditOutlinedIcon />}
+                  onClick={() => setIsEditorOpen(true)}
+                  sx={{
+                    bgcolor: "rgba(17, 24, 39, 0.85)",
+                    "&:hover": { bgcolor: "rgba(17, 24, 39, 1)" },
+                    textTransform: "none",
+                  }}
+                >
+                  Edit Slide
+                </Button>
+              </Stack>
             </Box>
           ) : (
             <Typography sx={{ color: "#9CA3AF" }}>Select a slide to preview</Typography>

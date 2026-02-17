@@ -7,7 +7,7 @@ import type { CanvasSectionsData } from "@/types/workspaces";
 
 export type ValuePropositionCanvasLayoutProps = Readonly<{
   sectionsData?: CanvasSectionsData;
-  onAddItem?: (sectionId: string) => (item: { title: string; description: string }) => void;
+  onAddItem?: (sectionId: string) => (item: Omit<CanvasSectionItem, "id">) => void;
   onUpdateItem?: (sectionId: string) => (item: CanvasSectionItem) => void;
   onDeleteItem?: (sectionId: string) => (itemId: string) => void;
   onGenerateAI?: (sectionId: string) => () => void;
@@ -30,7 +30,7 @@ const ValuePropositionCanvasLayout: FC<ValuePropositionCanvasLayoutProps> = ({
     return sectionsData[sectionId] ?? [];
   };
 
-  const handleAddItem = (sectionId: string) => (item: { title: string; description: string }) => {
+  const handleAddItem = (sectionId: string) => (item: Omit<CanvasSectionItem, "id">) => {
     onAddItem?.(sectionId)(item);
   };
 

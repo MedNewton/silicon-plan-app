@@ -14,6 +14,7 @@ import type {
   PitchDeckSlide,
   PitchDeckTemplate,
   PitchDeckSlideContent,
+  GeneratedContentStatus,
   PitchDeckTitleOnlyContent,
   PitchDeckTitleBulletsContent,
   PitchDeckTitleImageContent,
@@ -103,6 +104,9 @@ const parseTable = (text: string): { headers: string[]; rows: string[][] } => {
   const rows = lines.slice(1).map((line) => splitLine(line));
   return { headers, rows };
 };
+
+const getGenerationStatus = (content: PitchDeckSlideContent): GeneratedContentStatus =>
+  content.generation_status === "draft" ? "draft" : "final";
 
 const AiEditable: FC<{
   onEdit?: () => void;
@@ -260,6 +264,39 @@ const SlideBranding: FC<{
           {workspaceName!.trim()}
         </Typography>
       ) : null}
+    </Box>
+  );
+};
+
+const SlideGenerationBadge: FC<{ status: GeneratedContentStatus }> = ({ status }) => {
+  if (status !== "draft") return null;
+
+  return (
+    <Box
+      sx={{
+        position: "absolute",
+        top: 12,
+        left: 12,
+        zIndex: 6,
+        px: 1.1,
+        py: 0.4,
+        borderRadius: 999,
+        bgcolor: "rgba(254, 243, 199, 0.92)",
+        border: "1px solid rgba(245, 158, 11, 0.65)",
+      }}
+    >
+      <Typography
+        sx={{
+          fontSize: 10,
+          fontWeight: 800,
+          letterSpacing: 0.35,
+          color: "#92400E",
+          textTransform: "uppercase",
+          lineHeight: 1,
+        }}
+      >
+        Draft
+      </Typography>
     </Box>
   );
 };
@@ -1159,6 +1196,7 @@ const SlidePreview: FC<SlidePreviewProps> = ({
   const backgroundStyle = getBackgroundStyle(template, isCover);
   const colors = getTextColors(template, isCover);
   const aspectRatio = paperSize === "4:3" ? "4 / 3" : paperSize === "A4" ? "1 / 1.414" : "16 / 9";
+  const generationStatus = getGenerationStatus(slide.content);
 
   const renderContent = (content: PitchDeckSlideContent) => {
     switch (content.type) {
@@ -1288,6 +1326,7 @@ const SlidePreview: FC<SlidePreviewProps> = ({
           workspaceName={workspaceName}
           workspaceLogoDataUrl={workspaceLogoDataUrl}
         />
+        <SlideGenerationBadge status={generationStatus} />
         {renderContent(slide.content)}
       </Box>
     </Box>

@@ -18,11 +18,13 @@ import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import type { GeneratedContentStatus } from "@/types/workspaces";
 
 export type CanvasSectionItem = {
   id: string;
   title: string;
   description: string;
+  generation_status?: GeneratedContentStatus;
 };
 
 export type AiSuggestion = {
@@ -65,6 +67,7 @@ const CanvasSection: FC<CanvasSectionProps> = ({
   const [newItemDescription, setNewItemDescription] = useState("");
   const [editItemTitle, setEditItemTitle] = useState("");
   const [editItemDescription, setEditItemDescription] = useState("");
+  const [editItemStatus, setEditItemStatus] = useState<GeneratedContentStatus>("final");
 
   const handleAddClick = () => {
     setIsAddingItem(true);
@@ -82,6 +85,7 @@ const CanvasSection: FC<CanvasSectionProps> = ({
       onAddItem?.({
         title: newItemTitle.trim(),
         description: newItemDescription.trim(),
+        generation_status: "final",
       });
       setIsAddingItem(false);
       setNewItemTitle("");
@@ -93,6 +97,7 @@ const CanvasSection: FC<CanvasSectionProps> = ({
     setEditingItemId(item.id);
     setEditItemTitle(item.title);
     setEditItemDescription(item.description);
+    setEditItemStatus(item.generation_status ?? "final");
     setIsAddingItem(false);
   };
 
@@ -100,6 +105,7 @@ const CanvasSection: FC<CanvasSectionProps> = ({
     setEditingItemId(null);
     setEditItemTitle("");
     setEditItemDescription("");
+    setEditItemStatus("final");
   };
 
   const handleSaveEdit = () => {
@@ -108,10 +114,12 @@ const CanvasSection: FC<CanvasSectionProps> = ({
         id: editingItemId,
         title: editItemTitle.trim(),
         description: editItemDescription.trim(),
+        generation_status: editItemStatus,
       });
       setEditingItemId(null);
       setEditItemTitle("");
       setEditItemDescription("");
+      setEditItemStatus("final");
     }
   };
 
@@ -126,16 +134,26 @@ const CanvasSection: FC<CanvasSectionProps> = ({
     onAddItem?.({
       title: suggestion.title,
       description: suggestion.description,
+      generation_status: "draft",
     });
   };
 
-  const placeholderItems = [
+  const handleToggleItemStatus = (item: CanvasSectionItem) => {
+    const currentStatus = item.generation_status ?? "final";
+    const nextStatus: GeneratedContentStatus = currentStatus === "draft" ? "final" : "draft";
+    onUpdateItem?.({
+      ...item,
+      generation_status: nextStatus,
+    });
+  };
+
+  const placeholderItems: CanvasSectionItem[] = [
     { id: "placeholder-1", title: placeholder, description: "" },
     { id: "placeholder-2", title: placeholder, description: "" },
     { id: "placeholder-3", title: placeholder, description: "" },
   ];
 
-  const displayItems = items.length > 0 ? items : placeholderItems;
+  const displayItems: CanvasSectionItem[] = items.length > 0 ? items : placeholderItems;
   const hasRealItems = items.length > 0;
 
   return (
@@ -538,6 +556,30 @@ const CanvasSection: FC<CanvasSectionProps> = ({
                       },
                     }}
                   />
+                  <Box sx={{ mt: 1 }}>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() =>
+                        setEditItemStatus((prev) => (prev === "draft" ? "final" : "draft"))
+                      }
+                      sx={{
+                        textTransform: "none",
+                        fontSize: 11,
+                        borderColor: editItemStatus === "draft" ? "#F59E0B" : "#4C6AD2",
+                        color: editItemStatus === "draft" ? "#92400E" : "#1D4ED8",
+                        "&:hover": {
+                          borderColor: editItemStatus === "draft" ? "#D97706" : "#1E40AF",
+                          bgcolor:
+                            editItemStatus === "draft"
+                              ? "rgba(245, 158, 11, 0.08)"
+                              : "rgba(76, 106, 210, 0.08)",
+                        },
+                      }}
+                    >
+                      {editItemStatus === "draft" ? "Set as Final" : "Set as Draft"}
+                    </Button>
+                  </Box>
                   <Stack
                     direction="row"
                     spacing={1}
@@ -615,15 +657,68 @@ const CanvasSection: FC<CanvasSectionProps> = ({
                   },
                 }}
               >
-                <Typography
-                  sx={{
-                    fontSize: 13,
-                    color: hasRealItems ? "#111827" : "#9CA3AF",
-                    fontWeight: hasRealItems ? 500 : 400,
-                  }}
-                >
-                  {item.title}
-                </Typography>
+                <Stack direction="row" alignItems="center" spacing={1}>
+                  <Typography
+                    sx={{
+                      flex: 1,
+                      minWidth: 0,
+                      fontSize: 13,
+                      color: hasRealItems ? "#111827" : "#9CA3AF",
+                      fontWeight: hasRealItems ? 500 : 400,
+                    }}
+                  >
+                    {item.title}
+                  </Typography>
+                  {!isPlaceholder && (
+                    <>
+                      <Typography
+                        sx={{
+                          fontSize: 10.5,
+                          fontWeight: 700,
+                          px: 0.8,
+                          py: 0.2,
+                          borderRadius: 999,
+                          bgcolor:
+                            (item.generation_status ?? "final") === "draft"
+                              ? "rgba(245, 158, 11, 0.16)"
+                              : "rgba(22, 163, 74, 0.16)",
+                          color:
+                            (item.generation_status ?? "final") === "draft"
+                              ? "#92400E"
+                              : "#166534",
+                          textTransform: "uppercase",
+                          letterSpacing: 0.3,
+                        }}
+                      >
+                        {(item.generation_status ?? "final") === "draft" ? "Draft" : "Final"}
+                      </Typography>
+                      <Button
+                        size="small"
+                        variant="text"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleToggleItemStatus(item);
+                        }}
+                        sx={{
+                          minWidth: 0,
+                          px: 0.75,
+                          py: 0.2,
+                          fontSize: 10.5,
+                          fontWeight: 700,
+                          textTransform: "none",
+                          color:
+                            (item.generation_status ?? "final") === "draft"
+                              ? "#166534"
+                              : "#92400E",
+                        }}
+                      >
+                        {(item.generation_status ?? "final") === "draft"
+                          ? "Finalize"
+                          : "Draft"}
+                      </Button>
+                    </>
+                  )}
+                </Stack>
                 {item.description && (
                   <Typography
                     sx={{

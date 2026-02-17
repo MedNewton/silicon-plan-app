@@ -203,31 +203,40 @@ const buildDraftFromContent = (content: PitchDeckSlideContent, slideTitle: strin
 const buildContentFromDraft = (
   contentType: PitchDeckSlideContentType,
   slideTitle: string,
-  draft: DraftFields
+  draft: DraftFields,
+  existingContent?: PitchDeckSlideContent
 ): PitchDeckSlideContent => {
   const title = draft.contentTitle.trim() || slideTitle.trim() || "Untitled";
+  const preservedMeta = {
+    generation_status: existingContent?.generation_status,
+    ai_generated_at: existingContent?.ai_generated_at,
+  };
 
   switch (contentType) {
     case "title_only":
       return {
+        ...preservedMeta,
         type: "title_only",
         title,
         subtitle: draft.subtitle.trim() || undefined,
       };
     case "title_bullets":
       return {
+        ...preservedMeta,
         type: "title_bullets",
         title,
         bullets: parseLines(draft.bullets),
       };
     case "title_text":
       return {
+        ...preservedMeta,
         type: "title_text",
         title,
         text: draft.text.trim(),
       };
     case "title_image":
       return {
+        ...preservedMeta,
         type: "title_image",
         title,
         imageUrl: draft.imageUrl.trim(),
@@ -236,6 +245,7 @@ const buildContentFromDraft = (
       } as PitchDeckTitleImageContent;
     case "two_columns":
       return {
+        ...preservedMeta,
         type: "two_columns",
         title,
         leftColumn: {
@@ -251,6 +261,7 @@ const buildContentFromDraft = (
       };
     case "comparison":
       return {
+        ...preservedMeta,
         type: "comparison",
         title,
         headers: parseDelimitedList(draft.headers),
@@ -258,6 +269,7 @@ const buildContentFromDraft = (
       };
     case "timeline":
       return {
+        ...preservedMeta,
         type: "timeline",
         title,
         entries: parseLines(draft.timeline).map((line) => {
@@ -271,6 +283,7 @@ const buildContentFromDraft = (
       };
     case "team_grid":
       return {
+        ...preservedMeta,
         type: "team_grid",
         title,
         members: parseLines(draft.team).map((line) => {
@@ -284,6 +297,7 @@ const buildContentFromDraft = (
       };
     case "metrics":
       return {
+        ...preservedMeta,
         type: "metrics",
         title,
         metrics: parseLines(draft.metrics).map((line) => {
@@ -299,6 +313,7 @@ const buildContentFromDraft = (
       const author = draft.author.trim();
       const authorTitle = draft.authorTitle.trim();
       return {
+        ...preservedMeta,
         type: "quote",
         quote: draft.quote.trim(),
         author: author.length > 0 ? author : undefined,
@@ -306,9 +321,9 @@ const buildContentFromDraft = (
       };
     }
     case "blank":
-      return { type: "blank" };
+      return { ...preservedMeta, type: "blank" };
     default:
-      return { type: "blank" };
+      return { ...preservedMeta, type: "blank" };
   }
 };
 
@@ -340,7 +355,7 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
     if (!slide) return;
     setIsSaving(true);
     try {
-      const content = buildContentFromDraft(contentType, slideTitle, draft);
+      const content = buildContentFromDraft(contentType, slideTitle, draft, slide.content);
       await onSave({ title: slideTitle.trim() || slide.title, content });
       onClose();
     } finally {

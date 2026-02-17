@@ -113,7 +113,7 @@ export type CanvasAskAiPanelProps = {
   workspaceId: string;
   templateType: WorkspaceCanvasTemplateType;
   sectionsData: CanvasSectionsData;
-  onAddItem: (sectionId: string) => (item: { title: string; description: string }) => Promise<void>;
+  onAddItem: (sectionId: string) => (item: Omit<CanvasSectionItem, "id">) => Promise<void>;
   onClose: () => void;
 };
 
@@ -237,6 +237,7 @@ const CanvasAskAiPanel: FC<CanvasAskAiPanelProps> = ({
     await onAddItem(selectedSection)({
       title: suggestion.title,
       description: suggestion.description,
+      generation_status: "draft",
     });
     // Remove the used suggestion from the list
     setSuggestions((prev) => prev.filter((s) => s !== suggestion));
@@ -367,9 +368,28 @@ const CanvasAskAiPanel: FC<CanvasAskAiPanelProps> = ({
                       py: 0.75,
                     }}
                   >
-                    <Typography sx={{ fontSize: 12, fontWeight: 500, color: "#111827" }}>
-                      {item.title}
-                    </Typography>
+                    <Stack direction="row" spacing={0.7} alignItems="center">
+                      <Typography sx={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 500, color: "#111827" }}>
+                        {item.title}
+                      </Typography>
+                      {(item.generation_status ?? "final") === "draft" && (
+                        <Typography
+                          sx={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            px: 0.6,
+                            py: 0.15,
+                            borderRadius: 999,
+                            bgcolor: "rgba(245, 158, 11, 0.16)",
+                            color: "#92400E",
+                            textTransform: "uppercase",
+                            letterSpacing: 0.25,
+                          }}
+                        >
+                          Draft
+                        </Typography>
+                      )}
+                    </Stack>
                     {item.description && (
                       <Typography sx={{ fontSize: 11, color: "#6B7280" }}>
                         {item.description}

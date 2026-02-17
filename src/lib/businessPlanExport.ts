@@ -61,6 +61,30 @@ const escapeHtml = (value: string) =>
     .replace(/\"/g, "&quot;")
     .replace(/'/g, "&#039;");
 
+const normalizeExportText = (value: string | null | undefined, maxChars = 8000): string => {
+  if (!value) return "";
+  const normalized = value
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .replace(/\t/g, "  ")
+    .replace(/\u0000/g, "")
+    .replace(/[ \u00A0]{2,}/g, " ")
+    .trimEnd();
+  return normalized.length > maxChars ? `${normalized.slice(0, maxChars - 1)}…` : normalized;
+};
+
+const buildRunsFromText = (value: string): TextRun[] => {
+  const normalized = normalizeExportText(value);
+  if (!normalized) return [new TextRun("")];
+  return normalized.split("\n").map(
+    (line, index) =>
+      new TextRun({
+        text: line,
+        break: index === 0 ? undefined : 1,
+      })
+  );
+};
+
 const CURRENCY_VALUE_REGEX = /^-?(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d+)?$/;
 const CURRENCY_SYMBOL_REGEX = /[$€£¥₹]/;
 
@@ -333,7 +357,7 @@ const paragraphFromText = (
   heading?: (typeof HeadingLevel)[keyof typeof HeadingLevel]
 ) =>
   new Paragraph({
-    text,
+    children: buildRunsFromText(text),
     heading,
   });
 
@@ -356,13 +380,17 @@ const buildDocxSections = (
           blocks.push(paragraphFromText(content.text ?? "", HeadingLevel.HEADING_3));
           break;
         case "text":
-          blocks.push(new Paragraph(content.text ?? ""));
+          blocks.push(
+            new Paragraph({
+              children: buildRunsFromText(content.text ?? ""),
+            })
+          );
           break;
         case "list":
           (content.items ?? []).forEach((item) => {
             blocks.push(
               new Paragraph({
-                text: item,
+                children: buildRunsFromText(item),
                 bullet: { level: 0 },
               })
             );
@@ -373,7 +401,16 @@ const buildDocxSections = (
           const headerCells = (content.headers ?? []).map(
             (header) =>
               new TableCell({
-                children: [new Paragraph({ children: [new TextRun({ text: header, bold: true })] })],
+                children: [
+                  new Paragraph({
+                    children: [
+                      new TextRun({
+                        text: normalizeExportText(header),
+                        bold: true,
+                      }),
+                    ],
+                  }),
+                ],
               })
           );
           const rows = [
@@ -384,7 +421,11 @@ const buildDocxSections = (
                   children: row.map((cell, cellIndex) =>
                     new TableCell({
                       children: [
-                        new Paragraph(formatTableValueByCurrency(cell, currencyCode, cellIndex)),
+                        new Paragraph({
+                          children: buildRunsFromText(
+                            formatTableValueByCurrency(cell, currencyCode, cellIndex)
+                          ),
+                        }),
                       ],
                     })
                   ),

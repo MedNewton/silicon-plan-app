@@ -113,6 +113,8 @@ export type PitchDeckSlideContentType =
   | "quote"
   | "blank";
 
+export type GeneratedContentStatus = "draft" | "final";
+
 // ========== CORE ENTITIES (MATCH SUPABASE COLUMNS) ==========
 
 export type Workspace = {
@@ -203,6 +205,7 @@ export type CanvasSectionItem = {
   id: string;
   title: string;
   description: string;
+  generation_status?: GeneratedContentStatus;
 };
 
 // Canvas sections data (keyed by section ID)
@@ -734,12 +737,16 @@ export type PitchDeckTitleOnlyContent = {
   type: "title_only";
   title: string;
   subtitle?: string;
+  generation_status?: GeneratedContentStatus;
+  ai_generated_at?: string;
 };
 
 export type PitchDeckTitleBulletsContent = {
   type: "title_bullets";
   title: string;
   bullets: string[];
+  generation_status?: GeneratedContentStatus;
+  ai_generated_at?: string;
 };
 
 export type PitchDeckTitleImageContent = {
@@ -748,12 +755,16 @@ export type PitchDeckTitleImageContent = {
   imageUrl: string;
   imageAlt?: string;
   imagePosition?: "left" | "right" | "top" | "bottom";
+  generation_status?: GeneratedContentStatus;
+  ai_generated_at?: string;
 };
 
 export type PitchDeckTitleTextContent = {
   type: "title_text";
   title: string;
   text: string;
+  generation_status?: GeneratedContentStatus;
+  ai_generated_at?: string;
 };
 
 export type PitchDeckTwoColumnsContent = {
@@ -769,6 +780,8 @@ export type PitchDeckTwoColumnsContent = {
     bullets?: string[];
     text?: string;
   };
+  generation_status?: GeneratedContentStatus;
+  ai_generated_at?: string;
 };
 
 export type PitchDeckComparisonContent = {
@@ -776,6 +789,8 @@ export type PitchDeckComparisonContent = {
   title: string;
   headers: string[];
   rows: string[][];
+  generation_status?: GeneratedContentStatus;
+  ai_generated_at?: string;
 };
 
 export type PitchDeckTimelineContent = {
@@ -786,6 +801,8 @@ export type PitchDeckTimelineContent = {
     title: string;
     description?: string;
   }>;
+  generation_status?: GeneratedContentStatus;
+  ai_generated_at?: string;
 };
 
 export type PitchDeckTeamGridContent = {
@@ -797,6 +814,8 @@ export type PitchDeckTeamGridContent = {
     imageUrl?: string;
     bio?: string;
   }>;
+  generation_status?: GeneratedContentStatus;
+  ai_generated_at?: string;
 };
 
 export type PitchDeckMetricsContent = {
@@ -807,6 +826,8 @@ export type PitchDeckMetricsContent = {
     label: string;
     description?: string;
   }>;
+  generation_status?: GeneratedContentStatus;
+  ai_generated_at?: string;
 };
 
 export type PitchDeckQuoteContent = {
@@ -814,10 +835,14 @@ export type PitchDeckQuoteContent = {
   quote: string;
   author?: string;
   authorTitle?: string;
+  generation_status?: GeneratedContentStatus;
+  ai_generated_at?: string;
 };
 
 export type PitchDeckBlankContent = {
   type: "blank";
+  generation_status?: GeneratedContentStatus;
+  ai_generated_at?: string;
 };
 
 // Slide entity

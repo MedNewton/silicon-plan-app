@@ -4,10 +4,10 @@ Source of truth for tasks: `TASKS.md`
 
 ## Summary
 - Total scoped tasks: 68
-- `done`: 62
+- `done`: 64
 - `in_progress`: 0
 - `pending_qa`: 0
-- `todo`: 6
+- `todo`: 4
 - `blocked`: 0
 - **Note:** Counts now reflect all rows in `TASKS.md` as of 2026-02-17.
 
@@ -58,13 +58,17 @@ Source of truth for tasks: `TASKS.md`
 44. `AF-001` - Add AI tone of voice settings
 45. `WS-017` - Implement workspace/library -> task automation
 46. `AF-008` - Make financial plan editable and multi-currency
+47. `AF-009` - Make generated pitch and SWOT outputs editable
+48. `AF-010` - Resolve DOCX/PPTX formatting regressions
 
 ## Reopened / Not Fully Done
 1. None (WS-016 and BPTS-006 passed manual QA on 2026-02-17)
 
 ## Todo (Immediate Next)
 1. `WS-005` - Implement EN/IT language toggle
-2. `CORE-020` - Add core missing features QA suite
+2. `WS-006` - Localize key workspace pages and exports
+3. `WS-018` - Add workspace usability QA suite
+4. `CORE-020` - Add core missing features QA suite
 
 ## Recent Validation
 - `npm run typecheck`: pass
@@ -73,6 +77,21 @@ Source of truth for tasks: `TASKS.md`
 - WS-016 / BPTS-006 manual QA: pass
 
 ## Change Log
+- 2026-02-17: **AF-009 / AF-010 Complete** - Shipped pitch/SWOT editability hardening and DOCX/PPTX formatting stability improvements without DB migrations.
+  - Pitch generated content editability (`AF-009`):
+    - Added persisted generated-content status metadata (`generation_status`, `ai_generated_at`) to pitch slide content models in `src/types/workspaces.ts`.
+    - AI-applied slide updates now default to `draft`, with explicit `Mark Draft` / `Mark Final` controls in `src/components/workspaceManage/pitch-deck/PitchDeckEditor.tsx`.
+    - Added visual draft indicators in pitch preview/list (`src/components/workspaceManage/pitch-deck/SlidePreview.tsx`, `src/components/workspaceManage/pitch-deck/PitchDeckEditor.tsx`).
+    - Preserved content status metadata through manual modal edits in `src/components/workspaceManage/pitch-deck/SlideEditorModal.tsx`.
+  - SWOT generated content editability (`AF-009`):
+    - Added `generation_status` to canvas item model (`src/types/workspaces.ts`) and threaded it through canvas add/edit flows.
+    - AI suggestions now insert as `draft`, while manual entries default to `final` in `src/components/workspaceManage/canvasModels/CanvasSection.tsx` and `src/components/workspaceManage/canvasModels/CanvasAskAiPanel.tsx`.
+    - Added inline draft/final status toggle directly on canvas items for pre-export refinement.
+  - Export formatting hardening (`AF-010`):
+    - Added PPTX text normalization + shrink-fit rendering for pitch export route (`src/app/api/workspaces/[workspaceId]/pitch-deck/[deckId]/export/route.ts`) to reduce overflow/line-break regressions.
+    - Added draft badge rendering in pitch PPTX exports for slides still marked draft.
+    - Added normalized shrink-fit PPTX text rendering for canvas exports (`src/lib/canvasExport.ts`) and draft item labeling.
+    - Improved DOCX text normalization/newline handling in `src/lib/businessPlanExport.ts` for more consistent Word output.
 - 2026-02-17: **AF-008 Complete** - Implemented financial-plan editability + multi-currency support without DB schema changes.
   - Added `currency_code` support to business-plan export settings in `src/types/workspaces.ts` and wired update action in `src/components/workspaceManage/business-plan/BusinessPlanContext.tsx`.
   - Replaced Finance tab placeholder in `src/components/workspaceManage/business-plan/ManageActionArea.tsx` with:

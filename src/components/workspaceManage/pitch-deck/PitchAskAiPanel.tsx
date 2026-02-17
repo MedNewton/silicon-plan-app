@@ -360,7 +360,11 @@ const PitchAskAiPanel: FC<PitchAskAiPanelProps> = ({
 
   const handleApply = async () => {
     if (!selectedSlide) return;
-    const newContent = applyTextToContent(selectedSlide.content, draftText);
+    const newContent: PitchDeckSlideContent = {
+      ...applyTextToContent(selectedSlide.content, draftText),
+      generation_status: "draft",
+      ai_generated_at: new Date().toISOString(),
+    };
     await onApply(selectedSlide.id, newContent);
     toast.success("Slide content updated");
   };
