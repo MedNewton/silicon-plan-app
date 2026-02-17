@@ -36,6 +36,35 @@ const extractContextHighlights = (context: string): string[] => {
     .filter(Boolean);
 };
 
+const buildTaskDefaultsFromContext = (params: {
+  title: string;
+  hierarchyLevel: "h1" | "h2";
+  parentTitle: string;
+  highlights: string[];
+}): { instructions: string; aiPrompt: string } => {
+  const { title, hierarchyLevel, parentTitle, highlights } = params;
+
+  const instructions = [
+    `Draft the task content for "${title}" (${hierarchyLevel.toUpperCase()}).`,
+    "Reuse existing workspace setup, AI knowledge, and uploaded library documents automatically.",
+    highlights.length > 0
+      ? `Incorporate these known context points:\n${highlights.map((item) => `- ${item}`).join("\n")}`
+      : "Use all currently known project context. Ask for extra input only if strictly required.",
+  ].join("\n");
+
+  const aiPrompt = [
+    `Generate high-quality content for task: "${title}".`,
+    parentTitle ? `Parent chapter: "${parentTitle}".` : null,
+    `Hierarchy level: ${hierarchyLevel.toUpperCase()}.`,
+    "Do not ask the user to repeat information that already exists in workspace onboarding/profile/library context.",
+    "When assumptions are required, keep them minimal and explicit.",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  return { instructions, aiPrompt };
+};
+
 async function buildAutoTaskDefaults(params: {
   client: Supa;
   workspaceId: WorkspaceId;
@@ -57,25 +86,12 @@ async function buildAutoTaskDefaults(params: {
     parentTitle = typeof parentTask?.title === "string" ? parentTask.title : "";
   }
 
-  const instructions = [
-    `Draft the task content for "${title}" (${hierarchyLevel.toUpperCase()}).`,
-    "Reuse existing workspace setup, AI knowledge, and uploaded library documents automatically.",
-    highlights.length > 0
-      ? `Incorporate these known context points:\n${highlights.map((item) => `- ${item}`).join("\n")}`
-      : "Use all currently known project context. Ask for extra input only if strictly required.",
-  ].join("\n");
-
-  const aiPrompt = [
-    `Generate high-quality content for task: "${title}".`,
-    parentTitle ? `Parent chapter: "${parentTitle}".` : null,
-    `Hierarchy level: ${hierarchyLevel.toUpperCase()}.`,
-    "Do not ask the user to repeat information that already exists in workspace onboarding/profile/library context.",
-    "When assumptions are required, keep them minimal and explicit.",
-  ]
-    .filter(Boolean)
-    .join("\n");
-
-  return { instructions, aiPrompt };
+  return buildTaskDefaultsFromContext({
+    title,
+    hierarchyLevel,
+    parentTitle,
+    highlights,
+  });
 }
 
 async function userHasWorkspaceAccess(
@@ -236,6 +252,25 @@ function buildTaskTree(tasks: BusinessPlanTask[]): BusinessPlanTaskWithChildren[
   return build(null);
 }
 
+function flattenTaskTree(tasks: BusinessPlanTaskWithChildren[]): BusinessPlanTask[] {
+  const flattened: BusinessPlanTask[] = [];
+
+  const walk = (nodes: BusinessPlanTaskWithChildren[]) => {
+    nodes.forEach((task) => {
+      flattened.push(task);
+      if (task.children?.length) {
+        walk(task.children);
+      }
+    });
+  };
+
+  walk(tasks);
+  return flattened;
+}
+
+const isBlankText = (value: string | null): boolean =>
+  !value || value.trim().length === 0;
+
 export async function getBusinessPlanTaskTree(params: {
   workspaceId: WorkspaceId;
   userId: UserId;
@@ -278,6 +313,77 @@ export async function getBusinessPlanTaskTree(params: {
     businessPlanId,
     tasks: buildTaskTree(tasks),
   };
+}
+
+export async function ensureTaskAutomationDefaults(params: {
+  workspaceId: WorkspaceId;
+  userId: UserId;
+}): Promise<{ updatedCount: number }> {
+  const { workspaceId, userId } = params;
+  const client = getSupabaseClient();
+
+  const treeData = await getBusinessPlanTaskTree({ workspaceId, userId });
+  if (!treeData) {
+    return { updatedCount: 0 };
+  }
+
+  await ensureUserHasWorkspaceAccess(client, workspaceId, userId);
+
+  const flattenedTasks = flattenTaskTree(treeData.tasks);
+  if (flattenedTasks.length === 0) {
+    return { updatedCount: 0 };
+  }
+
+  const titleByTaskId = new Map(flattenedTasks.map((task) => [task.id, task.title]));
+  const workspaceContext = await getWorkspaceAiContext(workspaceId);
+  const highlights = extractContextHighlights(workspaceContext.context);
+
+  const updates = flattenedTasks
+    .map((task) => {
+      const missingInstructions = isBlankText(task.instructions);
+      const missingAiPrompt = isBlankText(task.ai_prompt);
+      if (!missingInstructions && !missingAiPrompt) {
+        return null;
+      }
+
+      const parentTitle =
+        task.parent_task_id != null ? (titleByTaskId.get(task.parent_task_id) ?? "") : "";
+      const defaults = buildTaskDefaultsFromContext({
+        title: task.title,
+        hierarchyLevel: task.hierarchy_level,
+        parentTitle,
+        highlights,
+      });
+
+      const payload: Record<string, string> = {};
+      if (missingInstructions) payload.instructions = defaults.instructions;
+      if (missingAiPrompt) payload.ai_prompt = defaults.aiPrompt;
+
+      return {
+        taskId: task.id,
+        payload,
+      };
+    })
+    .filter((item): item is { taskId: string; payload: Record<string, string> } => item != null);
+
+  if (updates.length === 0) {
+    return { updatedCount: 0 };
+  }
+
+  await Promise.all(
+    updates.map(async (item) => {
+      const { error } = await client
+        .from("business_plan_tasks")
+        .update(item.payload)
+        .eq("id", item.taskId);
+
+      if (error) {
+        throw new Error(`Failed to apply task automation defaults: ${error.message}`);
+      }
+    })
+  );
+
+  return { updatedCount: updates.length };
 }
 
 export async function createBusinessPlanTask(
@@ -538,6 +644,10 @@ export async function updateBusinessPlanTask(
   }
 
   const updatePayload: Record<string, unknown> = {};
+  const normalizedInstructions = instructions !== undefined ? instructions.trim() : undefined;
+  const normalizedAiPrompt = aiPrompt !== undefined ? aiPrompt.trim() : undefined;
+  const shouldAutoFillInstructions = normalizedInstructions?.length === 0;
+  const shouldAutoFillAiPrompt = normalizedAiPrompt?.length === 0;
   if (title !== undefined) {
     const trimmedTitle = title.trim();
     if (!trimmedTitle) {
@@ -545,12 +655,34 @@ export async function updateBusinessPlanTask(
     }
     updatePayload.title = trimmedTitle;
   }
-  if (instructions !== undefined) updatePayload.instructions = instructions.trim();
-  if (aiPrompt !== undefined) updatePayload.ai_prompt = aiPrompt.trim();
+  if (normalizedInstructions !== undefined && !shouldAutoFillInstructions) {
+    updatePayload.instructions = normalizedInstructions;
+  }
+  if (normalizedAiPrompt !== undefined && !shouldAutoFillAiPrompt) {
+    updatePayload.ai_prompt = normalizedAiPrompt;
+  }
   if (hierarchyLevel !== undefined) updatePayload.hierarchy_level = hierarchyLevel;
   if (status !== undefined) updatePayload.status = status;
   if (parentTaskId !== undefined) updatePayload.parent_task_id = parentTaskId;
   if (finalOrderIndex !== undefined) updatePayload.order_index = finalOrderIndex;
+
+  if (shouldAutoFillInstructions || shouldAutoFillAiPrompt) {
+    const defaults = await buildAutoTaskDefaults({
+      client,
+      workspaceId,
+      title:
+        typeof updatePayload.title === "string" ? updatePayload.title : existingTask.title,
+      hierarchyLevel: nextHierarchyLevel,
+      parentTaskId: nextHierarchyLevel === "h2" ? nextParentTaskId : null,
+    });
+
+    if (shouldAutoFillInstructions) {
+      updatePayload.instructions = defaults.instructions;
+    }
+    if (shouldAutoFillAiPrompt) {
+      updatePayload.ai_prompt = defaults.aiPrompt;
+    }
+  }
 
   if (Object.keys(updatePayload).length === 0) {
     throw new Error("No updates provided for business plan task.");

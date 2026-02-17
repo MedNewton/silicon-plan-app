@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { getOrCreateBusinessPlan } from "@/server/businessPlan";
 import {
   createBusinessPlanTask,
+  ensureTaskAutomationDefaults,
   ensureDefaultBusinessPlanTasks,
   getBusinessPlanTaskTree,
 } from "@/server/businessPlanTasks";
@@ -34,6 +35,10 @@ export async function GET(
         businessPlanId: result.businessPlanId,
         userId,
       });
+      await ensureTaskAutomationDefaults({
+        workspaceId,
+        userId,
+      });
 
       const refreshed = await getBusinessPlanTaskTree({
         workspaceId,
@@ -55,6 +60,10 @@ export async function GET(
 
     await ensureDefaultBusinessPlanTasks({
       businessPlanId: businessPlan.id,
+      userId,
+    });
+    await ensureTaskAutomationDefaults({
+      workspaceId,
       userId,
     });
 

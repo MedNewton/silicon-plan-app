@@ -4,10 +4,10 @@ Source of truth for tasks: `TASKS.md`
 
 ## Summary
 - Total scoped tasks: 68
-- `done`: 59
+- `done`: 61
 - `in_progress`: 0
 - `pending_qa`: 0
-- `todo`: 9
+- `todo`: 7
 - `blocked`: 0
 - **Note:** Counts now reflect all rows in `TASKS.md` as of 2026-02-17.
 
@@ -55,20 +55,42 @@ Source of truth for tasks: `TASKS.md`
 41. `AF-002` - Add workspace logo support for exports
 42. `AF-003` - Standardize export margins and A4 print layout
 43. `AF-004` - Implement typography hierarchy in exports
+44. `AF-001` - Add AI tone of voice settings
+45. `WS-017` - Implement workspace/library -> task automation
 
 ## Reopened / Not Fully Done
 1. None (WS-016 and BPTS-006 passed manual QA on 2026-02-17)
 
 ## Todo (Immediate Next)
 1. `WS-005` - Implement EN/IT language toggle
-2. `WS-017` - Implement workspace/library -> task automation
+2. `CORE-020` - Add core missing features QA suite
 
 ## Recent Validation
 - `npm run typecheck`: pass
 - `npm run lint`: pass
+- `npm run check`: pass
 - WS-016 / BPTS-006 manual QA: pass
 
 ## Change Log
+- 2026-02-17: **WS-017 Complete** - Implemented workspace/library -> task automation hardening for business-plan task flows (no DB migration required).
+  - Added `ensureTaskAutomationDefaults` in `src/server/businessPlanTasks.ts` to backfill missing task `instructions`/`ai_prompt` from workspace setup + AI library context for legacy/incomplete tasks.
+  - Wired automation backfill into task tree loading in `src/app/api/workspaces/[workspaceId]/business-plan/tasks/route.ts`, so task context is auto-preloaded whenever Plan Tasks is loaded.
+  - Hardened `updateBusinessPlanTask` in `src/server/businessPlanTasks.ts` so clearing `instructions` or `ai_prompt` regenerates context-aware defaults instead of leaving blank metadata.
+  - Updated Plan Tasks UI helper copy in `src/components/workspaceManage/business-plan/ManageAiTabs.tsx` to reflect task-default automation behavior.
+  - Validation: `npm run check` pass.
+- 2026-02-17: **AF-001 Complete** - Added workspace-level AI tone-of-voice settings and applied tone instructions across all OpenAI-powered app flows.
+  - Added shared AI tone utility in `src/lib/aiTone.ts` with normalized options (`professional`, `academic`, `conversational`, `technical`) and reusable prompt instruction builder.
+  - Added `AI tone of voice` selector in `src/components/workspaceSettings/BusinessActivitiesTabContent.tsx` and persisted selection in `workspace_business_profile.raw_form_data.aiToneOfVoice`.
+  - Extended `src/lib/workspaceAiContext.ts` to resolve and return `toneOfVoice` + `toneInstruction` for downstream AI prompts.
+  - Wired tone instructions into:
+    - `src/app/api/workspaces/[workspaceId]/business-profile/ai-assist/route.ts`
+    - `src/app/api/workspaces/[workspaceId]/business-plan/ai/section-suggest/route.ts`
+    - `src/app/api/workspaces/[workspaceId]/business-plan/tasks/[taskId]/ai-draft/route.ts`
+    - `src/app/api/workspaces/[workspaceId]/business-plan/ai/chat/route.ts`
+    - `src/app/api/workspaces/[workspaceId]/pitch-deck/ai/slide-suggest/route.ts`
+    - `src/app/api/workspaces/[workspaceId]/canvas-models/ai-suggest/route.ts`
+  - Hardened `upsertWorkspaceBusinessProfile` in `src/server/workspaces.ts` to merge incoming `rawFormData` with existing `raw_form_data` so tone preference is not lost when saving from other forms.
+  - Validation: `npm run check` pass.
 - 2026-02-17: **AF-002 / AF-003 / AF-004 Complete** - Export branding + layout standardization shipped across BP, Pitch, and Canvas exports.
   - Added shared export design layer in `src/lib/exportStyles.ts` (A4 2.5cm margin constants, unified typography scales, shared filename sanitization).
   - Added workspace branding helpers in `src/lib/workspaceBranding.ts` and wired logo/name into export flows.

@@ -62,6 +62,7 @@ export async function POST(
     const systemPrompt = [
       "You are an AI assistant helping improve pitch deck slide content.",
       workspaceContext.context ? `Workspace context:\n${workspaceContext.context}` : null,
+      workspaceContext.toneInstruction,
       "Keep the response ready to paste into a slide.",
     ]
       .filter(Boolean)

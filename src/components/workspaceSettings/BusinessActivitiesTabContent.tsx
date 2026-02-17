@@ -19,6 +19,13 @@ import type { WorkspaceBusinessProfile } from "@/types/workspaces";
 import AiFieldActionButton, {
   type AiFieldAssistAction,
 } from "@/components/workspaceSettings/AiFieldActionButton";
+import {
+  AI_TONE_OPTIONS,
+  DEFAULT_AI_TONE_OF_VOICE,
+  normalizeAiToneOfVoice,
+  readAiToneFromRawFormData,
+  type AiToneOfVoice,
+} from "@/lib/aiTone";
 
 type BusinessProfileResponse = {
   businessProfile: WorkspaceBusinessProfile | null;
@@ -81,6 +88,7 @@ const pickSelectAndCustom = (
 };
 
 export type BizFormState = {
+  aiToneOfVoice: AiToneOfVoice;
   tagline: string;
   isOperating: string;
   industry: string;
@@ -99,6 +107,7 @@ export type BizFormState = {
 };
 
 const emptyBizForm: BizFormState = {
+  aiToneOfVoice: DEFAULT_AI_TONE_OF_VOICE,
   tagline: "",
   isOperating: "",
   industry: "",
@@ -182,6 +191,7 @@ const BusinessActivitiesTabContent = ({
           );
 
           const mapped: BizFormState = {
+            aiToneOfVoice: readAiToneFromRawFormData(raw),
             tagline: profile.tagline ?? "",
             isOperating:
               profile.is_operating === true
@@ -263,6 +273,10 @@ const BusinessActivitiesTabContent = ({
     }
   };
 
+  const handleAiToneChange = (event: SelectChangeEvent) => {
+    updateBizField("aiToneOfVoice", normalizeAiToneOfVoice(event.target.value));
+  };
+
   const handleBusinessSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (isBusinessSaveDisabled || !workspaceId) return;
@@ -304,6 +318,8 @@ const BusinessActivitiesTabContent = ({
         growthPartnerships: biz.growthPartnerships || undefined,
         rawFormData: {
           ...biz,
+          aiToneOfVoice: biz.aiToneOfVoice,
+          toneOfVoice: biz.aiToneOfVoice,
           industryOption: biz.industry,
           industryCustom: biz.industryOther,
           companyStageOption: biz.companyStage,
@@ -353,6 +369,7 @@ const BusinessActivitiesTabContent = ({
         );
 
         const mapped: BizFormState = {
+          aiToneOfVoice: readAiToneFromRawFormData(raw),
           tagline: profile.tagline ?? "",
           isOperating:
             profile.is_operating === true
@@ -516,6 +533,27 @@ const BusinessActivitiesTabContent = ({
         >
           Business activities
         </Typography>
+
+        <Box mb={3}>
+          <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
+            AI tone of voice
+          </Typography>
+          <Select
+            fullWidth
+            value={biz.aiToneOfVoice}
+            onChange={handleAiToneChange}
+            sx={selectBaseSx}
+          >
+            {AI_TONE_OPTIONS.map((option) => (
+              <MenuItem key={option.value} value={option.value}>
+                {option.label} - {option.description}
+              </MenuItem>
+            ))}
+          </Select>
+          <Typography sx={{ fontSize: 12, color: "#6B7280", mt: 1 }}>
+            Applied across Ask AI flows in business setup, plan, pitch, and canvas.
+          </Typography>
+        </Box>
 
         <Box mb={3}>
           <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>

@@ -614,7 +614,7 @@ const PlanTasksPane: FC = () => {
           Auto Context Enabled
         </Typography>
         <Typography sx={{ fontSize: 11.5, color: "#334155", mt: 0.2 }}>
-          AI Draft automatically reuses workspace setup and AI library context for each task.
+          Task defaults and AI Draft automatically reuse workspace setup and AI library context.
         </Typography>
       </Box>
 

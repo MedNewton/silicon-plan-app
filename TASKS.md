@@ -66,7 +66,7 @@ Status legend: `todo`, `in_progress`, `blocked`, `done`
 | WS-014 | P1 | done | Improve long filename handling in AI Library UI | Truncation + tooltip + no layout breaks | None | Long names render without overflow or broken layout |
 | WS-015 | P1 | done | Improve task action affordance in Manage Workspace | Clarify button meaning and flow in task UI | CORE-013 | Users can understand task actions without ambiguity |
 | WS-016 | P1 | done | Fix AI Chat + Plan Chapters task creation gap | Chat instructions should create/update tasks as expected | CORE-016 | Manual QA passed using `docs/qa/ws-016-manual-qa-script.md`; chapter/task/section flows validated |
-| WS-017 | P1 | todo | Implement workspace/library -> task automation | Auto-preload task context from existing project data | CORE-017 | User no longer needs to re-enter same topic per task |
+| WS-017 | P1 | done | Implement workspace/library -> task automation | Auto-preload task context from existing project data | CORE-017 | User no longer needs to re-enter same topic per task |
 | WS-018 | P1 | todo | Add workspace usability QA suite | Focused QA for settings/manage/library/task usability | WS-001..WS-017 | Usability checklist passes with no P1 blockers |
 
 ## 4) Business Plan Task Structure
@@ -83,7 +83,7 @@ Status legend: `todo`, `in_progress`, `blocked`, `done`
 ## 5) Additional Fixes
 | ID | Priority | Status | Task | Deliverable | Dependencies | Acceptance Criteria |
 |---|---|---|---|---|---|---|
-| AF-001 | P1 | todo | Add AI tone of voice settings | Workspace/user AI settings: professional, academic, conversational, technical | None | Selected tone is applied consistently across AI outputs |
+| AF-001 | P1 | done | Add AI tone of voice settings | Workspace/user AI settings: professional, academic, conversational, technical | None | Selected tone is applied consistently across AI outputs |
 | AF-002 | P1 | done | Add workspace logo support for exports | Logo upload + inclusion in BP/Pitch/Canvas exports | None | Exported assets include correctly sized workspace logo |
 | AF-003 | P1 | done | Standardize export margins and A4 print layout | Export layout layer enforces 2.5cm margins and valid page settings | AF-006 | PDF/DOCX exports print correctly without clipped content |
 | AF-004 | P1 | done | Implement typography hierarchy in exports | Clear font scale for titles/headings/body/descriptions | AF-006 | Export documents have consistent visual hierarchy |

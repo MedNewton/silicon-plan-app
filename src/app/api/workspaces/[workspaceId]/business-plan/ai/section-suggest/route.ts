@@ -90,7 +90,12 @@ export async function POST(
     });
     const workspaceContext = await getWorkspaceAiContext(workspaceId);
     const combinedContext = [context, workspaceContext.context].filter(Boolean).join("\n\n");
-    const systemPrompt = buildBusinessPlanSystemPrompt(combinedContext);
+    const systemPrompt = [
+      buildBusinessPlanSystemPrompt(combinedContext),
+      workspaceContext.toneInstruction,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
 
     const textFromSection = findSectionText(planData?.chapters ?? [], sectionId);
     const sourceText = (body.text ?? "").trim() || textFromSection;

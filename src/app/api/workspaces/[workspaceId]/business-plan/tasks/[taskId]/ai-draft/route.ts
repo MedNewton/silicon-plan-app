@@ -79,6 +79,7 @@ export async function POST(
     const systemPrompt = [
       "You are Silicon Plan AI, a business plan drafting assistant.",
       "Write clear, concrete, investor-ready text.",
+      workspaceContext.toneInstruction,
       "Use only information from provided context. If context is missing, make minimal safe assumptions and clearly mark them.",
     ].join("\n");
 

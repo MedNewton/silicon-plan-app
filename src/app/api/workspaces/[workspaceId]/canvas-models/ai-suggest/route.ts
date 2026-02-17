@@ -13,6 +13,12 @@ import type {
   WorkspaceCanvasTemplateType,
 } from "@/types/workspaces";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  DEFAULT_AI_TONE_OF_VOICE,
+  getAiToneInstruction,
+  readAiToneFromRawFormData,
+  type AiToneOfVoice,
+} from "@/lib/aiTone";
 
 type Supa = SupabaseClient<SupabaseDb>;
 
@@ -135,6 +141,26 @@ async function getWorkspaceDocuments(
   return (data ?? []) as WorkspaceAiDocument[];
 }
 
+async function getWorkspaceAiTone(
+  client: Supa,
+  workspaceId: WorkspaceId,
+): Promise<AiToneOfVoice> {
+  const { data, error } = await client
+    .from("workspace_business_profile")
+    .select("raw_form_data")
+    .eq("workspace_id", workspaceId)
+    .maybeSingle();
+
+  if (error && error.code !== "PGRST116") {
+    console.error("Failed to load workspace AI tone:", error);
+    return DEFAULT_AI_TONE_OF_VOICE;
+  }
+
+  const rawFormData = data?.raw_form_data ?? null;
+
+  return readAiToneFromRawFormData(rawFormData);
+}
+
 async function getDocumentContent(
   client: Supa,
   document: WorkspaceAiDocument
@@ -211,9 +237,10 @@ export async function POST(
     }
 
     // Fetch knowledge and documents
-    const [knowledge, documents] = await Promise.all([
+    const [knowledge, documents, toneOfVoice] = await Promise.all([
       getWorkspaceKnowledge(client, workspaceId),
       getWorkspaceDocuments(client, workspaceId),
+      getWorkspaceAiTone(client, workspaceId),
     ]);
 
     // Build context from knowledge
@@ -262,6 +289,7 @@ Each suggestion should have:
 
 Base your suggestions on the business context provided. Be specific and relevant to the business.
 If no business context is provided, give generic but useful suggestions.
+${getAiToneInstruction(toneOfVoice)}
 
 Respond ONLY with a valid JSON array in this exact format:
 [

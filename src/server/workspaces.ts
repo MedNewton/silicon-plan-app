@@ -590,6 +590,27 @@ export async function upsertWorkspaceBusinessProfile(
 
   type Insert = Tables["workspace_business_profile"]["Insert"];
 
+  let mergedRawFormData: Record<string, unknown> | null | undefined = rawFormData;
+  if (rawFormData !== undefined && rawFormData !== null) {
+    const { data: existingProfileRow, error: existingProfileError } = await client
+      .from("workspace_business_profile")
+      .select("raw_form_data")
+      .eq("workspace_id", workspaceId)
+      .maybeSingle();
+
+    if (existingProfileError && existingProfileError.code !== "PGRST116") {
+      throw new Error(
+        `Failed to load existing workspace business profile raw data: ${existingProfileError.message}`,
+      );
+    }
+
+    const existingRawFormData = existingProfileRow?.raw_form_data ?? null;
+
+    mergedRawFormData = existingRawFormData
+      ? { ...existingRawFormData, ...rawFormData }
+      : rawFormData;
+  }
+
   const payload: Insert = {
     workspace_id: workspaceId,
   };
@@ -616,8 +637,8 @@ export async function upsertWorkspaceBusinessProfile(
   if (growthPartnerships !== undefined) {
     payload.growth_partnerships = growthPartnerships;
   }
-  if (rawFormData !== undefined) {
-    payload.raw_form_data = rawFormData;
+  if (mergedRawFormData !== undefined) {
+    payload.raw_form_data = mergedRawFormData;
   }
 
   const { data, error } = await client

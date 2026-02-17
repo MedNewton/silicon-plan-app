@@ -885,7 +885,12 @@ export async function POST(
     const combinedContext = [context, tasksContext, workspaceContext.context, selectedContextBlock]
       .filter(Boolean)
       .join("\n\n");
-    const systemPrompt = buildBusinessPlanSystemPrompt(combinedContext);
+    const systemPrompt = [
+      buildBusinessPlanSystemPrompt(combinedContext),
+      workspaceContext.toneInstruction,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
     const aiMessageText =
       selectedChapterRef &&
       /\b(here|this section|this chapter|selected chapter|selected one|in this one)\b/i.test(

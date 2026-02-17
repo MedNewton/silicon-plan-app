@@ -8,6 +8,13 @@ import type {
   WorkspaceBusinessProfile,
   WorkspaceId,
 } from "@/types/workspaces";
+import type { AiToneOfVoice } from "@/lib/aiTone";
+import {
+  getAiToneInstruction,
+  getAiToneLabel,
+  hasStoredAiToneInRawFormData,
+  readAiToneFromRawFormData,
+} from "@/lib/aiTone";
 
 type Supa = SupabaseClient<Database>;
 
@@ -177,7 +184,18 @@ const buildOnboardingLines = (params: {
     profile?.growth_partnerships ?? asRawString(raw, "growthPartnerships"),
   );
 
+  if (hasStoredAiToneInRawFormData(raw)) {
+    push("AI Tone of Voice", getAiToneLabel(readAiToneFromRawFormData(raw)));
+  }
+
   return lines.join("\n");
+};
+
+export type WorkspaceAiContext = {
+  context: string;
+  hasContext: boolean;
+  toneOfVoice: AiToneOfVoice;
+  toneInstruction: string;
 };
 
 const getDocumentContent = async (
@@ -217,7 +235,9 @@ const getDocumentContent = async (
   }
 };
 
-export const getWorkspaceAiContext = async (workspaceId: WorkspaceId) => {
+export const getWorkspaceAiContext = async (
+  workspaceId: WorkspaceId,
+): Promise<WorkspaceAiContext> => {
   const client = getSupabaseClient();
 
   const [knowledge, documents, profile, workspaceName] = await Promise.all([
@@ -258,9 +278,13 @@ export const getWorkspaceAiContext = async (workspaceId: WorkspaceId) => {
 
   const context = parts.join("\n\n");
   const hasContext = Boolean(onboardingLines || knowledgeLines || documentsLines);
+  const toneOfVoice = readAiToneFromRawFormData(profile?.raw_form_data ?? null);
+  const toneInstruction = getAiToneInstruction(toneOfVoice);
 
   return {
     context,
     hasContext,
+    toneOfVoice,
+    toneInstruction,
   };
 };
