@@ -90,7 +90,7 @@ Status legend: `todo`, `in_progress`, `blocked`, `done`
 | AF-005 | P1 | done | Promote AI assistant UX via dedicated `Ask AI` pattern in left panel | Discoverable AI entry point per core area | WS-015, WS-016 | AI entry is obvious and section-specific actions are easy to access |
 | AF-006 | P1 | done | Complete and harden export formats matrix | BP: PDF/DOCX, Pitch: PDF/PPTX, Canvas: PDF/PPTX with reliable formatting | None | All required export formats succeed without major formatting defects |
 | AF-007 | P1 | done | Add pitch preset sections template (covered by CORE-018) | Preset pitch sections from problem to financial forecast/team/ask | CORE-018 | New pitch starts with complete required section set |
-| AF-008 | P1 | todo | Make financial plan editable and multi-currency | Editable financial tables + currency selection support | None | Users can revise AI financial outputs and switch currency |
+| AF-008 | P1 | done | Make financial plan editable and multi-currency | Editable financial tables + currency selection support | None | Users can revise AI financial outputs and switch currency |
 | AF-009 | P1 | todo | Make generated pitch and SWOT outputs editable | Inline edit/save flow for generated pitch/SWOT blocks | None | Users can modify generated outputs before export |
 | AF-010 | P1 | todo | Resolve DOCX/PPTX formatting regressions | Word/PPT exports preserve spacing, sizing, and layout fidelity | AF-006 | Generated files remain visually consistent with in-app content |
 

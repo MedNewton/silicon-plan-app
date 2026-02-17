@@ -62,6 +62,7 @@ export type WorkspaceCanvasTemplateType =
 
 // Business Plan enums (matching database enums)
 export type BusinessPlanStatus = "draft" | "published";
+export type BusinessPlanCurrencyCode = "USD" | "EUR" | "GBP" | "CAD" | "AUD" | "JPY" | "INR";
 
 export type BusinessPlanSectionType =
   | "section_title"
@@ -235,6 +236,7 @@ export type BusinessPlanExportSettings = {
   include_cover_page?: boolean;
   font_family?: string;
   font_size?: number;
+  currency_code?: BusinessPlanCurrencyCode;
   page_margins?: { top: number; right: number; bottom: number; left: number };
 };
 

@@ -11,6 +11,7 @@ import {
 } from "react";
 import type {
   BusinessPlan,
+  BusinessPlanExportSettings,
   BusinessPlanChapter,
   BusinessPlanSection,
   BusinessPlanTask,
@@ -50,6 +51,9 @@ type BusinessPlanContextValue = {
   refreshData: () => Promise<void>;
   refreshTasks: () => Promise<void>;
   updateBusinessPlanTitle: (title: string) => Promise<void>;
+  updateBusinessPlanExportSettings: (
+    exportSettings: BusinessPlanExportSettings | null
+  ) => Promise<void>;
   addChapter: (title: string, parentChapterId?: string | null) => Promise<void>;
   updateChapter: (chapterId: string, title: string) => Promise<void>;
   deleteChapter: (chapterId: string) => Promise<void>;
@@ -233,6 +237,34 @@ export const BusinessPlanProvider: FC<BusinessPlanProviderProps> = ({
         setBusinessPlan(data.businessPlan);
       } catch (err) {
         console.error("Error updating title:", err);
+        throw err;
+      }
+    },
+    [workspaceId, businessPlan]
+  );
+
+  const updateBusinessPlanExportSettings = useCallback(
+    async (exportSettings: BusinessPlanExportSettings | null) => {
+      if (!businessPlan) return;
+
+      try {
+        const response = await fetch(`/api/workspaces/${workspaceId}/business-plan`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            businessPlanId: businessPlan.id,
+            exportSettings,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to update export settings");
+        }
+
+        const data = (await response.json()) as { businessPlan: BusinessPlan };
+        setBusinessPlan(data.businessPlan);
+      } catch (err) {
+        console.error("Error updating export settings:", err);
         throw err;
       }
     },
@@ -839,6 +871,7 @@ export const BusinessPlanProvider: FC<BusinessPlanProviderProps> = ({
     refreshData,
     refreshTasks,
     updateBusinessPlanTitle,
+    updateBusinessPlanExportSettings,
     addChapter,
     updateChapter,
     deleteChapter,

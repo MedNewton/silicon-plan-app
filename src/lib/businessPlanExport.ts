@@ -1,6 +1,7 @@
 // src/lib/businessPlanExport.ts
 import type {
   BusinessPlan,
+  BusinessPlanCurrencyCode,
   BusinessPlanChapterWithSections,
   BusinessPlanSectionContent,
 } from "@/types/workspaces";
@@ -37,6 +38,7 @@ export type BusinessPlanHtmlExportOptions = {
   fontSize?: number;
   paperSize?: "A4" | "Letter" | "A3";
   marginCm?: number;
+  currencyCode?: BusinessPlanCurrencyCode;
   logoDataUrl?: string | null;
   workspaceName?: string | null;
 };
@@ -46,6 +48,7 @@ export type BusinessPlanDocxExportOptions = {
   fontFamily?: string;
   paperSize?: "A4" | "Letter" | "A3";
   marginTwip?: number;
+  currencyCode?: BusinessPlanCurrencyCode;
   logoBytes?: Uint8Array | null;
   workspaceName?: string | null;
 };
@@ -58,7 +61,37 @@ const escapeHtml = (value: string) =>
     .replace(/\"/g, "&quot;")
     .replace(/'/g, "&#039;");
 
-const renderSectionHtml = (content: BusinessPlanSectionContent): string => {
+const CURRENCY_VALUE_REGEX = /^-?(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d+)?$/;
+const CURRENCY_SYMBOL_REGEX = /[$€£¥₹]/;
+
+const formatTableValueByCurrency = (
+  value: string,
+  currencyCode?: BusinessPlanCurrencyCode,
+  columnIndex?: number
+): string => {
+  if (!currencyCode) return value;
+  if (columnIndex === 0) return value;
+
+  const trimmed = value.trim();
+  if (!trimmed) return value;
+  if (trimmed.endsWith("%")) return value;
+  if (CURRENCY_SYMBOL_REGEX.test(trimmed)) return value;
+  if (!CURRENCY_VALUE_REGEX.test(trimmed)) return value;
+
+  const parsed = Number(trimmed.replace(/,/g, ""));
+  if (!Number.isFinite(parsed)) return value;
+
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: currencyCode,
+    maximumFractionDigits: 2,
+  }).format(parsed);
+};
+
+const renderSectionHtml = (
+  content: BusinessPlanSectionContent,
+  currencyCode?: BusinessPlanCurrencyCode
+): string => {
   switch (content.type) {
     case "section_title":
       return `<h2>${escapeHtml(content.text ?? "")}</h2>`;
@@ -81,7 +114,13 @@ const renderSectionHtml = (content: BusinessPlanSectionContent): string => {
       const bodyRows = (content.rows ?? [])
         .map(
           (row) =>
-            `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`
+            `<tr>${row
+              .map((cell, cellIndex) =>
+                `<td>${escapeHtml(
+                  formatTableValueByCurrency(cell, currencyCode, cellIndex)
+                )}</td>`
+              )
+              .join("")}</tr>`
         )
         .join("");
       return `<table><thead><tr>${headerRow}</tr></thead><tbody>${bodyRows}</tbody></table>`;
@@ -117,9 +156,16 @@ const renderSectionHtml = (content: BusinessPlanSectionContent): string => {
   }
 };
 
-const renderChapterHtml = (chapter: BusinessPlanChapterWithSections): string => {
-  const sections = (chapter.sections ?? []).map((section) => renderSectionHtml(section.content));
-  const children = (chapter.children ?? []).map((child) => renderChapterHtml(child));
+const renderChapterHtml = (
+  chapter: BusinessPlanChapterWithSections,
+  currencyCode?: BusinessPlanCurrencyCode
+): string => {
+  const sections = (chapter.sections ?? []).map((section) =>
+    renderSectionHtml(section.content, currencyCode)
+  );
+  const children = (chapter.children ?? []).map((child) =>
+    renderChapterHtml(child, currencyCode)
+  );
   return [
     `<h1>${escapeHtml(chapter.title ?? "")}</h1>`,
     ...sections,
@@ -137,14 +183,16 @@ export const buildBusinessPlanHtml = (
   const headingColor = options.headingColor ?? "#1F2933";
   const paperSize = options.paperSize ?? "A4";
   const marginCm = options.marginCm ?? A4_MARGIN_CM;
+  const currencyCode = options.currencyCode;
   const workspaceName = options.workspaceName?.trim();
   const logoDataUrl = options.logoDataUrl?.trim();
 
   const body = chapters.length
-    ? chapters.map((chapter) => renderChapterHtml(chapter)).join("\n")
+    ? chapters.map((chapter) => renderChapterHtml(chapter, currencyCode)).join("\n")
     : "<p>No chapters yet.</p>";
 
   const title = escapeHtml(plan?.title ?? "Business Plan");
+  const currencyLabel = currencyCode ? escapeHtml(currencyCode) : null;
 
   const headerHtml =
     logoDataUrl || workspaceName
@@ -196,6 +244,11 @@ export const buildBusinessPlanHtml = (
         font-size: ${EXPORT_TYPOGRAPHY.bodySmall}px;
         color: #6B7280;
         font-weight: 600;
+      }
+      .currency-note {
+        margin: 0 0 12px;
+        color: #4B5563;
+        font-size: ${EXPORT_TYPOGRAPHY.bodySmall}px;
       }
       h1, h2, h3 {
         color: ${headingColor};
@@ -269,6 +322,7 @@ export const buildBusinessPlanHtml = (
   <body>
     ${headerHtml}
     <h1>${title}</h1>
+    ${currencyLabel ? `<p class="currency-note">Currency: ${currencyLabel}</p>` : ""}
     ${body}
   </body>
 </html>`;
@@ -283,7 +337,10 @@ const paragraphFromText = (
     heading,
   });
 
-const buildDocxSections = (chapters: BusinessPlanChapterWithSections[]) => {
+const buildDocxSections = (
+  chapters: BusinessPlanChapterWithSections[],
+  currencyCode?: BusinessPlanCurrencyCode
+) => {
   const blocks: Array<Paragraph | Table> = [];
 
   chapters.forEach((chapter) => {
@@ -324,7 +381,13 @@ const buildDocxSections = (chapters: BusinessPlanChapterWithSections[]) => {
             ...(content.rows ?? []).map(
               (row) =>
                 new TableRow({
-                  children: row.map((cell) => new TableCell({ children: [new Paragraph(cell)] })),
+                  children: row.map((cell, cellIndex) =>
+                    new TableCell({
+                      children: [
+                        new Paragraph(formatTableValueByCurrency(cell, currencyCode, cellIndex)),
+                      ],
+                    })
+                  ),
                 })
             ),
           ];
@@ -342,7 +405,7 @@ const buildDocxSections = (chapters: BusinessPlanChapterWithSections[]) => {
     });
 
     if (chapter.children?.length) {
-      blocks.push(...buildDocxSections(chapter.children));
+      blocks.push(...buildDocxSections(chapter.children, currencyCode));
     }
   });
 
@@ -358,6 +421,7 @@ export const buildBusinessPlanDocx = async (
   const fontFamily = options.fontFamily ?? DEFAULT_EXPORT_FONT_FAMILY;
   const paperSize = options.paperSize ?? "A4";
   const marginTwip = options.marginTwip ?? A4_MARGIN_TWIP;
+  const currencyCode = options.currencyCode;
   const pageSize = DOCX_PAGE_SIZE_TWIPS[paperSize];
 
   const brandingBlocks: Paragraph[] = [];
@@ -490,7 +554,20 @@ export const buildBusinessPlanDocx = async (
         children: [
           ...brandingBlocks,
           paragraphFromText(plan?.title ?? "Business Plan", HeadingLevel.TITLE),
-          ...buildDocxSections(chapters),
+          ...(currencyCode
+            ? [
+                new Paragraph({
+                  children: [
+                    new TextRun({
+                      text: `Currency: ${currencyCode}`,
+                      size: DOCX_TYPOGRAPHY.bodySmall,
+                      color: "4B5563",
+                    }),
+                  ],
+                }),
+              ]
+            : []),
+          ...buildDocxSections(chapters, currencyCode),
         ],
       },
     ],

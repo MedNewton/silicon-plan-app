@@ -2,10 +2,11 @@
 "use client";
 
 import type { FC, ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Box,
   Button,
+  Chip,
   FormControl,
   MenuItem,
   Select,
@@ -34,7 +35,10 @@ import CodeOutlinedIcon from "@mui/icons-material/CodeOutlined";
 
 import type { ManageTopTab } from "./ManageTopTabs";
 import { useBusinessPlan } from "./BusinessPlanContext";
+import SectionEditorModal from "./SectionEditorModal";
 import type {
+  BusinessPlanCurrencyCode,
+  BusinessPlanSection,
   BusinessPlanSectionType,
   BusinessPlanSectionContent,
 } from "@/types/workspaces";
@@ -60,6 +64,24 @@ type SectionTool = {
   sectionType: BusinessPlanSectionType;
   defaultContent: BusinessPlanSectionContent;
 };
+
+type FinanceTableSectionItem = {
+  chapterId: string;
+  chapterTitle: string;
+  section: BusinessPlanSection;
+};
+
+const currencyOptions: Array<{ code: BusinessPlanCurrencyCode; label: string }> = [
+  { code: "USD", label: "USD - US Dollar" },
+  { code: "EUR", label: "EUR - Euro" },
+  { code: "GBP", label: "GBP - British Pound" },
+  { code: "CAD", label: "CAD - Canadian Dollar" },
+  { code: "AUD", label: "AUD - Australian Dollar" },
+  { code: "JPY", label: "JPY - Japanese Yen" },
+  { code: "INR", label: "INR - Indian Rupee" },
+];
+
+const FINANCE_CHAPTER_TITLE_REGEX = /\b(finance|financial|economic|valuation|revenue|cost|cash|forecast|pricing)\b/i;
 
 const sectionTools: SectionTool[] = [
   {
@@ -153,16 +175,63 @@ const sectionTools: SectionTool[] = [
 ];
 
 const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId }) => {
-  const { selectedChapterId, addSection, businessPlan, chapters } = useBusinessPlan();
+  const {
+    selectedChapterId,
+    setSelectedChapterId,
+    setSelectedSectionId,
+    addSection,
+    updateSection,
+    updateBusinessPlanExportSettings,
+    businessPlan,
+    chapters,
+  } = useBusinessPlan();
   const [rightTab, setRightTab] = useState<RightPlanTab>("sections");
   const [paperSize, setPaperSize] = useState("A4");
   const [headingColor, setHeadingColor] = useState("Blue");
   const [fontFamily, setFontFamily] = useState("Roboto");
   const [fontSize, setFontSize] = useState("15");
+  const [currencyCode, setCurrencyCode] = useState<BusinessPlanCurrencyCode>("USD");
   const [includeBrandingExport, setIncludeBrandingExport] = useState(true);
   const [isAddingSection, setIsAddingSection] = useState(false);
+  const [isAddingFinanceTable, setIsAddingFinanceTable] = useState(false);
+  const [isSavingCurrency, setIsSavingCurrency] = useState(false);
+  const [editingFinanceSection, setEditingFinanceSection] = useState<BusinessPlanSection | null>(
+    null
+  );
+  const [isSavingFinanceSection, setIsSavingFinanceSection] = useState(false);
   const [exportAnchorEl, setExportAnchorEl] = useState<null | HTMLElement>(null);
   const [isExporting, setIsExporting] = useState(false);
+
+  const financeTableSections = useMemo<FinanceTableSectionItem[]>(() => {
+    const collect = (
+      items: typeof chapters
+    ): FinanceTableSectionItem[] =>
+      items.flatMap((chapter) => {
+        const childChapters = chapter.children ?? [];
+        const localSections: FinanceTableSectionItem[] = chapter.sections
+          .filter(
+            (section) =>
+              section.content.type === "table" || section.content.type === "comparison_table"
+          )
+          .map((section) => ({
+            chapterId: chapter.id,
+            chapterTitle: chapter.title,
+            section,
+          }));
+        return childChapters.length > 0
+          ? [...localSections, ...collect(childChapters)]
+          : localSections;
+      });
+    return collect(chapters);
+  }, [chapters]);
+
+  useEffect(() => {
+    const savedCurrency = businessPlan?.export_settings?.currency_code;
+    if (!savedCurrency) return;
+    if (currencyOptions.some((option) => option.code === savedCurrency)) {
+      setCurrencyCode(savedCurrency);
+    }
+  }, [businessPlan?.export_settings?.currency_code]);
 
   const headingColorValue =
     headingColor === "Navy" ? "#1F2A44" : headingColor === "Black" ? "#111827" : "#4C6AD2";
@@ -184,6 +253,102 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
     anchor.remove();
     URL.revokeObjectURL(url);
   };
+
+  const resolveFinanceChapterId = (): string | null => {
+    if (selectedChapterId) return selectedChapterId;
+
+    const findFirstChapterId = (
+      items: typeof chapters
+    ): string | null => {
+      for (const chapter of items) {
+        const childChapters = chapter.children ?? [];
+        if (FINANCE_CHAPTER_TITLE_REGEX.test(chapter.title)) {
+          return chapter.id;
+        }
+        if (childChapters.length > 0) {
+          const nested = findFirstChapterId(childChapters);
+          if (nested) return nested;
+        }
+      }
+      return null;
+    };
+
+    const financeChapterId = findFirstChapterId(chapters);
+    if (financeChapterId) return financeChapterId;
+    return chapters[0]?.id ?? null;
+  };
+
+  const handleCurrencyChange = async (
+    event: SelectChangeEvent<string>
+  ) => {
+    const nextCurrency = event.target.value as BusinessPlanCurrencyCode;
+    const previousCurrency = currencyCode;
+    setCurrencyCode(nextCurrency);
+
+    if (!businessPlan) return;
+
+    setIsSavingCurrency(true);
+    try {
+      await updateBusinessPlanExportSettings({
+        ...(businessPlan.export_settings ?? {}),
+        currency_code: nextCurrency,
+      });
+    } catch (error) {
+      console.error("Failed to save currency setting:", error);
+      setCurrencyCode(previousCurrency);
+      toast.error("Failed to save currency. Please try again.");
+    } finally {
+      setIsSavingCurrency(false);
+    }
+  };
+
+  const handleAddFinancialTable = async () => {
+    const targetChapterId = resolveFinanceChapterId();
+    if (!targetChapterId) {
+      toast.error("Create a chapter first to add a financial table.");
+      return;
+    }
+
+    setIsAddingFinanceTable(true);
+    try {
+      await addSection(targetChapterId, "table", {
+        type: "table",
+        headers: ["Metric", "Year 1", "Year 2", "Year 3"],
+        rows: [
+          ["Revenue", "", "", ""],
+          ["Cost of Goods Sold", "", "", ""],
+          ["Gross Profit", "", "", ""],
+          ["Operating Expenses", "", "", ""],
+          ["Net Income", "", "", ""],
+        ],
+      });
+      setSelectedChapterId(targetChapterId);
+      toast.success("Financial table added.");
+    } catch (error) {
+      console.error("Failed to add financial table:", error);
+      toast.error("Failed to add financial table.");
+    } finally {
+      setIsAddingFinanceTable(false);
+    }
+  };
+
+  const handleSaveFinanceSection = async (newContent: BusinessPlanSectionContent) => {
+    if (!editingFinanceSection) return;
+
+    setIsSavingFinanceSection(true);
+    try {
+      await updateSection(editingFinanceSection.id, newContent);
+      setEditingFinanceSection(null);
+      toast.success("Financial table updated.");
+    } catch (error) {
+      console.error("Failed to save financial table:", error);
+      toast.error("Failed to save changes.");
+    } finally {
+      setIsSavingFinanceSection(false);
+    }
+  };
+
+  const exportCurrencyCode = businessPlan?.export_settings?.currency_code ?? currencyCode;
 
   const handleExport = async (format: "pdf" | "docx") => {
     if (!businessPlan) {
@@ -209,6 +374,7 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
         fontSize: Number(fontSize),
         paperSize: paperSize as "A4" | "Letter" | "A3",
         marginCm: A4_MARGIN_CM,
+        currencyCode: exportCurrencyCode,
         logoDataUrl,
         workspaceName,
       });
@@ -218,6 +384,7 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
           headingColor: headingColorValue,
           fontFamily,
           paperSize: paperSize as "A4" | "Letter" | "A3",
+          currencyCode: exportCurrencyCode,
           logoBytes,
           workspaceName,
         });
@@ -291,6 +458,17 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
     } finally {
       setIsAddingSection(false);
     }
+  };
+
+  const getFinanceTableSummary = (section: BusinessPlanSection): string => {
+    if (section.content.type !== "table" && section.content.type !== "comparison_table") {
+      return "Unsupported section format";
+    }
+    const headers = section.content.headers?.filter(Boolean) ?? [];
+    if (headers.length > 0) {
+      return headers.join(" | ");
+    }
+    return "No headers yet";
   };
 
   // ---------------- DOWNLOAD TAB ----------------
@@ -454,6 +632,42 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
             </Box>
 
             <Box>
+              <Typography
+                sx={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: "#4B5563",
+                  mb: 0.7,
+                }}
+              >
+                Currency
+              </Typography>
+              <FormControl fullWidth size="small">
+                <Select
+                  value={currencyCode}
+                  onChange={(event) => {
+                    void handleCurrencyChange(event);
+                  }}
+                  sx={{
+                    borderRadius: 2,
+                    bgcolor: "#FFFFFF",
+                  }}
+                >
+                  {currencyOptions.map((option) => (
+                    <MenuItem key={option.code} value={option.code}>
+                      {option.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              {isSavingCurrency && (
+                <Typography sx={{ mt: 0.8, fontSize: 12, color: "#6B7280" }}>
+                  Saving currency preference...
+                </Typography>
+              )}
+            </Box>
+
+            <Box>
               <FormControlLabel
                 control={
                   <Switch
@@ -549,17 +763,32 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
   // ---------------- PLAN TAB (Sections / Finance / Charts) ----------------
 
   return (
-    <Box
-      sx={{
-        width: 320,
-        borderLeft: "1px solid #E5E7EB",
-        bgcolor: "#F9FAFB",
-        display: "flex",
-        flexDirection: "column",
-        height: "100%", // take full height of parent, which is 100vh
-        overflow: "hidden",
-      }}
-    >
+    <>
+      <SectionEditorModal
+        open={editingFinanceSection !== null}
+        section={editingFinanceSection}
+        isSaving={isSavingFinanceSection}
+        onSave={(newContent) => {
+          void handleSaveFinanceSection(newContent);
+        }}
+        onCancel={() => {
+          if (!isSavingFinanceSection) {
+            setEditingFinanceSection(null);
+          }
+        }}
+      />
+
+      <Box
+        sx={{
+          width: 320,
+          borderLeft: "1px solid #E5E7EB",
+          bgcolor: "#F9FAFB",
+          display: "flex",
+          flexDirection: "column",
+          height: "100%", // take full height of parent, which is 100vh
+          overflow: "hidden",
+        }}
+      >
       {/* Right-side tabs: Sections / Finance / Charts */}
       <Box
         sx={{
@@ -719,63 +948,188 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
           </>
         )}
 
-        {/* Finance tab - Coming Soon */}
+        {/* Finance tab */}
         {rightTab === "finance" && (
-          <Box
-            sx={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              height: "100%",
-              minHeight: 300,
-              textAlign: "center",
-              px: 3,
-            }}
-          >
+          <Stack spacing={2.2}>
             <Box
               sx={{
-                width: 64,
-                height: 64,
-                borderRadius: "50%",
-                bgcolor: "#EEF2FF",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                mb: 2,
+                p: 1.8,
+                borderRadius: 2,
+                border: "1px solid #D9E2F7",
+                bgcolor: "#F7F9FF",
               }}
             >
-              <Typography sx={{ fontSize: 28 }}>💰</Typography>
+              <Typography sx={{ fontSize: 15, fontWeight: 700, color: "#1F2A44", mb: 0.6 }}>
+                Financial Plan
+              </Typography>
+              <Typography sx={{ fontSize: 13, color: "#5F6B83", lineHeight: 1.55 }}>
+                Edit financial tables directly and pick the default currency used in exports.
+              </Typography>
             </Box>
-            <Typography
-              sx={{
-                fontSize: 18,
-                fontWeight: 600,
-                color: "#111827",
-                mb: 1,
+
+            <Box>
+              <Typography
+                sx={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: "#4B5563",
+                  mb: 0.8,
+                }}
+              >
+                Default Currency
+              </Typography>
+              <FormControl fullWidth size="small">
+                <Select
+                  value={currencyCode}
+                  onChange={(event) => {
+                    void handleCurrencyChange(event);
+                  }}
+                  sx={{
+                    borderRadius: 2,
+                    bgcolor: "#FFFFFF",
+                  }}
+                >
+                  {currencyOptions.map((option) => (
+                    <MenuItem key={option.code} value={option.code}>
+                      {option.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              {isSavingCurrency && (
+                <Typography sx={{ mt: 0.8, fontSize: 12, color: "#6B7280" }}>
+                  Saving currency preference...
+                </Typography>
+              )}
+            </Box>
+
+            <Button
+              variant="outlined"
+              disabled={isAddingFinanceTable}
+              onClick={() => {
+                void handleAddFinancialTable();
               }}
-            >
-              Finance Tools
-            </Typography>
-            <Typography
               sx={{
-                fontSize: 14,
-                color: "#6B7280",
-                mb: 2,
-              }}
-            >
-              Coming Soon
-            </Typography>
-            <Typography
-              sx={{
+                textTransform: "none",
+                borderRadius: 2,
+                borderColor: "#B6C5F4",
+                color: "#3052C8",
                 fontSize: 13,
-                color: "#9CA3AF",
-                lineHeight: 1.6,
+                fontWeight: 600,
+                "&:hover": {
+                  borderColor: "#8FA5ED",
+                  bgcolor: "#EEF2FF",
+                },
               }}
             >
-              Financial projections, revenue models, and expense tracking tools will be available here.
-            </Typography>
-          </Box>
+              {isAddingFinanceTable ? "Adding..." : "Add Financial Table"}
+            </Button>
+
+            {financeTableSections.length === 0 ? (
+              <Alert
+                severity="info"
+                sx={{
+                  fontSize: 12.5,
+                  "& .MuiAlert-icon": { fontSize: 18 },
+                }}
+              >
+                No financial tables yet. Add one, or generate a table from Ask AI and edit it here.
+              </Alert>
+            ) : (
+              <Stack spacing={1.3}>
+                {financeTableSections.map((item) => (
+                  <Box
+                    key={item.section.id}
+                    sx={{
+                      borderRadius: 2,
+                      border: "1px solid #E5E7EB",
+                      bgcolor: "#FFFFFF",
+                      p: 1.3,
+                    }}
+                  >
+                    <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.7 }}>
+                      <Typography
+                        sx={{
+                          flex: 1,
+                          fontSize: 12.5,
+                          fontWeight: 700,
+                          color: "#334155",
+                          lineHeight: 1.3,
+                        }}
+                        noWrap
+                      >
+                        {item.chapterTitle}
+                      </Typography>
+                      <Chip
+                        size="small"
+                        label={
+                          item.section.content.type === "comparison_table"
+                            ? "Comparison"
+                            : "Table"
+                        }
+                        sx={{
+                          height: 20,
+                          fontSize: 10.5,
+                          fontWeight: 700,
+                          bgcolor: "#EEF2FF",
+                          color: "#1E40AF",
+                        }}
+                      />
+                    </Stack>
+
+                    <Typography
+                      sx={{
+                        fontSize: 11.5,
+                        color: "#64748B",
+                        mb: 1.1,
+                        lineHeight: 1.45,
+                      }}
+                    >
+                      {getFinanceTableSummary(item.section)}
+                    </Typography>
+
+                    <Stack direction="row" spacing={1}>
+                      <Button
+                        size="small"
+                        onClick={() => {
+                          setSelectedChapterId(item.chapterId);
+                          setSelectedSectionId(item.section.id);
+                          setEditingFinanceSection(item.section);
+                        }}
+                        sx={{
+                          textTransform: "none",
+                          fontSize: 11.5,
+                          fontWeight: 600,
+                          color: "#1D4ED8",
+                          minWidth: 0,
+                          px: 0.8,
+                        }}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        size="small"
+                        onClick={() => {
+                          setSelectedChapterId(item.chapterId);
+                          setSelectedSectionId(item.section.id);
+                        }}
+                        sx={{
+                          textTransform: "none",
+                          fontSize: 11.5,
+                          fontWeight: 600,
+                          color: "#64748B",
+                          minWidth: 0,
+                          px: 0.8,
+                        }}
+                      >
+                        Focus
+                      </Button>
+                    </Stack>
+                  </Box>
+                ))}
+              </Stack>
+            )}
+          </Stack>
         )}
 
         {/* Charts tab - Coming Soon */}
@@ -837,7 +1191,8 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
           </Box>
         )}
       </Box>
-    </Box>
+      </Box>
+    </>
   );
 };
 

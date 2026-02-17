@@ -4,10 +4,10 @@ Source of truth for tasks: `TASKS.md`
 
 ## Summary
 - Total scoped tasks: 68
-- `done`: 61
+- `done`: 62
 - `in_progress`: 0
 - `pending_qa`: 0
-- `todo`: 7
+- `todo`: 6
 - `blocked`: 0
 - **Note:** Counts now reflect all rows in `TASKS.md` as of 2026-02-17.
 
@@ -57,6 +57,7 @@ Source of truth for tasks: `TASKS.md`
 43. `AF-004` - Implement typography hierarchy in exports
 44. `AF-001` - Add AI tone of voice settings
 45. `WS-017` - Implement workspace/library -> task automation
+46. `AF-008` - Make financial plan editable and multi-currency
 
 ## Reopened / Not Fully Done
 1. None (WS-016 and BPTS-006 passed manual QA on 2026-02-17)
@@ -72,6 +73,15 @@ Source of truth for tasks: `TASKS.md`
 - WS-016 / BPTS-006 manual QA: pass
 
 ## Change Log
+- 2026-02-17: **AF-008 Complete** - Implemented financial-plan editability + multi-currency support without DB schema changes.
+  - Added `currency_code` support to business-plan export settings in `src/types/workspaces.ts` and wired update action in `src/components/workspaceManage/business-plan/BusinessPlanContext.tsx`.
+  - Replaced Finance tab placeholder in `src/components/workspaceManage/business-plan/ManageActionArea.tsx` with:
+    - Currency selector persisted to `workspace_business_plans.export_settings` (JSONB)
+    - Direct financial table creation (`Add Financial Table`)
+    - Editable financial table list with direct `Edit` and `Focus` actions
+  - Reused `SectionEditorModal` for table edit/save flow from the Finance tab.
+  - Added currency-aware export rendering in `src/lib/businessPlanExport.ts` (currency note + numeric table formatting for PDF/DOCX generation).
+  - Validation: `npm run check` pass.
 - 2026-02-17: **WS-017 Complete** - Implemented workspace/library -> task automation hardening for business-plan task flows (no DB migration required).
   - Added `ensureTaskAutomationDefaults` in `src/server/businessPlanTasks.ts` to backfill missing task `instructions`/`ai_prompt` from workspace setup + AI library context for legacy/incomplete tasks.
   - Wired automation backfill into task tree loading in `src/app/api/workspaces/[workspaceId]/business-plan/tasks/route.ts`, so task context is auto-preloaded whenever Plan Tasks is loaded.
