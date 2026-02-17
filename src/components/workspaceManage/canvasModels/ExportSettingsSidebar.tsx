@@ -62,6 +62,38 @@ const PITCH_COLORS = [
 const FONT_FAMILIES = ["Roboto", "Inter", "Open Sans", "Lato", "Poppins"];
 const FONT_SIZES = ["12 px", "14 px", "15 px", "16 px", "18 px"];
 
+const downloadBlob = (blob: Blob, filename: string): void => {
+  const url = window.URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.URL.revokeObjectURL(url);
+};
+
+const parseFileNameFromContentDisposition = (value: string | null): string | null => {
+  if (!value) return null;
+
+  const utfMatch = value.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utfMatch?.[1]) {
+    try {
+      return decodeURIComponent(utfMatch[1].trim());
+    } catch {
+      return utfMatch[1].trim();
+    }
+  }
+
+  const quotedMatch = value.match(/filename="([^"]+)"/i);
+  if (quotedMatch?.[1]) {
+    return quotedMatch[1].trim();
+  }
+
+  const plainMatch = value.match(/filename=([^;]+)/i);
+  return plainMatch?.[1]?.trim() ?? null;
+};
+
 const ExportSettingsSidebar: FC<ExportSettingsSidebarProps> = ({
   workspaceId,
   canvasRef,
@@ -185,27 +217,29 @@ const ExportSettingsSidebar: FC<ExportSettingsSidebarProps> = ({
     setIsExporting(true);
 
     try {
-      const branding = includeBrandingExport
-        ? await fetchWorkspaceBranding(workspaceId)
-        : null;
-      const logoDataUrl = includeBrandingExport
-        ? await fetchImageAsDataUrl(branding?.logoUrl ?? null)
-        : null;
-      const { exportCanvasToPptx, downloadBlob } = await import("@/lib/canvasExport");
-
       if (!templateType || !sectionsData) {
         throw new Error("Canvas data not available for PPTX export");
       }
 
-      const blob = await exportCanvasToPptx({
-        title: canvasTitle,
-        templateType,
-        sectionsData,
-        workspaceName: includeBrandingExport ? branding?.workspaceName ?? null : null,
-        workspaceLogoDataUrl: logoDataUrl,
+      const response = await fetch(`/api/workspaces/${workspaceId}/canvas-models/export`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: canvasTitle,
+          templateType,
+          sectionsData,
+          includeBranding: includeBrandingExport,
+        }),
       });
 
-      const filename = `${sanitizeFileName(canvasTitle, "canvas-export")}.pptx`;
+      if (!response.ok) {
+        throw new Error("Failed to export canvas as PPTX");
+      }
+
+      const blob = await response.blob();
+      const filename =
+        parseFileNameFromContentDisposition(response.headers.get("content-disposition")) ??
+        `${sanitizeFileName(canvasTitle, "canvas-export")}.pptx`;
       downloadBlob(blob, filename);
       toast.success("Exported as PPTX successfully");
     } catch (error) {
