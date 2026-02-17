@@ -1,6 +1,6 @@
 // src/middleware.ts
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
-import { NextResponse, userAgent } from "next/server";
+import { NextResponse } from "next/server";
 
 const isProtectedRoute = createRouteMatcher([
   "/",              // desktop home
@@ -8,15 +8,13 @@ const isProtectedRoute = createRouteMatcher([
   "/workspaces(.*)", // all workspace routes (including pitch-deck)
 ]);
 
-const mobileRewrittenPaths = ["/", "/team"];
-
 export default clerkMiddleware(async (auth, req) => {
   // 1) Auth gate: protect selected routes
   if (isProtectedRoute(req)) {
     await auth.protect(); // will redirect to your Clerk sign-in URL (set to /auth)
   }
 
-  NextResponse.next();
+  return NextResponse.next();
 });
 
 export const config = {

@@ -1,6 +1,9 @@
 import { getSupabaseClient, type SupabaseDb } from "@/lib/supabaseServer";
 import { getWorkspaceAiContext } from "@/lib/workspaceAiContext";
-import { DEFAULT_BUSINESS_PLAN_TASK_TEMPLATE } from "@/server/businessPlanTaskTemplate";
+import {
+  DEFAULT_BUSINESS_PLAN_TASK_TEMPLATE,
+  validateDefaultBusinessPlanTaskTemplateInstructions,
+} from "@/server/businessPlanTaskTemplate";
 import type {
   BusinessPlanId,
   BusinessPlanTask,
@@ -14,6 +17,14 @@ import type {
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 type Supa = SupabaseClient<SupabaseDb>;
+
+let hasValidatedDefaultTemplateInstructions = false;
+
+const ensureDefaultTemplateInstructionQuality = (): void => {
+  if (hasValidatedDefaultTemplateInstructions) return;
+  validateDefaultBusinessPlanTaskTemplateInstructions();
+  hasValidatedDefaultTemplateInstructions = true;
+};
 
 const extractContextHighlights = (context: string): string[] => {
   return context
@@ -399,6 +410,9 @@ export async function ensureDefaultBusinessPlanTasks(params: {
   }
 
   await ensureUserHasWorkspaceAccess(client, workspaceId, userId);
+
+  // BPTS-003: enforce minimum instruction quality for seeded task templates.
+  ensureDefaultTemplateInstructionQuality();
 
   const { data: existingTask, error: existingError } = await client
     .from("business_plan_tasks")

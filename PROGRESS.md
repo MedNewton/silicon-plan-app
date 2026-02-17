@@ -1,16 +1,17 @@
 # Progress Tracker
-Last updated: 2026-02-16
+Last updated: 2026-02-17
 Source of truth for tasks: `TASKS.md`
 
 ## Summary
-- Total scoped tasks: 47
-- `done`: 38
-- `in_progress`: 1
-- `todo`: 8
+- Total scoped tasks: 68
+- `done`: 51
+- `in_progress`: 2
+- `pending_qa`: 0
+- `todo`: 15
 - `blocked`: 0
-- **Note:** CORE-005 and CORE-008 marked as `done` in TASKS.md (completed 2026-02-16)
+- **Note:** Counts now reflect all rows in `TASKS.md` as of 2026-02-17.
 
-## Completed (This Batch - Updated 2026-02-16)
+## Completed (This Batch - Updated 2026-02-17)
 1. `CORE-001` - Define onboarding canonical data contract
 2. `CORE-002` - Implement wizard shell for 12-step onboarding
 3. `CORE-003` - Implement Step 1-4 in wizard
@@ -39,26 +40,44 @@ Source of truth for tasks: `TASKS.md`
 26. `WS-007` - Rename confusing section labels
 27. `WS-004` - Add workspace delete capability
 28. `WS-016` - Initial hardening pass for AI Chat + Plan Chapters task creation gap (reopened, now complete with chapter selection UI)
-29. `CORE-005` - Implement ATECO code search with autocomplete (Step 4 in business setup)
+29. `CORE-005` - Implement ATECO code search with autocomplete (Step 5 in business setup)
 30. `CORE-008` - Build Damodaran <-> onboarding sector mapping layer for valuation multiples
+31. `CORE-009` - Add ATECO mapping scaffolding (completed as part of CORE-008 implementation)
+32. `BPTS-002` - Align default BP chapter/task tree to full client structure (6 chapters + requested subsections)
+33. `BPTS-004` - Add section-specific AI prompts for core templates
+34. `BPTS-003` - Enforce minimum instruction quality for each task template
+35. `BPTS-007` - Add BP task structure QA pack
+36. `BPTS-006` - Stabilize AI chat chapter/task proposal reliability
+37. `WS-016` - Fix AI Chat + Plan Chapters task creation gap (manual QA pass)
 
 ## Reopened / Not Fully Done
-1. `WS-016` - Fix AI Chat + Plan Chapters task creation gap (`pending_qa`)
-2. Code implementation complete, database migration applied
-3. Awaiting manual QA validation using `docs/qa/ws-016-manual-qa-script.md`
+1. None (WS-016 and BPTS-006 passed manual QA on 2026-02-17)
 
 ## Todo (Immediate Next)
-1. `CORE-009` - Add ATECO mapping scaffolding
-2. `CORE-018` - Add pitch preset sections template
-3. `CORE-019` - Reuse BP/Canvas data for pitch generation
-4. `WS-005` - Implement EN/IT language toggle
-5. `WS-017` - Implement workspace/library -> task automation
+1. `CORE-018` - Add pitch preset sections template
+2. `CORE-019` - Reuse BP/Canvas data for pitch generation
+3. `WS-005` - Implement EN/IT language toggle
+4. `WS-017` - Implement workspace/library -> task automation
 
 ## Recent Validation
 - `npm run typecheck`: pass
-- `npm run lint`: pass (2 unrelated existing warnings in `src/middleware.ts`)
+- `npm run lint`: pass
+- WS-016 / BPTS-006 manual QA: pass
 
 ## Change Log
+- 2026-02-17: Manual QA sign-off completed for `WS-016` and `BPTS-006`; both tasks moved from `pending_qa` to `done` in `TASKS.md`.
+- 2026-02-17: TC-4.2 remediation for stale chapter-target approvals:
+  - Pending-change accept route now classifies expected target-missing errors as handled (no "Unexpected error" stack-noise logging path).
+  - On `TARGET_NOT_FOUND` during accept, the pending change is auto-rejected server-side to prevent repeated failing accept attempts.
+  - Client now refreshes chat/pending state after accept failures so stale cards are removed immediately.
+- 2026-02-17: QA remediation pass for WS-016/BPTS-006 based on manual test feedback:
+  - Chat refresh now loads only actionable pending changes (`?status=pending`) to prevent resolved historical cards from showing in new test steps.
+  - Added section-intent guardrails to ignore unrelated chapter/task tool calls for section-only requests.
+  - Added section type normalization/inference (`bullet list` -> `list`, plus aliases) to avoid misclassifying list requests as text.
+  - Added deterministic section fallback using selected chapter context when user says "here"/"this" and the model does not emit section tool calls.
+  - Added duplicate pending-change suppression for identical tool outputs in a single assistant turn.
+- 2026-02-17: Completed BPTS-006 hardening pass for AI chat chapter/task reliability and moved status to `pending_qa`; key fixes include task UI context propagation (`selectedTaskId`), task-target fallback from selection, improved task update payload parsing (snake_case/camelCase + `newTitle`), and chapter-tool suppression when user intent is task-primary.
+- 2026-02-17: Validation after BPTS-006 hardening: `npm run typecheck` pass, `npm run lint` pass.
 - 2026-02-12: Initialized tracker and logged progress for `OBS-001` and `OBS-002`.
 - 2026-02-12: Completed `OBS-003` via `docs/qa/auth-reset-test-pack.md`.
 - 2026-02-12: Completed `OBS-004` to `OBS-007` in business setup/settings forms with `Other` custom persistence through `rawFormData`.
@@ -166,3 +185,15 @@ Source of truth for tasks: `TASKS.md`
 - 2026-02-16: Files created/modified for CORE-005 & CORE-008:
   - Created: `src/types/sectors.ts`, `src/lib/sectorMapping.ts`, `src/app/api/sectors/ateco/search/route.ts`, `src/app/api/sectors/damodaran/route.ts`, `src/components/onboarding/AtecoSearchField.tsx`, `docs/CORE-005-008-IMPLEMENTATION.md`
   - Modified: `src/app/workspaces/[workspaceId]/business-setup/page.tsx`, `TASKS.md`, `PROGRESS.md`
+- 2026-02-16: **CORE-009 Complete** - ATECO mapping scaffolding fully implemented as part of CORE-008:
+  - Complete ATECO → sector taxonomy mapping (52 codes, 10 macros)
+  - ATECO → Damodaran industry resolution with validation
+  - Search, lookup, and suggestion functions for ATECO codes
+  - Integration with onboarding flow (Step 5)
+  - All acceptance criteria met: "ATECO field can map to internal sector taxonomy" ✅
+  - Implementation in `src/lib/sectorMapping.ts` includes: `searchAtecoCodes()`, `getAtecoByCode()`, `getSuggestedAtecoCodes()`, `resolveSectorToDamodaran()` with ATECO refinement
+  - No additional scaffolding needed - production-ready service delivered
+- 2026-02-17: **BPTS-002 Complete** - Rebuilt `DEFAULT_BUSINESS_PLAN_TASK_TEMPLATE` with the exact 6 chapters and requested subsection hierarchy from client feedback section 5.1 (Business Fundamentals -> Pitch).
+- 2026-02-17: **BPTS-004 Complete** - Added section-specific prompts for all seeded chapter/task nodes, including explicit core prompt behavior for Business Idea, TAM SAM SOM Analysis, and Customer Acquisition Cost (COCA).
+- 2026-02-17: **BPTS-003 Complete** - Added runtime instruction-quality enforcement for default task templates (`MIN_TEMPLATE_INSTRUCTION_LINES = 3`) with validation wired into default-task seeding.
+- 2026-02-17: **BPTS-007 Complete** - Added `docs/qa/bpts-task-structure-qa-pack.md` covering regression checklist for hierarchy, prompts, approvals, and editability.

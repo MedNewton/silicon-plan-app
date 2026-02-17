@@ -10,7 +10,6 @@ import {
   Typography,
   Chip,
 } from "@mui/material";
-import { debounce } from "@mui/material/utils";
 import type { AtecoSearchResult } from "@/types/sectors";
 
 type AtecoSearchFieldProps = {
@@ -57,34 +56,35 @@ export default function AtecoSearchField({
     void loadAllCodes();
   }, []);
 
-  // Debounced search function
-  const searchAteco = useCallback(
-    debounce(async (query: string) => {
-      try {
-        setLoading(true);
-        const response = await fetch(
-          `/api/sectors/ateco/search?q=${encodeURIComponent(query)}`
-        );
+  const searchAteco = useCallback(async (query: string) => {
+    try {
+      setLoading(true);
+      const response = await fetch(
+        `/api/sectors/ateco/search?q=${encodeURIComponent(query)}`
+      );
 
-        if (!response.ok) {
-          throw new Error("Failed to search ATECO codes");
-        }
-
-        const data = (await response.json()) as { results: AtecoSearchResult[] };
-        setAllOptions(data.results);
-      } catch (error) {
-        console.error("Error searching ATECO codes:", error);
-      } finally {
-        setLoading(false);
+      if (!response.ok) {
+        throw new Error("Failed to search ATECO codes");
       }
-    }, 300),
-    []
-  );
+
+      const data = (await response.json()) as { results: AtecoSearchResult[] };
+      setAllOptions(data.results);
+    } catch (error) {
+      console.error("Error searching ATECO codes:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    if (inputValue && inputValue.trim().length > 0) {
-      void searchAteco(inputValue);
-    }
+    const query = inputValue.trim();
+    if (!query) return;
+
+    const timeoutId = window.setTimeout(() => {
+      void searchAteco(query);
+    }, 300);
+
+    return () => window.clearTimeout(timeoutId);
   }, [inputValue, searchAteco]);
 
   // Find the selected option based on the value prop

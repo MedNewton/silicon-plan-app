@@ -528,6 +528,8 @@ const PlanTasksPane: FC = () => {
     updateTask,
     deleteTask,
     lastAppliedTaskChange,
+    selectedTaskId,
+    setSelectedTaskId,
   } = useBusinessPlan();
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [isAddingTask, setIsAddingTask] = useState(false);
@@ -540,8 +542,11 @@ const PlanTasksPane: FC = () => {
     if (first && openTaskIds.length === 0 && !hasAutoOpenedTask) {
       setOpenTaskIds([first.id]);
       setHasAutoOpenedTask(true);
+      if (!selectedTaskId) {
+        setSelectedTaskId(first.id);
+      }
     }
-  }, [tasks, openTaskIds.length, hasAutoOpenedTask]);
+  }, [tasks, openTaskIds.length, hasAutoOpenedTask, selectedTaskId, setSelectedTaskId]);
 
   useEffect(() => {
     if (!lastAppliedTaskChange) return;
@@ -551,10 +556,12 @@ const PlanTasksPane: FC = () => {
     setOpenTaskIds((prev) =>
       prev.includes(parentOrSelf) ? prev : [...prev, parentOrSelf]
     );
+    setSelectedTaskId(lastAppliedTaskChange.taskId);
     setLastHandledTaskChangeAt(lastAppliedTaskChange.changedAt);
-  }, [lastAppliedTaskChange, lastHandledTaskChangeAt]);
+  }, [lastAppliedTaskChange, lastHandledTaskChangeAt, setSelectedTaskId]);
 
   const toggleTaskOpen = (taskId: string) => {
+    setSelectedTaskId(taskId);
     setOpenTaskIds((prev) =>
       prev.includes(taskId) ? prev.filter((id) => id !== taskId) : [...prev, taskId]
     );
@@ -621,7 +628,10 @@ const PlanTasksPane: FC = () => {
             key={task.id}
             task={task}
             isOpen={openTaskIds.includes(task.id)}
+            isSelected={selectedTaskId === task.id}
+            selectedTaskId={selectedTaskId}
             onToggle={() => toggleTaskOpen(task.id)}
+            onSelectTask={setSelectedTaskId}
             onUpdateTitle={(title) => updateTask(task.id, { title })}
             onUpdateStatus={(status) => updateTask(task.id, { status })}
             onDelete={() => deleteTask(task.id)}
@@ -649,7 +659,10 @@ const PlanTasksPane: FC = () => {
 type TaskCardProps = {
   task: BusinessPlanTaskWithChildren;
   isOpen: boolean;
+  isSelected: boolean;
+  selectedTaskId: string | null;
   onToggle: () => void;
+  onSelectTask: (taskId: string) => void;
   onUpdateTitle: (title: string) => Promise<void>;
   onUpdateStatus: (status: BusinessPlanTaskStatus) => Promise<void>;
   onDelete: () => Promise<void>;
@@ -662,7 +675,10 @@ type TaskCardProps = {
 const TaskCard: FC<TaskCardProps> = ({
   task,
   isOpen,
+  isSelected,
+  selectedTaskId,
   onToggle,
+  onSelectTask,
   onUpdateTitle,
   onUpdateStatus,
   onDelete,
@@ -731,12 +747,16 @@ const TaskCard: FC<TaskCardProps> = ({
       />
 
       <Box
+        onClick={() => onSelectTask(task.id)}
         sx={{
           borderRadius: 3,
-          border: "1px solid #E2E8F0",
+          border: isSelected ? "1px solid #93C5FD" : "1px solid #E2E8F0",
           bgcolor: "#FFFFFF",
-          boxShadow: "0 1px 2px rgba(15,23,42,0.06)",
+          boxShadow: isSelected
+            ? "0 0 0 2px rgba(147,197,253,0.35)"
+            : "0 1px 2px rgba(15,23,42,0.06)",
           overflow: "hidden",
+          cursor: "pointer",
         }}
       >
         <Box sx={{ pl: 0.6, pr: 1, py: 1, display: "flex", alignItems: "center", gap: 0.8 }}>
@@ -871,6 +891,8 @@ const TaskCard: FC<TaskCardProps> = ({
                   <SubTaskRow
                     key={subTask.id}
                     subTask={subTask}
+                    isSelected={selectedTaskId === subTask.id}
+                    onSelect={() => onSelectTask(subTask.id)}
                     onUpdateTitle={(title) => onUpdateSubTaskTitle(subTask.id, title)}
                     onUpdateStatus={(status) => onUpdateSubTaskStatus(subTask.id, status)}
                     onDelete={() => onDeleteSubTask(subTask.id)}
@@ -895,6 +917,8 @@ const TaskCard: FC<TaskCardProps> = ({
 
 type SubTaskRowProps = {
   subTask: BusinessPlanTaskWithChildren;
+  isSelected: boolean;
+  onSelect: () => void;
   onUpdateTitle: (title: string) => Promise<void>;
   onUpdateStatus: (status: BusinessPlanTaskStatus) => Promise<void>;
   onDelete: () => Promise<void>;
@@ -902,6 +926,8 @@ type SubTaskRowProps = {
 
 const SubTaskRow: FC<SubTaskRowProps> = ({
   subTask,
+  isSelected,
+  onSelect,
   onUpdateTitle,
   onUpdateStatus,
   onDelete,
@@ -972,12 +998,15 @@ const SubTaskRow: FC<SubTaskRowProps> = ({
 
   return (
     <Box
+      onClick={onSelect}
       sx={{
         borderRadius: 2,
-        border: "1px solid #E2E8F0",
+        border: isSelected ? "1px solid #93C5FD" : "1px solid #E2E8F0",
         bgcolor: "#FFFFFF",
+        boxShadow: isSelected ? "0 0 0 2px rgba(147,197,253,0.25)" : "none",
         px: 1,
         py: 0.9,
+        cursor: "pointer",
       }}
     >
       <Stack direction="row" spacing={0.8} alignItems="center">

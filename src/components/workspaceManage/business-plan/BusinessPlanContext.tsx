@@ -21,6 +21,7 @@ import type {
   BusinessPlanSectionContent,
   BusinessPlanChapterId,
   BusinessPlanSectionId,
+  BusinessPlanTaskId,
   BusinessPlanAiMessage,
   BusinessPlanAiConversationId,
   BusinessPlanPendingChange,
@@ -40,8 +41,10 @@ type BusinessPlanContextValue = {
   // Selected state
   selectedChapterId: BusinessPlanChapterId | null;
   selectedSectionId: BusinessPlanSectionId | null;
+  selectedTaskId: BusinessPlanTaskId | null;
   setSelectedChapterId: (id: BusinessPlanChapterId | null) => void;
   setSelectedSectionId: (id: BusinessPlanSectionId | null) => void;
+  setSelectedTaskId: (id: BusinessPlanTaskId | null) => void;
 
   // Actions
   refreshData: () => Promise<void>;
@@ -127,6 +130,7 @@ export const BusinessPlanProvider: FC<BusinessPlanProviderProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [selectedChapterId, setSelectedChapterId] = useState<BusinessPlanChapterId | null>(null);
   const [selectedSectionId, setSelectedSectionId] = useState<BusinessPlanSectionId | null>(null);
+  const [selectedTaskId, setSelectedTaskId] = useState<BusinessPlanTaskId | null>(null);
   const [conversationId, setConversationId] = useState<BusinessPlanAiConversationId | null>(null);
   const [messages, setMessages] = useState<BusinessPlanAiMessage[]>([]);
   const [pendingChanges, setPendingChanges] = useState<BusinessPlanPendingChange[]>([]);
@@ -177,7 +181,21 @@ export const BusinessPlanProvider: FC<BusinessPlanProviderProps> = ({
         businessPlanId: string;
         tasks: BusinessPlanTaskWithChildren[];
       };
-      setTasks(data.tasks ?? []);
+      const nextTasks = data.tasks ?? [];
+      setTasks(nextTasks);
+      setSelectedTaskId((currentSelectedTaskId) => {
+        if (!currentSelectedTaskId) return currentSelectedTaskId;
+        const stack = [...nextTasks];
+        while (stack.length > 0) {
+          const task = stack.pop();
+          if (!task) continue;
+          if (task.id === currentSelectedTaskId) return currentSelectedTaskId;
+          if (task.children?.length) {
+            stack.push(...task.children);
+          }
+        }
+        return null;
+      });
     } catch (err) {
       console.error("Error loading business plan tasks:", err);
       setError(err instanceof Error ? err.message : "Failed to load business plan tasks");
@@ -549,6 +567,10 @@ export const BusinessPlanProvider: FC<BusinessPlanProviderProps> = ({
         throw new Error("Failed to delete task");
       }
 
+      setSelectedTaskId((currentSelectedTaskId) =>
+        currentSelectedTaskId === taskId ? null : currentSelectedTaskId
+      );
+
       await refreshTasks();
     },
     [workspaceId, refreshTasks]
@@ -561,7 +583,7 @@ export const BusinessPlanProvider: FC<BusinessPlanProviderProps> = ({
 
       const [conversationRes, pendingRes] = await Promise.all([
         fetch(`/api/workspaces/${workspaceId}/business-plan/ai/conversation`),
-        fetch(`/api/workspaces/${workspaceId}/business-plan/ai/pending-changes`),
+        fetch(`/api/workspaces/${workspaceId}/business-plan/ai/pending-changes?status=pending`),
       ]);
 
       if (!conversationRes.ok) {
@@ -619,7 +641,7 @@ export const BusinessPlanProvider: FC<BusinessPlanProviderProps> = ({
               conversationId,
               message: content.trim(),
               selectedChapterId,
-              selectedTaskId: null, // TODO: Add selectedTaskId to context if needed
+              selectedTaskId,
             }),
           }
         );
@@ -655,7 +677,7 @@ export const BusinessPlanProvider: FC<BusinessPlanProviderProps> = ({
         setIsChatSending(false);
       }
     },
-    [workspaceId, conversationId, selectedChapterId]
+    [workspaceId, conversationId, selectedChapterId, selectedTaskId]
   );
 
   const acceptPendingChange = useCallback(
@@ -689,12 +711,15 @@ export const BusinessPlanProvider: FC<BusinessPlanProviderProps> = ({
         if (data.result?.section) {
           setSelectedChapterId(data.result.section.chapter_id);
           setSelectedSectionId(data.result.section.id);
+          setSelectedTaskId(null);
         } else if (data.result?.chapter) {
           setSelectedChapterId(data.result.chapter.id);
           setSelectedSectionId(null);
+          setSelectedTaskId(null);
         }
 
         if (data.result?.task) {
+          setSelectedTaskId(data.result.task.id);
           setLastAppliedTaskChange({
             taskId: data.result.task.id,
             parentTaskId: data.result.task.parent_task_id ?? null,
@@ -709,6 +734,7 @@ export const BusinessPlanProvider: FC<BusinessPlanProviderProps> = ({
         console.error("Error accepting pending change:", err);
         const errorMessage = err instanceof Error ? err.message : "Failed to accept change";
         setChatError(errorMessage);
+        await refreshChat();
       }
     },
     [workspaceId, refreshData, refreshTasks, refreshChat]
@@ -716,30 +742,57 @@ export const BusinessPlanProvider: FC<BusinessPlanProviderProps> = ({
 
   // Helper to parse server errors into actionable messages
   const parseActionableError = (errorText: string): string => {
+    type PendingChangeErrorPayload = {
+      error?: string;
+      code?: string;
+      autoRejected?: boolean;
+    };
+    let parsedPayload: PendingChangeErrorPayload | null = null;
+    try {
+      parsedPayload = JSON.parse(errorText) as PendingChangeErrorPayload;
+    } catch {
+      parsedPayload = null;
+    }
+
+    const normalizedText = parsedPayload?.error?.trim() ?? errorText;
+
+    if (parsedPayload?.code === "TARGET_NOT_FOUND" && parsedPayload?.autoRejected) {
+      return "This change could not be applied because the target no longer exists. It was automatically removed from pending changes.";
+    }
+    if (parsedPayload?.code === "TARGET_NOT_FOUND") {
+      return "Could not find the target item. It may have been deleted or renamed. Please refresh and try again.";
+    }
+    if (parsedPayload?.code === "INVALID_CHANGE") {
+      return "This change is no longer valid. Please refresh and submit a new request.";
+    }
+    if (parsedPayload?.code === "ACCESS_DENIED") {
+      return "You do not have permission to apply this change.";
+    }
+
     // Map common server errors to user-friendly messages
-    if (errorText.includes("target chapter could not be resolved")) {
+    if (normalizedText.includes("target chapter could not be resolved")) {
       return "Could not find the target chapter. It may have been deleted or renamed. Please try again with the correct chapter.";
     }
-    if (errorText.includes("target section ID is missing")) {
+    if (normalizedText.includes("target section ID is missing")) {
       return "Could not identify the section to update. Please try again.";
     }
-    if (errorText.includes("target task is missing")) {
+    if (normalizedText.includes("target task is missing")) {
       return "Could not find the target task. It may have been deleted. Please try again.";
     }
-    if (errorText.includes("no updates provided")) {
+    if (normalizedText.includes("no updates provided")) {
       return "No changes were specified. Please provide the updates you want to make.";
     }
-    if (errorText.includes("parent H1 task could not be resolved")) {
+    if (normalizedText.includes("parent H1 task could not be resolved")) {
       return "Could not find the parent task for this subtask. Please ensure the parent task exists.";
     }
-    if (errorText.includes("chapter could not be resolved")) {
+    if (normalizedText.includes("chapter could not be resolved")) {
       return "Could not find the target chapter. Please ensure the chapter exists or specify it more precisely.";
     }
-    if (errorText.includes("already been resolved")) {
+    if (normalizedText.includes("already been resolved")) {
       return "This change has already been processed. Please refresh to see the latest state.";
     }
     // Return original if no specific mapping
-    return errorText || "An unexpected error occurred. Please try again.";
+    return normalizedText || "An unexpected error occurred. Please try again.";
   };
 
   const rejectPendingChange = useCallback(
@@ -779,8 +832,10 @@ export const BusinessPlanProvider: FC<BusinessPlanProviderProps> = ({
     error,
     selectedChapterId,
     selectedSectionId,
+    selectedTaskId,
     setSelectedChapterId,
     setSelectedSectionId,
+    setSelectedTaskId,
     refreshData,
     refreshTasks,
     updateBusinessPlanTitle,

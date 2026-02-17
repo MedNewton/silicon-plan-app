@@ -34,7 +34,7 @@ Status legend: `todo`, `in_progress`, `blocked`, `done`
 | CORE-006 | P1 | done | Implement Step 7-8 problem and unique solution | Structured text inputs with guidance | CORE-002 | Inputs saved and available in workspace profile |
 | CORE-007 | P1 | done | Implement Step 9-12 extended inputs | Product/service, sales channel, target market, team size | CORE-002 | All four steps save and reload correctly |
 | CORE-008 | P1 | done | Build Damodaran <-> onboarding sector mapping layer | Mapping service contract (internal mapping table) | CORE-004 | Sector mapping available to AI/valuation logic |
-| CORE-009 | P1 | todo | Add ATECO mapping scaffolding | Placeholder mapping table/service for future enrichment | CORE-005 | ATECO field can map to internal sector taxonomy |
+| CORE-009 | P1 | done | Add ATECO mapping scaffolding | Placeholder mapping table/service for future enrichment | CORE-005 | ATECO field can map to internal sector taxonomy |
 | CORE-010 | P1 | done | Integrate onboarding outputs into AI context | Onboarding data injected via workspace context builder | CORE-003, CORE-004, CORE-006, CORE-007 | AI responses visibly use onboarding context |
 | CORE-011 | P1 | done | Define business plan task data model | Task entity with `title`, `instructions`, `ai_prompt`, hierarchy | None | Model supports H1/H2 structure and ordering |
 | CORE-012 | P1 | done | Seed default chapter/task hierarchy | Full structure per client summary (Business Fundamentals -> Pitch) | CORE-011 | New workspace gets complete default task hierarchy |
@@ -65,7 +65,7 @@ Status legend: `todo`, `in_progress`, `blocked`, `done`
 | WS-013 | P1 | done | Implement real drag-and-drop in AI Library | Functional dropzone with file processing | None | Dragging a file uploads successfully |
 | WS-014 | P1 | done | Improve long filename handling in AI Library UI | Truncation + tooltip + no layout breaks | None | Long names render without overflow or broken layout |
 | WS-015 | P1 | done | Improve task action affordance in Manage Workspace | Clarify button meaning and flow in task UI | CORE-013 | Users can understand task actions without ambiguity |
-| WS-016 | P1 | pending_qa | Fix AI Chat + Plan Chapters task creation gap | Chat instructions should create/update tasks as expected | CORE-016 | Code complete, migration applied, awaiting manual QA validation per `docs/qa/ws-016-manual-qa-script.md` |
+| WS-016 | P1 | done | Fix AI Chat + Plan Chapters task creation gap | Chat instructions should create/update tasks as expected | CORE-016 | Manual QA passed using `docs/qa/ws-016-manual-qa-script.md`; chapter/task/section flows validated |
 | WS-017 | P1 | todo | Implement workspace/library -> task automation | Auto-preload task context from existing project data | CORE-017 | User no longer needs to re-enter same topic per task |
 | WS-018 | P1 | todo | Add workspace usability QA suite | Focused QA for settings/manage/library/task usability | WS-001..WS-017 | Usability checklist passes with no P1 blockers |
 
@@ -73,12 +73,12 @@ Status legend: `todo`, `in_progress`, `blocked`, `done`
 | ID | Priority | Status | Task | Deliverable | Dependencies | Acceptance Criteria |
 |---|---|---|---|---|---|---|
 | BPTS-001 | P1 | done | Implement hierarchical BP task model (H1/H2) with title, instructions, AI prompt | `business_plan_tasks` entity + API supports task authoring fields | CORE-011 | Task model supports ordered H1/H2 tasks with editable content fields |
-| BPTS-002 | P1 | in_progress | Align default BP chapter/task tree to full client structure (6 chapters + requested subsections) | Seeded template includes all requested chapter/subchapter nodes | CORE-012, CORE-013 | New workspaces start with structure matching feedback document |
-| BPTS-003 | P1 | todo | Enforce minimum instruction quality for each task template | Task templates include at least 3-line user instructions | BPTS-002 | Every core task template provides actionable writing guidance |
-| BPTS-004 | P1 | in_progress | Add section-specific AI prompts for core templates | Prompt library for key nodes (e.g. Business Idea, TAM/SAM/SOM, COCA) | CORE-014, BPTS-002 | AI output consistency improves and follows per-section intent |
+| BPTS-002 | P1 | done | Align default BP chapter/task tree to full client structure (6 chapters + requested subsections) | Seeded template includes all requested chapter/subchapter nodes | CORE-012, CORE-013 | New workspaces start with structure matching feedback document |
+| BPTS-003 | P1 | done | Enforce minimum instruction quality for each task template | Task templates include at least 3-line user instructions | BPTS-002 | Every core task template provides actionable writing guidance |
+| BPTS-004 | P1 | done | Add section-specific AI prompts for core templates | Prompt library for key nodes (e.g. Business Idea, TAM/SAM/SOM, COCA) | CORE-014, BPTS-002 | AI output consistency improves and follows per-section intent |
 | BPTS-005 | P1 | done | Keep task outputs editable and regenerable | Users can edit completed tasks and re-run AI draft anytime | CORE-015 | No lockout after completion; edits/regeneration remain available |
-| BPTS-006 | P1 | in_progress | Stabilize AI chat -> chapter/task proposal reliability | Deterministic proposal mapping and approval application for chapter/task requests | WS-016 | Chapter/task creation via AI Chat is reliable with low misclassification rate |
-| BPTS-007 | P1 | todo | Add BP task structure QA pack | Regression checklist for task hierarchy, prompts, approvals, and editability | BPTS-001..BPTS-006 | QA pass covers structure + AI flow edge cases |
+| BPTS-006 | P1 | done | Stabilize AI chat -> chapter/task proposal reliability | Deterministic proposal mapping and approval application for chapter/task requests | WS-016 | Chapter/task creation via AI Chat is reliable with low misclassification rate and manual QA sign-off |
+| BPTS-007 | P1 | done | Add BP task structure QA pack | Regression checklist for task hierarchy, prompts, approvals, and editability | BPTS-001..BPTS-006 | QA pass covers structure + AI flow edge cases |
 
 ## 5) Additional Fixes
 | ID | Priority | Status | Task | Deliverable | Dependencies | Acceptance Criteria |

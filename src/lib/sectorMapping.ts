@@ -115,7 +115,7 @@ const ATECO_2DIGIT_LIST: Ateco2Digit[] = ATECO_MACROS.flatMap((macro) =>
     code,
     macroCode: macro.code,
     macroName: macro.name,
-    description: ATECO_CODE_DESCRIPTIONS[code] || macro.name,
+    description: ATECO_CODE_DESCRIPTIONS[code] ?? macro.name,
   }))
 );
 
@@ -567,7 +567,7 @@ export function resolveSectorToDamodaran(
   }
 
   // If ATECO code is provided, validate it matches the suggested codes
-  let refinedMapping = mapping.damodaranMapping;
+  const refinedMapping = mapping.damodaranMapping;
   
   if (atecoCode) {
     const isValidAteco = mapping.suggestedAtecoCodes.includes(atecoCode);

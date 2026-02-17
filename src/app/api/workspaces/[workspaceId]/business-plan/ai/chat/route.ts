@@ -201,10 +201,42 @@ const validSectionTypes = new Set([
   "empty_space",
 ]);
 
+const sectionTypeAliases: Record<string, string> = {
+  bullet_list: "list",
+  bulleted_list: "list",
+  unordered_list: "list",
+  ordered_list: "list",
+  bullet_points: "list",
+  bullets: "list",
+  paragraph: "text",
+  heading: "section_title",
+  title: "section_title",
+  compare_table: "comparison_table",
+  comparison: "comparison_table",
+  chart: "image",
+  spacer: "empty_space",
+};
+
 const normalizeSectionType = (value: unknown): string => {
   if (typeof value !== "string") return "text";
   const normalized = value.trim().toLowerCase().replace(/\s+/g, "_");
-  return validSectionTypes.has(normalized) ? normalized : "text";
+  const aliasResolved = sectionTypeAliases[normalized] ?? normalized;
+  return validSectionTypes.has(aliasResolved) ? aliasResolved : "text";
+};
+
+const inferSectionTypeFromMessage = (messageText: string): string => {
+  if (/\b(bullet|bulleted|unordered|ordered)\s+list\b/i.test(messageText)) return "list";
+  if (/\b(list|bullet|bullets)\b/i.test(messageText)) return "list";
+  if (/\b(comparison|compare)\b/i.test(messageText)) return "comparison_table";
+  if (/\btable\b/i.test(messageText)) return "table";
+  if (/\b(timeline|milestone|roadmap)\b/i.test(messageText)) return "timeline";
+  if (/\b(embed|iframe|video|youtube)\b/i.test(messageText)) return "embed";
+  if (/\b(image|illustration|diagram|chart)\b/i.test(messageText)) return "image";
+  if (/\bsubsection\b/i.test(messageText)) return "subsection";
+  if (/\b(section\s+title|heading)\b/i.test(messageText)) return "section_title";
+  if (/\bpage\s*break\b/i.test(messageText)) return "page_break";
+  if (/\b(empty\s*space|spacer)\b/i.test(messageText)) return "empty_space";
+  return "text";
 };
 
 const buildDefaultContent = (sectionType: string): Record<string, unknown> => {
@@ -600,6 +632,45 @@ const isChapterOnlyIntent = (messageText: string): boolean => {
   return mentionsChapter && !mentionsTask && !mentionsSection;
 };
 
+const hasExplicitChapterAction = (messageText: string): boolean => {
+  const chapterActionPattern =
+    /\b(add|create|update|rename|delete|remove|edit|change)\b[^\n.!?]{0,40}\b(chapter|subchapter)\b/i;
+  const reversePattern =
+    /\b(chapter|subchapter)\b[^\n.!?]{0,30}\b(add|create|update|rename|delete|remove|edit|change)\b/i;
+  return chapterActionPattern.test(messageText) || reversePattern.test(messageText);
+};
+
+const hasExplicitTaskAction = (messageText: string): boolean => {
+  const taskActionPattern =
+    /\b(add|create|update|rename|delete|remove|edit|change)\b[^\n.!?]{0,40}\b(task|subtask|h1|h2)\b/i;
+  const reversePattern =
+    /\b(task|subtask|h1|h2)\b[^\n.!?]{0,30}\b(add|create|update|rename|delete|remove|edit|change)\b/i;
+  return taskActionPattern.test(messageText) || reversePattern.test(messageText);
+};
+
+const isTaskPrimaryIntent = (messageText: string): boolean => {
+  const mentionsTask = /\b(task|subtask|h1|h2)\b/i.test(messageText);
+  if (!mentionsTask) return false;
+  return !hasExplicitChapterAction(messageText);
+};
+
+const isSectionOnlyIntent = (messageText: string): boolean => {
+  const mentionsSection =
+    /\b(section|subsection|paragraph|text|content|list|table|comparison|timeline|embed|page break)\b/i.test(
+      messageText
+    );
+  const mentionsTask = /\b(task|subtask|h1|h2)\b/i.test(messageText);
+  return mentionsSection && !mentionsTask && !hasExplicitChapterAction(messageText) && !hasExplicitTaskAction(messageText);
+};
+
+const extractQuotedChapterTarget = (messageText: string): string | null => {
+  const targetMatch =
+    /\b(?:to|in|under)\s+["“](.+?)["”]\s+chapter\b/i.exec(messageText) ??
+    /\bchapter\s+["“](.+?)["”]/i.exec(messageText);
+  const title = targetMatch?.[1]?.trim();
+  return title && title.length > 0 ? title : null;
+};
+
 const buildChapterSignature = (params: {
   title: string;
   parentId: string | null;
@@ -775,11 +846,18 @@ export async function POST(
     }
 
     const chapterOnlyIntent = isChapterOnlyIntent(messageText);
+    const taskPrimaryIntent = isTaskPrimaryIntent(messageText);
+    const sectionOnlyIntent = isSectionOnlyIntent(messageText);
     const chapterCreationIntent = extractChapterCreationIntent(messageText);
     const chapterToolNames = new Set([
       "propose_add_chapter",
       "propose_update_chapter",
       "propose_delete_chapter",
+    ]);
+    const sectionToolNames = new Set([
+      "propose_add_section",
+      "propose_update_section",
+      "propose_delete_section",
     ]);
     const existingChapterSignatures = new Set(
       chapterRefs.map((chapter) =>
@@ -808,6 +886,13 @@ export async function POST(
       .filter(Boolean)
       .join("\n\n");
     const systemPrompt = buildBusinessPlanSystemPrompt(combinedContext);
+    const aiMessageText =
+      selectedChapterRef &&
+      /\b(here|this section|this chapter|selected chapter|selected one|in this one)\b/i.test(
+        messageText
+      )
+        ? `${messageText}\n\nSelected chapter context: "${selectedChapterRef.title}" (id: ${selectedChapterRef.id}). Treat "here/this" as this chapter.`
+        : messageText;
 
     const historyMessages: Array<{ role: "user" | "assistant"; content: string }> = (
       conversationSnapshot?.messages ?? []
@@ -838,7 +923,7 @@ export async function POST(
       messages: [
         { role: "system", content: systemPrompt },
         ...historyMessages,
-        { role: "user", content: messageText },
+        { role: "user", content: aiMessageText },
       ],
       tools,
       tool_choice: "auto",
@@ -892,10 +977,11 @@ Do NOT mix tool types unless the user explicitly asks for multiple entity types.
             content: `${systemPrompt}
 
 You must call one or more tools when the user asks to create, update, delete, or structure chapters/sections/tasks.
+If selected UI context is provided, treat "here" or "this" as that selected target.
 If the request is ambiguous, ask a concise clarifying question.${retryHint}`,
           },
           ...historyMessages,
-          { role: "user", content: messageText },
+          { role: "user", content: aiMessageText },
         ],
         tools,
         tool_choice: "auto",
@@ -920,11 +1006,32 @@ If the request is ambiguous, ask a concise clarifying question.${retryHint}`,
       proposedData: Record<string, unknown>;
     }> = [];
     const skippedUpdates: string[] = [];
+    let ignoredChapterToolForTaskIntent = false;
+    let ignoredNonSectionToolForSectionIntent = false;
+    const pendingChangeInputSignatures = new Set<string>();
 
     for (const toolCall of toolCalls) {
       if (toolCall.type !== "function") continue;
       const functionName = toolCall.function.name;
       if (chapterOnlyIntent && !chapterToolNames.has(functionName)) {
+        continue;
+      }
+      if (sectionOnlyIntent && !sectionToolNames.has(functionName)) {
+        if (!ignoredNonSectionToolForSectionIntent) {
+          skippedUpdates.push(
+            "I treated this as a section request and ignored unrelated chapter/task proposals."
+          );
+          ignoredNonSectionToolForSectionIntent = true;
+        }
+        continue;
+      }
+      if (taskPrimaryIntent && chapterToolNames.has(functionName)) {
+        if (!ignoredChapterToolForTaskIntent) {
+          skippedUpdates.push(
+            "I treated this as a task request and ignored a mismatched chapter proposal."
+          );
+          ignoredChapterToolForTaskIntent = true;
+        }
         continue;
       }
       const mappedChangeType = TOOL_TO_CHANGE[functionName];
@@ -1127,7 +1234,12 @@ If the request is ambiguous, ask a concise clarifying question.${retryHint}`,
             break;
           }
 
-          const normalizedType = normalizeSectionType(args.sectionType);
+          const requestedSectionType = readStringArg(args, ["sectionType", "section_type", "type"]);
+          let normalizedType = normalizeSectionType(requestedSectionType);
+          const inferredSectionType = inferSectionTypeFromMessage(messageText);
+          if (normalizedType === "text" && inferredSectionType !== "text") {
+            normalizedType = inferredSectionType;
+          }
           const content =
             args.content && typeof args.content === "object"
               ? { type: normalizedType, ...(args.content as Record<string, unknown>) }
@@ -1285,6 +1397,12 @@ If the request is ambiguous, ask a concise clarifying question.${retryHint}`,
               chapterRefs,
             });
             parentTaskId = resolvedH1Parent?.id ?? null;
+            if (!parentTaskId && selectedTaskRef) {
+              parentTaskId =
+                selectedTaskRef.hierarchy_level === "h1"
+                  ? selectedTaskRef.id
+                  : selectedTaskRef.parentTaskId;
+            }
           }
 
           if (hierarchyLevel === "h2" && !parentTaskId) {
@@ -1312,7 +1430,15 @@ If the request is ambiguous, ask a concise clarifying question.${retryHint}`,
           targetId = readStringArg(args, ["taskId", "task_id"]) ?? null;
 
           if (!targetId) {
-            const requestedTitle = readStringArg(args, ["title", "taskTitle", "task_title"]);
+            const requestedTitle = readStringArg(args, [
+              "currentTitle",
+              "current_title",
+              "targetTitle",
+              "target_title",
+              "taskTitle",
+              "task_title",
+              "title",
+            ]);
             if (requestedTitle) {
               const byTitle = findTaskByNormalizedTitle(flattenedTasks, requestedTitle);
               targetId = byTitle?.id ?? null;
@@ -1326,6 +1452,10 @@ If the request is ambiguous, ask a concise clarifying question.${retryHint}`,
               chapterRefs,
             });
             targetId = byChapterRef?.id ?? null;
+          }
+
+          if (!targetId && selectedTaskRef) {
+            targetId = selectedTaskRef.id;
           }
 
           if (!targetId) {
@@ -1379,15 +1509,31 @@ If the request is ambiguous, ask a concise clarifying question.${retryHint}`,
             break;
           }
 
-          const nextStatus = normalizeTaskStatus(args.status);
-          const nextTitle = readStringArg(args, ["title", "taskTitle", "task_title"]);
+          const nextStatus = normalizeTaskStatus(args.status ?? args.taskStatus);
+          const nextTitle = readStringArg(args, [
+            "newTitle",
+            "new_title",
+            "title",
+            "taskTitle",
+            "task_title",
+          ]);
+          const nextInstructions = readStringArg(args, [
+            "instructions",
+            "taskInstructions",
+            "task_instructions",
+          ]);
+          const nextAiPrompt = readStringArg(args, [
+            "aiPrompt",
+            "ai_prompt",
+            "prompt",
+          ]);
 
           proposedData = {
             ...(typeof nextTitle === "string" ? { title: nextTitle } : {}),
-            ...(typeof args.instructions === "string"
-              ? { instructions: args.instructions }
+            ...(typeof nextInstructions === "string"
+              ? { instructions: nextInstructions }
               : {}),
-            ...(typeof args.aiPrompt === "string" ? { ai_prompt: args.aiPrompt } : {}),
+            ...(typeof nextAiPrompt === "string" ? { ai_prompt: nextAiPrompt } : {}),
             ...(nextLevel != null ? { hierarchy_level: nextLevel } : {}),
             ...(nextParentResolved !== undefined ? { parent_task_id: nextParentResolved } : {}),
             ...(nextStatus ? { status: nextStatus } : {}),
@@ -1399,7 +1545,15 @@ If the request is ambiguous, ask a concise clarifying question.${retryHint}`,
           targetId = readStringArg(args, ["taskId", "task_id"]) ?? null;
 
           if (!targetId) {
-            const requestedTitle = readStringArg(args, ["title", "taskTitle", "task_title"]);
+            const requestedTitle = readStringArg(args, [
+              "currentTitle",
+              "current_title",
+              "targetTitle",
+              "target_title",
+              "taskTitle",
+              "task_title",
+              "title",
+            ]);
             if (requestedTitle) {
               const byTitle = findTaskByNormalizedTitle(flattenedTasks, requestedTitle);
               targetId = byTitle?.id ?? null;
@@ -1413,6 +1567,9 @@ If the request is ambiguous, ask a concise clarifying question.${retryHint}`,
               chapterRefs,
             });
             targetId = byChapterRef?.id ?? null;
+          }
+          if (!targetId && selectedTaskRef) {
+            targetId = selectedTaskRef.id;
           }
           if (!targetId) {
             skippedUpdates.push("I couldn't find the target task to delete.");
@@ -1435,7 +1592,11 @@ If the request is ambiguous, ask a concise clarifying question.${retryHint}`,
         continue;
       }
       if (hasProposedData || targetId) {
-        pendingChangeInputs.push({ changeType, targetId, proposedData });
+        const signature = `${changeType}::${targetId ?? "null"}::${JSON.stringify(proposedData)}`;
+        if (!pendingChangeInputSignatures.has(signature)) {
+          pendingChangeInputSignatures.add(signature);
+          pendingChangeInputs.push({ changeType, targetId, proposedData });
+        }
       }
     }
 
@@ -1474,6 +1635,58 @@ If the request is ambiguous, ask a concise clarifying question.${retryHint}`,
             },
           });
           plannedChapterSignatures.add(signature);
+        }
+      }
+    }
+
+    const hasSectionPendingChange = pendingChangeInputs.some((input) =>
+      input.changeType === "add_section" ||
+      input.changeType === "update_section" ||
+      input.changeType === "delete_section"
+    );
+
+    if (sectionOnlyIntent && !hasSectionPendingChange) {
+      let resolvedChapter = selectedChapterRef;
+      if (!resolvedChapter) {
+        const quotedChapterTitle = extractQuotedChapterTarget(messageText);
+        if (quotedChapterTitle) {
+          resolvedChapter = resolveChapterFromArgs({
+            args: { chapterTitle: quotedChapterTitle },
+            chapterRefs,
+          });
+        }
+      }
+      if (!resolvedChapter && chapterRefs.length === 1) {
+        resolvedChapter = chapterRefs[0] ?? null;
+      }
+
+      if (!resolvedChapter) {
+        skippedUpdates.push(
+          "I couldn't determine which chapter should receive this section. Please select a chapter or name it explicitly."
+        );
+      } else {
+        const sectionType = inferSectionTypeFromMessage(messageText);
+        const quotedContent = extractQuotedUpdate(messageText);
+        const content =
+          sectionType === "text" && quotedContent
+            ? { type: "text", text: quotedContent }
+            : sectionType === "list" && quotedContent
+              ? { type: "list", items: [quotedContent], ordered: false }
+              : buildDefaultContent(sectionType);
+        const fallbackProposedData = {
+          chapter_id: resolvedChapter.id,
+          chapter_title: resolvedChapter.title,
+          section_type: sectionType,
+          content,
+        };
+        const signature = `add_section::null::${JSON.stringify(fallbackProposedData)}`;
+        if (!pendingChangeInputSignatures.has(signature)) {
+          pendingChangeInputSignatures.add(signature);
+          pendingChangeInputs.push({
+            changeType: "add_section",
+            targetId: null,
+            proposedData: fallbackProposedData,
+          });
         }
       }
     }
