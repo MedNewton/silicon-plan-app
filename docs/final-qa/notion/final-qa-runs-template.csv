@@ -1,0 +1,3 @@
+Run ID,Date,Tester,Suite,Environment,Device,Viewport,Automated Checks,Outcome,P0 Count,P1 Count,P2 Count,Blocking Notes,Results Link
+,2026-02-17,,WS-018,Local,,,"npm run check",Not Started,0,0,0,,
+,2026-02-17,,CORE-020,Local,,,"npm run check",Not Started,0,0,0,,

@@ -13,6 +13,7 @@ This folder contains the final QA suites for the remaining release-blocking task
 - `ws-018-workspace-usability-qa-suite.md`
 - `core-020-core-missing-features-qa-suite.md`
 - `final-qa-results-template.md`
+- `notion/` (Notion-ready CSV imports + guide)
 
 ## Notes
 - These files define scope, test steps, expected outcomes, and pass criteria.
