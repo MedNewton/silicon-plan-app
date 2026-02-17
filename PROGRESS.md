@@ -4,10 +4,10 @@ Source of truth for tasks: `TASKS.md`
 
 ## Summary
 - Total scoped tasks: 68
-- `done`: 65
+- `done`: 66
 - `in_progress`: 0
 - `pending_qa`: 0
-- `todo`: 3
+- `todo`: 2
 - `blocked`: 0
 - **Note:** Counts now reflect all rows in `TASKS.md` as of 2026-02-17.
 
@@ -61,14 +61,14 @@ Source of truth for tasks: `TASKS.md`
 47. `AF-009` - Make generated pitch and SWOT outputs editable
 48. `AF-010` - Resolve DOCX/PPTX formatting regressions
 49. `WS-005` - Implement EN/IT language toggle
+50. `WS-006` - Localize key workspace pages and exports
 
 ## Reopened / Not Fully Done
 1. None (WS-016 and BPTS-006 passed manual QA on 2026-02-17)
 
 ## Todo (Immediate Next)
-1. `WS-006` - Localize key workspace pages and exports
-2. `WS-018` - Add workspace usability QA suite
-3. `CORE-020` - Add core missing features QA suite
+1. `WS-018` - Add workspace usability QA suite
+2. `CORE-020` - Add core missing features QA suite
 
 ## Recent Validation
 - `npm run typecheck`: pass
@@ -77,6 +77,15 @@ Source of truth for tasks: `TASKS.md`
 - WS-016 / BPTS-006 manual QA: pass
 
 ## Change Log
+- 2026-02-17: **WS-006 Complete** - Closed remaining localization gaps across workspace setup/settings/manage surfaces (no DB migration required).
+  - Localized shared AI assist action menu labels in `src/components/workspaceSettings/AiFieldActionButton.tsx`.
+  - Localized generic delete modal action labels in `src/components/workspaceManage/business-plan/ConfirmDeleteModal.tsx`.
+  - Localized Business Plan AI chat microcopy (input placeholder, empty state, typing state, pending-change labels/actions) in:
+    - `src/components/workspaceManage/business-plan/chat/ChatInput.tsx`
+    - `src/components/workspaceManage/business-plan/chat/ChatMessageList.tsx`
+    - `src/components/workspaceManage/business-plan/chat/PendingChangeCard.tsx`
+  - Localized canvas view route action/header labels in `src/components/workspaceManage/canvasModels/CanvasModelViewPage.tsx`.
+  - Validation: `npm run check` pass.
 - 2026-02-17: **WS-005 Complete** - Implemented EN/IT language toggle with persisted choice in app chrome (no DB migration required).
   - Added lightweight i18n layer:
     - `src/lib/i18n/locales.ts`

@@ -55,7 +55,7 @@ Status legend: `todo`, `in_progress`, `blocked`, `done`
 | WS-003 | P1 | done | Add invite actions `resend` and `revoke` | API + UI actions in Team/Users | WS-002 | Resend/revoke work with proper permission checks |
 | WS-004 | P1 | done | Add workspace delete capability | API `DELETE /api/workspaces/[workspaceId]` + warning dialog | None | Owner can delete workspace with explicit confirmation |
 | WS-005 | P1 | done | Implement EN/IT language toggle | Toggle on main pages + persisted choice | None | UI switches language without breaking flows |
-| WS-006 | P1 | todo | Localize key workspace pages and exports | Workspace setup/settings/manage and export labels localized | WS-005 | EN/IT visible in targeted pages and exports |
+| WS-006 | P1 | done | Localize key workspace pages and exports | Workspace setup/settings/manage and export labels localized | WS-005 | EN/IT visible in targeted pages and exports |
 | WS-007 | P1 | done | Rename confusing section labels | `Edit your workspace` -> `Setup Business` (or approved wording) | None | Terminology matches real function and is consistent |
 | WS-008 | P1 | done | Upgrade workspace AI actions beyond text correction | Add research + regenerate capability in setup/business sections | None | User can trigger research/regenerate in setup context |
 | WS-009 | P1 | done | Enable Excel uploads in AI Knowledge/Library | Accept `.xls/.xlsx` and process correctly | None | Excel file uploads succeed with useful status |

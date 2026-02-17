@@ -21,14 +21,14 @@ import {
   LeanCanvasLayout,
 } from "./layouts";
 import type { WorkspaceCanvasTemplateType, CanvasSectionItem } from "@/types/workspaces";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 export type CanvasModelViewPageProps = Readonly<{
   workspaceId: string;
   canvasId: string;
 }>;
 
-// Canvas model titles mapping
-const CANVAS_TITLES: Record<string, string> = {
+const CANVAS_TITLES_EN: Record<string, string> = {
   "business-model": "The Business Model Canvas",
   "four-quarters": "4 Quarters Canvas",
   "value-proposition": "Value Proposition Canvas",
@@ -37,15 +37,44 @@ const CANVAS_TITLES: Record<string, string> = {
   "lean": "Lean Canvas",
 };
 
+const CANVAS_TITLES_IT: Record<string, string> = {
+  "business-model": "Business Model Canvas",
+  "four-quarters": "Canvas 4 Trimestri",
+  "value-proposition": "Value Proposition Canvas",
+  "pitch": "Pitch Canvas",
+  "startup": "Startup Canvas",
+  "lean": "Lean Canvas",
+};
+
 const CanvasModelViewPage: FC<CanvasModelViewPageProps> = ({
   workspaceId,
   canvasId,
 }) => {
   const router = useRouter();
+  const { locale } = useLanguage();
   const [showExportSidebar, setShowExportSidebar] = useState(false);
   const canvasLayoutRef = useRef<HTMLDivElement | null>(null);
 
-  const canvasTitle = CANVAS_TITLES[canvasId] ?? "Canvas Model";
+  const copy =
+    locale === "it"
+      ? {
+          canvasTitles: CANVAS_TITLES_IT,
+          canvasFallbackTitle: "Modello canvas",
+          back: "Indietro",
+          create: "Crea",
+          download: "Scarica",
+          generateWithAi: "Genera con AI",
+        }
+      : {
+          canvasTitles: CANVAS_TITLES_EN,
+          canvasFallbackTitle: "Canvas Model",
+          back: "Back",
+          create: "Create",
+          download: "Download",
+          generateWithAi: "Generate With AI",
+        };
+
+  const canvasTitle = copy.canvasTitles[canvasId] ?? copy.canvasFallbackTitle;
   const templateType = canvasId as WorkspaceCanvasTemplateType;
 
   const handleBack = () => {
@@ -172,7 +201,7 @@ const CanvasModelViewPage: FC<CanvasModelViewPageProps> = ({
             }}
           >
             <ArrowBackIosNewIcon sx={{ fontSize: 16 }} />
-            <Typography sx={{ fontSize: 14, fontWeight: 500 }}>Back</Typography>
+            <Typography sx={{ fontSize: 14, fontWeight: 500 }}>{copy.back}</Typography>
           </Box>
 
           {/* Center - CREATE and DOWNLOAD buttons */}
@@ -191,7 +220,7 @@ const CanvasModelViewPage: FC<CanvasModelViewPageProps> = ({
                 },
               }}
             >
-              Create
+              {copy.create}
             </Button>
             <Button
               variant="text"
@@ -208,7 +237,7 @@ const CanvasModelViewPage: FC<CanvasModelViewPageProps> = ({
                 },
               }}
             >
-              Download
+              {copy.download}
             </Button>
           </Stack>
 
@@ -254,7 +283,7 @@ const CanvasModelViewPage: FC<CanvasModelViewPageProps> = ({
               },
             }}
           >
-            Generate With AI
+            {copy.generateWithAi}
           </Button>
         </Box>
 

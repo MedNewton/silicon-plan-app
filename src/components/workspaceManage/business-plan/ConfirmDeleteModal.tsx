@@ -12,6 +12,7 @@ import {
   Box,
 } from "@mui/material";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 export type ConfirmDeleteModalProps = {
   open: boolean;
@@ -32,6 +33,20 @@ const ConfirmDeleteModal: FC<ConfirmDeleteModalProps> = ({
   onConfirm,
   onCancel,
 }) => {
+  const { locale } = useLanguage();
+  const copy =
+    locale === "it"
+      ? {
+          cancel: "Annulla",
+          deleting: "Eliminazione...",
+          delete: "Elimina",
+        }
+      : {
+          cancel: "Cancel",
+          deleting: "Deleting...",
+          delete: "Delete",
+        };
+
   return (
     <Dialog
       open={open}
@@ -113,7 +128,7 @@ const ConfirmDeleteModal: FC<ConfirmDeleteModalProps> = ({
             },
           }}
         >
-          Cancel
+          {copy.cancel}
         </Button>
         <Button
           onClick={onConfirm}
@@ -136,7 +151,7 @@ const ConfirmDeleteModal: FC<ConfirmDeleteModalProps> = ({
             },
           }}
         >
-          {isDeleting ? "Deleting..." : "Delete"}
+          {isDeleting ? copy.deleting : copy.delete}
         </Button>
       </DialogActions>
     </Dialog>

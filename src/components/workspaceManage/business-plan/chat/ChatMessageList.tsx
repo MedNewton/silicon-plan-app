@@ -11,6 +11,7 @@ import type {
 } from "@/types/workspaces";
 import ChatMessage from "./ChatMessage";
 import PendingChangeCard from "./PendingChangeCard";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 type ChatMessageListProps = {
   messages: BusinessPlanAiMessage[];
@@ -35,6 +36,19 @@ const ChatMessageList: FC<ChatMessageListProps> = ({
   scrollRef,
   onScroll,
 }) => {
+  const { locale } = useLanguage();
+  const copy =
+    locale === "it"
+      ? {
+          emptyState:
+            "Inizia una conversazione con l'AI per costruire il tuo business plan.",
+          aiTyping: "L'AI sta scrivendo...",
+        }
+      : {
+          emptyState: "Start a conversation with the AI to build your business plan.",
+          aiTyping: "AI is typing...",
+        };
+
   return (
     <Box
       ref={scrollRef}
@@ -59,7 +73,7 @@ const ChatMessageList: FC<ChatMessageListProps> = ({
               py: 4,
             }}
           >
-            Start a conversation with the AI to build your business plan.
+            {copy.emptyState}
           </Typography>
         ) : (
           messages.map((message) => {
@@ -89,7 +103,7 @@ const ChatMessageList: FC<ChatMessageListProps> = ({
           <Stack direction="row" spacing={1} alignItems="center">
             <CircularProgress size={16} sx={{ color: "#4C6AD2" }} />
             <Typography sx={{ fontSize: 13, color: "#6B7280" }}>
-              AI is typing...
+              {copy.aiTyping}
             </Typography>
           </Stack>
         ) : null}

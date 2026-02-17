@@ -5,6 +5,7 @@ import type { FC, KeyboardEvent } from "react";
 import { useState } from "react";
 import { Box, IconButton, TextField, CircularProgress } from "@mui/material";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 type ChatInputProps = {
   onSend: (message: string) => Promise<void> | void;
@@ -15,9 +16,15 @@ type ChatInputProps = {
 const ChatInput: FC<ChatInputProps> = ({
   onSend,
   disabled = false,
-  placeholder = "Ask a question or request a modification...",
+  placeholder,
 }) => {
+  const { locale } = useLanguage();
   const [value, setValue] = useState("");
+  const defaultPlaceholder =
+    locale === "it"
+      ? "Fai una domanda o richiedi una modifica..."
+      : "Ask a question or request a modification...";
+  const resolvedPlaceholder = placeholder ?? defaultPlaceholder;
 
   const handleSend = async () => {
     const trimmed = value.trim();
@@ -59,7 +66,7 @@ const ChatInput: FC<ChatInputProps> = ({
           multiline
           minRows={1}
           maxRows={4}
-          placeholder={placeholder}
+          placeholder={resolvedPlaceholder}
           value={value}
           onChange={(event) => setValue(event.target.value)}
           onKeyDown={handleKeyDown}

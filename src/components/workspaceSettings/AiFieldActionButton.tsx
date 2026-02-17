@@ -17,6 +17,7 @@ import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
 import SpellcheckOutlinedIcon from "@mui/icons-material/SpellcheckOutlined";
 import AutorenewOutlinedIcon from "@mui/icons-material/AutorenewOutlined";
 import TravelExploreOutlinedIcon from "@mui/icons-material/TravelExploreOutlined";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 export type AiFieldAssistAction = "correct" | "regenerate" | "research";
 
@@ -31,7 +32,22 @@ const AiFieldActionButton = ({
   loading = false,
   onAction,
 }: AiFieldActionButtonProps) => {
+  const { locale } = useLanguage();
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+  const copy =
+    locale === "it"
+      ? {
+          tooltip: "Azioni AI",
+          correct: "Correggi",
+          regenerate: "Rigenera",
+          research: "Ricerca",
+        }
+      : {
+          tooltip: "AI actions",
+          correct: "Correct",
+          regenerate: "Regenerate",
+          research: "Research",
+        };
 
   const handleOpen = (event: MouseEvent<HTMLElement>) => {
     if (disabled || loading) return;
@@ -49,7 +65,7 @@ const AiFieldActionButton = ({
 
   return (
     <InputAdornment position="end" sx={{ alignSelf: "flex-start", mt: 0.6, mr: 0.4 }}>
-      <Tooltip title="AI actions">
+      <Tooltip title={copy.tooltip}>
         <span>
           <IconButton
             size="small"
@@ -85,19 +101,19 @@ const AiFieldActionButton = ({
           <ListItemIcon>
             <SpellcheckOutlinedIcon fontSize="small" />
           </ListItemIcon>
-          <ListItemText>Correct</ListItemText>
+          <ListItemText>{copy.correct}</ListItemText>
         </MenuItem>
         <MenuItem onClick={() => handleAction("regenerate")}>
           <ListItemIcon>
             <AutorenewOutlinedIcon fontSize="small" />
           </ListItemIcon>
-          <ListItemText>Regenerate</ListItemText>
+          <ListItemText>{copy.regenerate}</ListItemText>
         </MenuItem>
         <MenuItem onClick={() => handleAction("research")}>
           <ListItemIcon>
             <TravelExploreOutlinedIcon fontSize="small" />
           </ListItemIcon>
-          <ListItemText>Research</ListItemText>
+          <ListItemText>{copy.research}</ListItemText>
         </MenuItem>
       </Menu>
     </InputAdornment>
