@@ -26,6 +26,7 @@ import type {
   CanvasSectionItem,
 } from "@/types/workspaces";
 import type { AiSuggestion } from "./CanvasSection";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 // Section label mapping per template type
 const SECTION_LABELS: Record<string, Record<string, string>> = {
@@ -105,8 +106,77 @@ const getSectionIds = (templateType: WorkspaceCanvasTemplateType): string[] => {
   return Object.keys(SECTION_LABELS[templateType] ?? {});
 };
 
-const getSectionLabel = (templateType: WorkspaceCanvasTemplateType, sectionId: string): string => {
-  return SECTION_LABELS[templateType]?.[sectionId] ?? sectionId;
+const SECTION_LABELS_IT: Record<string, Record<string, string>> = {
+  "business-model": {
+    "key-partners": "Partner chiave",
+    "key-activities": "Attivita chiave",
+    "key-resources": "Risorse chiave",
+    "value-proposition": "Proposta di valore",
+    "customer-relationships": "Relazioni con i clienti",
+    channels: "Canali",
+    "customer-segments": "Segmenti clienti",
+    "cost-structure": "Struttura costi",
+    "revenue-streams": "Flussi di ricavi",
+  },
+  lean: {
+    problem: "Problema",
+    solution: "Soluzione",
+    "unique-value-proposition": "Proposta di valore unica",
+    "unfair-advantage": "Vantaggio competitivo",
+    "customer-segments": "Segmenti clienti",
+    "key-metrics": "Metriche chiave",
+    channels: "Canali",
+    "cost-structure": "Struttura costi",
+    "revenue-streams": "Flussi di ricavi",
+  },
+  startup: {
+    problem: "Problema",
+    solution: "Soluzione",
+    "customer-segments": "Segmenti clienti",
+    "unique-value-proposition": "Proposta di valore unica",
+    "unfair-advantage": "Vantaggio competitivo",
+    channels: "Canali",
+    "key-metrics": "Metriche chiave",
+    "cost-structure": "Struttura costi",
+    "revenue-streams": "Flussi di ricavi",
+  },
+  "value-proposition": {
+    "products-services": "Prodotti e servizi",
+    "pain-relievers": "Riduttori di pain",
+    "gain-creators": "Generatori di gain",
+    "customer-jobs": "Customer jobs",
+    pains: "Pain",
+    gains: "Gain",
+  },
+  pitch: {
+    problem: "Problema",
+    solution: "Soluzione",
+    "market-size": "Dimensione mercato",
+    "business-model": "Modello di business",
+    traction: "Traction",
+    team: "Team",
+    competition: "Concorrenza",
+    financials: "Finanze",
+    ask: "Richiesta",
+  },
+  "four-quarters": {
+    "q1-objectives": "Obiettivi Q1",
+    "q1-milestones": "Milestone Q1",
+    "q1-metrics": "Metriche Q1",
+    "q1-risks": "Rischi Q1",
+    "q2-objectives": "Obiettivi Q2",
+    "q2-milestones": "Milestone Q2",
+    "q2-metrics": "Metriche Q2",
+    "q2-risks": "Rischi Q2",
+    "q3-objectives": "Obiettivi Q3",
+    "q3-milestones": "Milestone Q3",
+    "q3-metrics": "Metriche Q3",
+    "q3-risks": "Rischi Q3",
+    "q4-objectives": "Obiettivi Q4",
+    "q4-milestones": "Milestone Q4",
+    "q4-metrics": "Metriche Q4",
+    "q4-risks": "Rischi Q4",
+  },
 };
 
 export type CanvasAskAiPanelProps = {
@@ -124,11 +194,63 @@ const CanvasAskAiPanel: FC<CanvasAskAiPanelProps> = ({
   onAddItem,
   onClose,
 }) => {
+  const { locale } = useLanguage();
   const [selectedSection, setSelectedSection] = useState<string>("");
   const [suggestions, setSuggestions] = useState<AiSuggestion[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isGeneratingAll, setIsGeneratingAll] = useState(false);
   const [allSuggestions, setAllSuggestions] = useState<Record<string, AiSuggestion[]>>({});
+
+  const labelsByTemplate = locale === "it" ? SECTION_LABELS_IT : SECTION_LABELS;
+  const copy =
+    locale === "it"
+      ? {
+          generatedSuggestions: "Generati {count} suggerimenti",
+          generatedAllSuggestions: "Generati {count} suggerimenti in tutte le sezioni",
+          failedGenerate: "Impossibile generare suggerimenti AI",
+          failedGenerateSome: "Impossibile generare suggerimenti per alcune sezioni",
+          itemAdded: "Elemento aggiunto alla sezione",
+          askAi: "Chiedi all'AI",
+          generateCanvasContent: "Genera contenuto canvas",
+          aiSuggestionsSubtitle: "Suggerimenti AI per le sezioni del canvas",
+          selectSection: "Seleziona sezione",
+          items: "elementi",
+          currentItems: "Elementi correnti",
+          noItems: "Nessun elemento",
+          draft: "BOZZA",
+          generating: "Generazione...",
+          generateForSection: "Genera per sezione",
+          aiSuggestions: "Suggerimenti AI",
+          dismiss: "Chiudi",
+          clickToAdd: "Clicca un suggerimento per aggiungerlo",
+          generatingAll: "Generazione completa...",
+          generateAllSections: "Genera tutte le sezioni",
+        }
+      : {
+          generatedSuggestions: "Generated {count} suggestions",
+          generatedAllSuggestions: "Generated {count} suggestions across all sections",
+          failedGenerate: "Failed to generate AI suggestions",
+          failedGenerateSome: "Failed to generate suggestions for some sections",
+          itemAdded: "Item added to section",
+          askAi: "Ask AI",
+          generateCanvasContent: "Generate Canvas Content",
+          aiSuggestionsSubtitle: "AI-powered suggestions for your canvas sections",
+          selectSection: "Select Section",
+          items: "items",
+          currentItems: "Current Items",
+          noItems: "No items yet",
+          draft: "Draft",
+          generating: "Generating...",
+          generateForSection: "Generate for Section",
+          aiSuggestions: "AI Suggestions",
+          dismiss: "Dismiss",
+          clickToAdd: "Click a suggestion to add it",
+          generatingAll: "Generating All...",
+          generateAllSections: "Generate All Sections",
+        };
+
+  const sectionLabelFor = (sectionId: string): string =>
+    labelsByTemplate[templateType]?.[sectionId] ?? sectionId;
 
   const sectionIds = getSectionIds(templateType);
 
@@ -165,15 +287,15 @@ const CanvasAskAiPanel: FC<CanvasAskAiPanelProps> = ({
         const newSuggestions = data.suggestions ?? [];
         setSuggestions(newSuggestions);
         setAllSuggestions((prev) => ({ ...prev, [sectionId]: newSuggestions }));
-        toast.success(`Generated ${newSuggestions.length} suggestions`);
+        toast.success(copy.generatedSuggestions.replace("{count}", String(newSuggestions.length)));
       } catch (err) {
         console.error("AI suggestion error:", err);
-        toast.error("Failed to generate AI suggestions");
+        toast.error(copy.failedGenerate);
       } finally {
         setIsLoading(false);
       }
     },
-    [workspaceId, templateType, sectionsData]
+    [workspaceId, templateType, sectionsData, copy.generatedSuggestions, copy.failedGenerate]
   );
 
   const handleGenerateAll = useCallback(async () => {
@@ -223,14 +345,23 @@ const CanvasAskAiPanel: FC<CanvasAskAiPanelProps> = ({
       if (selectedSection && newAllSuggestions[selectedSection]) {
         setSuggestions(newAllSuggestions[selectedSection]);
       }
-      toast.success(`Generated ${totalCount} suggestions across all sections`);
+      toast.success(copy.generatedAllSuggestions.replace("{count}", String(totalCount)));
     } catch (err) {
       console.error("Error generating all AI suggestions:", err);
-      toast.error("Failed to generate suggestions for some sections");
+      toast.error(copy.failedGenerateSome);
     } finally {
       setIsGeneratingAll(false);
     }
-  }, [isGeneratingAll, sectionIds, sectionsData, workspaceId, templateType, selectedSection]);
+  }, [
+    isGeneratingAll,
+    sectionIds,
+    sectionsData,
+    workspaceId,
+    templateType,
+    selectedSection,
+    copy.generatedAllSuggestions,
+    copy.failedGenerateSome,
+  ]);
 
   const handleSelectSuggestion = async (suggestion: AiSuggestion) => {
     if (!selectedSection) return;
@@ -241,7 +372,7 @@ const CanvasAskAiPanel: FC<CanvasAskAiPanelProps> = ({
     });
     // Remove the used suggestion from the list
     setSuggestions((prev) => prev.filter((s) => s !== suggestion));
-    toast.success("Item added to section");
+    toast.success(copy.itemAdded);
   };
 
   const handleSectionChange = (sectionId: string) => {
@@ -275,7 +406,7 @@ const CanvasAskAiPanel: FC<CanvasAskAiPanelProps> = ({
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <AutoFixHighRoundedIcon sx={{ color: "#4C6AD2", fontSize: 20 }} />
           <Typography sx={{ fontSize: 14, fontWeight: 700, color: "#1E3A8A" }}>
-            Ask AI
+            {copy.askAi}
           </Typography>
         </Box>
         <IconButton onClick={onClose} size="small" sx={{ color: "#6B7280" }}>
@@ -286,10 +417,10 @@ const CanvasAskAiPanel: FC<CanvasAskAiPanelProps> = ({
       {/* Subtitle */}
       <Box sx={{ px: 2, py: 1.25, borderBottom: "1px solid #EEF2F7", bgcolor: "#FFFFFF" }}>
         <Typography sx={{ fontSize: 12.5, fontWeight: 600, color: "#1E293B" }}>
-          Generate Canvas Content
+          {copy.generateCanvasContent}
         </Typography>
         <Typography sx={{ fontSize: 11.5, color: "#64748B" }}>
-          AI-powered suggestions for your canvas sections
+          {copy.aiSuggestionsSubtitle}
         </Typography>
       </Box>
 
@@ -308,10 +439,10 @@ const CanvasAskAiPanel: FC<CanvasAskAiPanelProps> = ({
       >
         {/* Section selector */}
         <FormControl fullWidth size="small">
-          <InputLabel sx={{ fontSize: 13 }}>Select Section</InputLabel>
+          <InputLabel sx={{ fontSize: 13 }}>{copy.selectSection}</InputLabel>
           <Select
             value={selectedSection}
-            label="Select Section"
+            label={copy.selectSection}
             onChange={(e) => handleSectionChange(e.target.value)}
             sx={{
               fontSize: 13,
@@ -332,11 +463,11 @@ const CanvasAskAiPanel: FC<CanvasAskAiPanelProps> = ({
               <MenuItem key={id} value={id} sx={{ fontSize: 13 }}>
                 <Stack direction="row" spacing={1} alignItems="center">
                   <Typography sx={{ fontSize: 13 }}>
-                    {getSectionLabel(templateType, id)}
+                    {sectionLabelFor(id)}
                   </Typography>
                   {(sectionsData[id]?.length ?? 0) > 0 && (
                     <Typography sx={{ fontSize: 11, color: "#9CA3AF" }}>
-                      ({sectionsData[id]?.length} items)
+                      ({sectionsData[id]?.length} {copy.items})
                     </Typography>
                   )}
                 </Stack>
@@ -349,11 +480,11 @@ const CanvasAskAiPanel: FC<CanvasAskAiPanelProps> = ({
         {selectedSection && (
           <Box>
             <Typography sx={{ fontSize: 11, fontWeight: 600, color: "#6B7280", mb: 0.75 }}>
-              Current Items ({(sectionsData[selectedSection] ?? []).length})
+              {copy.currentItems} ({(sectionsData[selectedSection] ?? []).length})
             </Typography>
             {(sectionsData[selectedSection] ?? []).length === 0 ? (
               <Typography sx={{ fontSize: 12, color: "#9CA3AF", fontStyle: "italic" }}>
-                No items yet
+                {copy.noItems}
               </Typography>
             ) : (
               <Stack spacing={0.5}>
@@ -386,7 +517,7 @@ const CanvasAskAiPanel: FC<CanvasAskAiPanelProps> = ({
                             letterSpacing: 0.25,
                           }}
                         >
-                          Draft
+                          {copy.draft}
                         </Typography>
                       )}
                     </Stack>
@@ -426,7 +557,7 @@ const CanvasAskAiPanel: FC<CanvasAskAiPanelProps> = ({
             "&:disabled": { bgcolor: "#A5B4FC", color: "#FFFFFF" },
           }}
         >
-          {isLoading ? "Generating..." : "Generate for Section"}
+          {isLoading ? copy.generating : copy.generateForSection}
         </Button>
 
         {/* AI Suggestions */}
@@ -441,7 +572,7 @@ const CanvasAskAiPanel: FC<CanvasAskAiPanelProps> = ({
               <Stack direction="row" spacing={0.5} alignItems="center">
                 <AutoAwesomeOutlinedIcon sx={{ fontSize: 14, color: "#4C6AD2" }} />
                 <Typography sx={{ fontSize: 11, fontWeight: 600, color: "#4C6AD2" }}>
-                  AI Suggestions ({suggestions.length})
+                  {copy.aiSuggestions} ({suggestions.length})
                 </Typography>
               </Stack>
               <Button
@@ -449,7 +580,7 @@ const CanvasAskAiPanel: FC<CanvasAskAiPanelProps> = ({
                 onClick={() => setSuggestions([])}
                 sx={{ fontSize: 10, color: "#6B7280", textTransform: "none", minWidth: 0 }}
               >
-                Dismiss
+                {copy.dismiss}
               </Button>
             </Stack>
             <Stack spacing={0.75}>
@@ -486,7 +617,7 @@ const CanvasAskAiPanel: FC<CanvasAskAiPanelProps> = ({
                 </Box>
               ))}
               <Typography sx={{ fontSize: 10, color: "#9CA3AF", textAlign: "center" }}>
-                Click a suggestion to add it
+                {copy.clickToAdd}
               </Typography>
             </Stack>
           </Box>
@@ -532,7 +663,7 @@ const CanvasAskAiPanel: FC<CanvasAskAiPanelProps> = ({
             },
           }}
         >
-          {isGeneratingAll ? "Generating All..." : "Generate All Sections"}
+          {isGeneratingAll ? copy.generatingAll : copy.generateAllSections}
         </Button>
       </Box>
     </Box>

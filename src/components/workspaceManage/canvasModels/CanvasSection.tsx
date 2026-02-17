@@ -19,6 +19,7 @@ import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import type { GeneratedContentStatus } from "@/types/workspaces";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 export type CanvasSectionItem = {
   id: string;
@@ -46,6 +47,111 @@ export type CanvasSectionProps = Readonly<{
   sx?: object;
 }>;
 
+const IT_TITLE_MAP: Record<string, string> = {
+  "KEY PARTNERS": "PARTNER CHIAVE",
+  "Key Activities": "Attivita chiave",
+  "Value Proposition": "Proposta di valore",
+  "Customer Relationships": "Relazioni con i clienti",
+  "Customer Segments": "Segmenti clienti",
+  "Key Resources": "Risorse chiave",
+  Channels: "Canali",
+  "Cost Structure": "Struttura costi",
+  "Revenue Streams": "Flussi di ricavi",
+  PROBLEM: "PROBLEMA",
+  Solution: "Soluzione",
+  "Unique Value Proposition": "Proposta di valore unica",
+  "Unfair Advantage": "Vantaggio competitivo",
+  "Key Metrics": "Metriche chiave",
+  Objectives: "Obiettivi",
+  Milestones: "Milestone",
+  "Risks & Owners": "Rischi e responsabili",
+  "Products & Services": "Prodotti e servizi",
+  "Pain Relievers": "Riduttori di pain",
+  "Gain Creators": "Generatori di gain",
+  "Customer Jobs": "Customer jobs",
+  Pains: "Pain",
+  Gains: "Gain",
+  Hook: "Hook",
+  Problem: "Problema",
+  "Product Demo": "Demo prodotto",
+  "Market Size": "Dimensione mercato",
+  "Go-to-Market": "Go-to-market",
+  Traction: "Traction",
+  Team: "Team",
+  Competition: "Concorrenza",
+  Financials: "Finanze",
+  "Business Model": "Modello di business",
+  "The Ask": "La richiesta",
+  "UNIQUE VALUE PROPOSITION": "PROPOSTA DI VALORE UNICA",
+};
+
+const IT_PLACEHOLDER_MAP: Record<string, string> = {
+  "Who are our key partners?": "Chi sono i nostri partner chiave?",
+  "What key activities do our value propositions require?":
+    "Quali attivita chiave richiedono le nostre proposte di valore?",
+  "What value do we deliver to the customer?": "Quale valore offriamo al cliente?",
+  "What type of relationship does each customer segment expect?":
+    "Che tipo di relazione si aspetta ogni segmento cliente?",
+  "For whom are we creating value?": "Per chi stiamo creando valore?",
+  "What key resources do our value propositions require?":
+    "Quali risorse chiave richiedono le nostre proposte di valore?",
+  "Through which channels do our customers want to be reached?":
+    "Attraverso quali canali i clienti vogliono essere raggiunti?",
+  "What are the most important costs inherent in our business model?":
+    "Quali sono i costi piu importanti del nostro modello di business?",
+  "For what value are our customers really willing to pay?":
+    "Per quale valore i nostri clienti sono davvero disposti a pagare?",
+  "List your top 1-3 problems. What existing alternatives do customers use?":
+    "Elenca i tuoi 1-3 problemi principali. Quali alternative esistenti usano i clienti?",
+  "Outline a possible solution for each problem":
+    "Descrivi una possibile soluzione per ciascun problema",
+  "Single, clear, compelling message that turns an unaware visitor into an interested prospect":
+    "Messaggio unico, chiaro e convincente che trasformi un visitatore in un potenziale cliente",
+  "Something that cannot be easily copied or bought":
+    "Qualcosa che non possa essere copiato o comprato facilmente",
+  "List your target customers and users. Who are your early adopters?":
+    "Elenca clienti target e utenti. Chi sono i tuoi early adopter?",
+  "List the key numbers that tell you how your business is doing":
+    "Elenca i numeri chiave che indicano l'andamento del business",
+  "List your path to customers (inbound or outbound)":
+    "Elenca i canali per raggiungere i clienti (inbound o outbound)",
+  "List your fixed and variable costs": "Elenca costi fissi e variabili",
+  "List your sources of revenue": "Elenca le fonti di ricavo",
+  "What products and services do you offer?": "Quali prodotti e servizi offri?",
+  "How do you alleviate customer pains?": "Come riduci i pain dei clienti?",
+  "How do you create customer gains?": "Come crei gain per i clienti?",
+  "What jobs are customers trying to get done?":
+    "Quali lavori i clienti stanno cercando di svolgere?",
+  "What frustrates your customers?": "Cosa frustra i tuoi clienti?",
+  "What outcomes do customers want to achieve?":
+    "Quali risultati vogliono raggiungere i clienti?",
+  "What's your attention-grabbing opening?": "Qual e la tua apertura piu efficace?",
+  "What problem are you solving?": "Quale problema stai risolvendo?",
+  "How do you solve this problem?": "Come risolvi questo problema?",
+  "How does your product work?": "Come funziona il tuo prodotto?",
+  "How big is the opportunity?": "Quanto e grande l'opportunita?",
+  "How will you reach customers?": "Come raggiungerai i clienti?",
+  "What progress have you made?": "Quali progressi hai fatto?",
+  "How do you make money?": "Come guadagni?",
+  "Who are your competitors?": "Chi sono i tuoi concorrenti?",
+  "Who is on your team?": "Chi fa parte del tuo team?",
+  "What are your projections?": "Quali sono le tue proiezioni?",
+  "What are you asking for?": "Cosa stai chiedendo?",
+  "What problem are you solving? What's the current alternative?":
+    "Quale problema risolvi? Qual e l'alternativa attuale?",
+  "What is your proposed solution? How does it work?":
+    "Qual e la soluzione proposta? Come funziona?",
+  "Who are your target customers? Who are early adopters?":
+    "Chi sono i clienti target? Chi sono gli early adopter?",
+  "What is your single, clear, compelling message that states why you are different and worth buying?":
+    "Qual e il tuo messaggio unico, chiaro e convincente che spiega perche sei diverso e da scegliere?",
+  "What can't be easily copied or bought?":
+    "Cosa non puo essere copiato o comprato facilmente?",
+  "What key metrics will you track?": "Quali metriche chiave traccerai?",
+  "What are your fixed and variable costs?": "Quali sono i tuoi costi fissi e variabili?",
+  "How will you make money?": "Come farai soldi?",
+};
+
 const CanvasSection: FC<CanvasSectionProps> = ({
   title,
   placeholder = "Who are our key partners?",
@@ -59,6 +165,7 @@ const CanvasSection: FC<CanvasSectionProps> = ({
   onDismissAISuggestions,
   sx = {},
 }) => {
+  const { locale } = useLanguage();
   const [isHovered, setIsHovered] = useState(false);
   const [isAddButtonHovered, setIsAddButtonHovered] = useState(false);
   const [isAddingItem, setIsAddingItem] = useState(false);
@@ -68,6 +175,45 @@ const CanvasSection: FC<CanvasSectionProps> = ({
   const [editItemTitle, setEditItemTitle] = useState("");
   const [editItemDescription, setEditItemDescription] = useState("");
   const [editItemStatus, setEditItemStatus] = useState<GeneratedContentStatus>("final");
+
+  const copy =
+    locale === "it"
+      ? {
+          addStory: "Aggiungi nota",
+          titlePlaceholder: "Titolo",
+          descriptionPlaceholder: "Descrizione (opzionale)",
+          cancel: "Annulla",
+          save: "Salva",
+          aiGenerating: "Generazione suggerimenti AI...",
+          aiSuggestions: "Suggerimenti AI",
+          clickToAdd: "Clicca un suggerimento per aggiungerlo",
+          setAsFinal: "Imposta finale",
+          setAsDraft: "Imposta bozza",
+          draft: "BOZZA",
+          final: "FINALE",
+          finalize: "Finalizza",
+          markDraft: "Bozza",
+        }
+      : {
+          addStory: "Add Story",
+          titlePlaceholder: "Title",
+          descriptionPlaceholder: "Description (optional)",
+          cancel: "Cancel",
+          save: "Save",
+          aiGenerating: "Generating AI suggestions...",
+          aiSuggestions: "AI Suggestions",
+          clickToAdd: "Click a suggestion to add it",
+          setAsFinal: "Set as Final",
+          setAsDraft: "Set as Draft",
+          draft: "Draft",
+          final: "Final",
+          finalize: "Finalize",
+          markDraft: "Draft",
+        };
+
+  const resolvedTitle = locale === "it" ? IT_TITLE_MAP[title] ?? title : title;
+  const resolvedPlaceholder =
+    locale === "it" ? IT_PLACEHOLDER_MAP[placeholder] ?? placeholder : placeholder;
 
   const handleAddClick = () => {
     setIsAddingItem(true);
@@ -148,9 +294,9 @@ const CanvasSection: FC<CanvasSectionProps> = ({
   };
 
   const placeholderItems: CanvasSectionItem[] = [
-    { id: "placeholder-1", title: placeholder, description: "" },
-    { id: "placeholder-2", title: placeholder, description: "" },
-    { id: "placeholder-3", title: placeholder, description: "" },
+    { id: "placeholder-1", title: resolvedPlaceholder, description: "" },
+    { id: "placeholder-2", title: resolvedPlaceholder, description: "" },
+    { id: "placeholder-3", title: resolvedPlaceholder, description: "" },
   ];
 
   const displayItems: CanvasSectionItem[] = items.length > 0 ? items : placeholderItems;
@@ -185,10 +331,10 @@ const CanvasSection: FC<CanvasSectionProps> = ({
               fontSize: 13,
               fontWeight: 700,
               color: "#111827",
-              textTransform: title === title.toUpperCase() ? "uppercase" : "none",
+              textTransform: resolvedTitle === resolvedTitle.toUpperCase() ? "uppercase" : "none",
             }}
           >
-            {title}
+            {resolvedTitle}
           </Typography>
         </Stack>
 
@@ -227,7 +373,7 @@ const CanvasSection: FC<CanvasSectionProps> = ({
                 overflow: "hidden",
               }}
             >
-              Add Story
+              {copy.addStory}
             </Typography>
           </Box>
         </Fade>
@@ -254,7 +400,7 @@ const CanvasSection: FC<CanvasSectionProps> = ({
           >
             <TextField
               fullWidth
-              placeholder="Title"
+              placeholder={copy.titlePlaceholder}
               value={newItemTitle}
               onChange={(e) => setNewItemTitle(e.target.value)}
               variant="standard"
@@ -291,7 +437,7 @@ const CanvasSection: FC<CanvasSectionProps> = ({
             />
             <TextField
               fullWidth
-              placeholder="Description (optional)"
+              placeholder={copy.descriptionPlaceholder}
               value={newItemDescription}
               onChange={(e) => setNewItemDescription(e.target.value)}
               variant="standard"
@@ -356,7 +502,7 @@ const CanvasSection: FC<CanvasSectionProps> = ({
                     },
                   }}
                 >
-                  Cancel
+                  {copy.cancel}
                 </Button>
                 <Button
                   size="small"
@@ -379,7 +525,7 @@ const CanvasSection: FC<CanvasSectionProps> = ({
                     },
                   }}
                 >
-                  Save
+                  {copy.save}
                 </Button>
               </Stack>
             </Stack>
@@ -402,7 +548,7 @@ const CanvasSection: FC<CanvasSectionProps> = ({
           >
             <CircularProgress size={18} sx={{ color: "#4C6AD2" }} />
             <Typography sx={{ fontSize: 13, color: "#4C6AD2", fontWeight: 500 }}>
-              Generating AI suggestions...
+              {copy.aiGenerating}
             </Typography>
           </Box>
         )}
@@ -427,7 +573,7 @@ const CanvasSection: FC<CanvasSectionProps> = ({
               <Stack direction="row" spacing={0.5} alignItems="center">
                 <AutoAwesomeOutlinedIcon sx={{ fontSize: 16, color: "#4C6AD2" }} />
                 <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#4C6AD2" }}>
-                  AI Suggestions
+                  {copy.aiSuggestions}
                 </Typography>
               </Stack>
               <IconButton
@@ -482,7 +628,7 @@ const CanvasSection: FC<CanvasSectionProps> = ({
                 textAlign: "center",
               }}
             >
-              Click a suggestion to add it
+              {copy.clickToAdd}
             </Typography>
           </Box>
         )}
@@ -507,7 +653,7 @@ const CanvasSection: FC<CanvasSectionProps> = ({
                 >
                   <TextField
                     fullWidth
-                    placeholder="Title"
+                    placeholder={copy.titlePlaceholder}
                     value={editItemTitle}
                     onChange={(e) => setEditItemTitle(e.target.value)}
                     variant="standard"
@@ -537,7 +683,7 @@ const CanvasSection: FC<CanvasSectionProps> = ({
                   />
                   <TextField
                     fullWidth
-                    placeholder="Description (optional)"
+                    placeholder={copy.descriptionPlaceholder}
                     value={editItemDescription}
                     onChange={(e) => setEditItemDescription(e.target.value)}
                     variant="standard"
@@ -577,7 +723,7 @@ const CanvasSection: FC<CanvasSectionProps> = ({
                         },
                       }}
                     >
-                      {editItemStatus === "draft" ? "Set as Final" : "Set as Draft"}
+                      {editItemStatus === "draft" ? copy.setAsFinal : copy.setAsDraft}
                     </Button>
                   </Box>
                   <Stack
@@ -610,7 +756,7 @@ const CanvasSection: FC<CanvasSectionProps> = ({
                           },
                         }}
                       >
-                        Cancel
+                        {copy.cancel}
                       </Button>
                       <Button
                         size="small"
@@ -633,7 +779,7 @@ const CanvasSection: FC<CanvasSectionProps> = ({
                           },
                         }}
                       >
-                        Save
+                        {copy.save}
                       </Button>
                     </Stack>
                   </Stack>
@@ -690,7 +836,7 @@ const CanvasSection: FC<CanvasSectionProps> = ({
                           letterSpacing: 0.3,
                         }}
                       >
-                        {(item.generation_status ?? "final") === "draft" ? "Draft" : "Final"}
+                        {(item.generation_status ?? "final") === "draft" ? copy.draft : copy.final}
                       </Typography>
                       <Button
                         size="small"
@@ -713,8 +859,8 @@ const CanvasSection: FC<CanvasSectionProps> = ({
                         }}
                       >
                         {(item.generation_status ?? "final") === "draft"
-                          ? "Finalize"
-                          : "Draft"}
+                          ? copy.finalize
+                          : copy.markDraft}
                       </Button>
                     </>
                   )}

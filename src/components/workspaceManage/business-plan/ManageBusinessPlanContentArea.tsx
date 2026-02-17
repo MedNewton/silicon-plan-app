@@ -40,6 +40,7 @@ import { useBusinessPlan } from "./BusinessPlanContext";
 import ConfirmDeleteModal from "./ConfirmDeleteModal";
 import SectionEditorModal from "./SectionEditorModal";
 import SectionAiDrawer from "./SectionAiDrawer";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 import type {
   BusinessPlanChapterWithSections,
   BusinessPlanSection,
@@ -51,6 +52,58 @@ export type ManageBusinessPlanContentAreaProps = Readonly<{
   activeAiTab: ManageAiTab;
   onAiTabChange: (tab: ManageAiTab) => void;
 }>;
+
+function usePlanContentCopy() {
+  const { locale } = useLanguage();
+
+  if (locale === "it") {
+    return {
+      fallbackPlanTitle: "Business Plan",
+      fallbackExecutiveSummary: "Sommario esecutivo",
+      emptyPlanMessage:
+        "Il tuo business plan e vuoto. Aggiungi un capitolo per iniziare.",
+      addFirstChapter: "Aggiungi primo capitolo",
+      adding: "Aggiunta...",
+      selected: "Selezionato",
+      noChapterContent:
+        "Nessun contenuto ancora. Aggiungi sezioni dalla sidebar destra.",
+      copiedToClipboard: "Copiato negli appunti",
+      noImageUrl: "Nessun URL immagine impostato",
+      noTimelineEntries: "Nessuna voce timeline",
+      embeddedContent: "Contenuto incorporato",
+      emptySpace: "Spazio vuoto",
+      pageBreak: "Interruzione pagina",
+      unsupportedSection: "Sezione non supportata",
+      unsupportedType: "non supportato",
+      deleteSectionTitle: "Elimina sezione",
+      deleteSectionMessage:
+        "Sei sicuro di voler eliminare questa sezione? Questa azione non puo essere annullata.",
+      sectionSuffix: "sezione",
+    };
+  }
+
+  return {
+    fallbackPlanTitle: "Business Plan",
+    fallbackExecutiveSummary: "Executive Summary",
+    emptyPlanMessage: "Your business plan is empty. Add a chapter to get started.",
+    addFirstChapter: "Add First Chapter",
+    adding: "Adding...",
+    selected: "Selected",
+    noChapterContent: "No content yet. Add sections from the right sidebar.",
+    copiedToClipboard: "Copied to clipboard",
+    noImageUrl: "No image URL set",
+    noTimelineEntries: "No timeline entries",
+    embeddedContent: "Embedded content",
+    emptySpace: "Empty space",
+    pageBreak: "Page Break",
+    unsupportedSection: "Unsupported section",
+    unsupportedType: "unsupported",
+    deleteSectionTitle: "Delete Section",
+    deleteSectionMessage:
+      "Are you sure you want to delete this section? This action cannot be undone.",
+    sectionSuffix: "section",
+  };
+}
 
 const ManageBusinessPlanContentArea: FC<ManageBusinessPlanContentAreaProps> = ({
   activeTopTab: _activeTopTab,
@@ -92,6 +145,7 @@ export default ManageBusinessPlanContentArea;
 // ========== BUSINESS PLAN PREVIEW ==========
 
 const BusinessPlanPreview: FC = () => {
+  const copy = usePlanContentCopy();
   const { businessPlan, chapters, isLoading, error, updateSection } = useBusinessPlan();
   const [aiDrawerSection, setAiDrawerSection] = useState<BusinessPlanSection | null>(
     null
@@ -102,7 +156,7 @@ const BusinessPlanPreview: FC = () => {
     const items: Array<{ id: string; node: ReactNode }> = [];
     items.push({
       id: "plan-title",
-      node: <PlanTitleBlock title={businessPlan?.title ?? "Business Plan"} />,
+      node: <PlanTitleBlock title={businessPlan?.title ?? copy.fallbackPlanTitle} />,
     });
     if (chapters.length === 0) {
       items.push({ id: "empty-state", node: <EmptyState /> });
@@ -123,7 +177,7 @@ const BusinessPlanPreview: FC = () => {
       });
     }
     return items;
-  }, [businessPlan?.title, chapters]);
+  }, [businessPlan?.title, chapters, copy.fallbackPlanTitle]);
 
 
   if (isLoading) {
@@ -241,13 +295,14 @@ const PlanTitleBlock: FC<{ title: string }> = ({ title }) => (
 // ========== EMPTY STATE ==========
 
 const EmptyState: FC = () => {
+  const copy = usePlanContentCopy();
   const { addChapter } = useBusinessPlan();
   const [isAdding, setIsAdding] = useState(false);
 
   const handleAddChapter = async () => {
     setIsAdding(true);
     try {
-      await addChapter("Executive Summary");
+      await addChapter(copy.fallbackExecutiveSummary);
     } finally {
       setIsAdding(false);
     }
@@ -271,7 +326,7 @@ const EmptyState: FC = () => {
           textAlign: "center",
         }}
       >
-        Your business plan is empty. Add a chapter to get started.
+        {copy.emptyPlanMessage}
       </Typography>
       <Box
         onClick={isAdding ? undefined : handleAddChapter}
@@ -290,7 +345,7 @@ const EmptyState: FC = () => {
           },
         }}
       >
-        {isAdding ? "Adding..." : "Add First Chapter"}
+        {isAdding ? copy.adding : copy.addFirstChapter}
       </Box>
     </Box>
   );
@@ -304,6 +359,7 @@ type ChapterBlockProps = {
 };
 
 const ChapterBlock: FC<ChapterBlockProps> = ({ chapter, onOpenAi }) => {
+  const copy = usePlanContentCopy();
   const { reorderSections, selectedChapterId, setSelectedChapterId } = useBusinessPlan();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -373,7 +429,7 @@ const ChapterBlock: FC<ChapterBlockProps> = ({ chapter, onOpenAi }) => {
               letterSpacing: 0.5,
             }}
           >
-            Selected
+            {copy.selected}
           </Box>
         )}
       </Typography>
@@ -388,7 +444,7 @@ const ChapterBlock: FC<ChapterBlockProps> = ({ chapter, onOpenAi }) => {
             py: 2,
           }}
         >
-          No content yet. Add sections from the right sidebar.
+          {copy.noChapterContent}
         </Typography>
       ) : (
         <DndContext
@@ -472,6 +528,7 @@ const SectionBlock: FC<SectionBlockProps> = ({
   dragHandleProps,
   dragHandleRef,
 }) => {
+  const copy = usePlanContentCopy();
   const { updateSection, deleteSection, selectedSectionId, setSelectedSectionId } =
     useBusinessPlan();
   const [showEditorModal, setShowEditorModal] = useState(false);
@@ -526,8 +583,8 @@ const SectionBlock: FC<SectionBlockProps> = ({
       return content.text;
     }
     const contentType = (content as { type?: string } | null | undefined)?.type;
-    const fallbackType = contentType?.replace("_", " ") ?? "unsupported";
-    return `${fallbackType} section`;
+    const fallbackType = contentType?.replace("_", " ") ?? copy.unsupportedType;
+    return `${fallbackType} ${copy.sectionSuffix}`;
   };
 
   const getSectionPlainText = () => {
@@ -566,7 +623,7 @@ const SectionBlock: FC<SectionBlockProps> = ({
     if (!text) return;
     try {
       await navigator.clipboard.writeText(text);
-      toast.success("Copied to clipboard");
+      toast.success(copy.copiedToClipboard);
     } catch (err) {
       console.error("Failed to copy section content:", err);
     }
@@ -714,7 +771,7 @@ const SectionBlock: FC<SectionBlockProps> = ({
                 }}
               >
                 <Typography sx={{ fontSize: 14, color: "#9CA3AF" }}>
-                  No image URL set
+                  {copy.noImageUrl}
                 </Typography>
               </Box>
             )}
@@ -726,7 +783,7 @@ const SectionBlock: FC<SectionBlockProps> = ({
           <Box sx={{ pl: 2 }}>
             {content.entries.length === 0 ? (
               <Typography sx={{ fontSize: 14, color: "#9CA3AF", fontStyle: "italic" }}>
-                No timeline entries
+                {copy.noTimelineEntries}
               </Typography>
             ) : (
               content.entries.map((entry, idx) => (
@@ -779,7 +836,7 @@ const SectionBlock: FC<SectionBlockProps> = ({
             }}
           >
             <Typography sx={{ fontSize: 14, color: "#6B7280" }}>
-              Embedded content ({content.embed_type})
+              {copy.embeddedContent} ({content.embed_type})
             </Typography>
             {content.code && (
               <Typography sx={{ fontSize: 12, color: "#9CA3AF", mt: 0.5, wordBreak: "break-all" }}>
@@ -803,7 +860,7 @@ const SectionBlock: FC<SectionBlockProps> = ({
             }}
           >
             <Typography sx={{ fontSize: 12, color: "#9CA3AF" }}>
-              Empty space ({content.height ?? 40}px)
+              {copy.emptySpace} ({content.height ?? 40}px)
             </Typography>
           </Box>
         );
@@ -820,7 +877,7 @@ const SectionBlock: FC<SectionBlockProps> = ({
           >
             <Box sx={{ flex: 1, height: 1, bgcolor: "#D1D5DB" }} />
             <Typography sx={{ fontSize: 12, color: "#9CA3AF", textTransform: "uppercase" }}>
-              Page Break
+              {copy.pageBreak}
             </Typography>
             <Box sx={{ flex: 1, height: 1, bgcolor: "#D1D5DB" }} />
           </Box>
@@ -830,8 +887,8 @@ const SectionBlock: FC<SectionBlockProps> = ({
         return (
           <Typography sx={{ fontSize: 14, color: "#9CA3AF", fontStyle: "italic" }}>
             {typeof (content as { type?: string })?.type === "string"
-              ? `${(content as { type: string }).type.replace("_", " ")} section`
-              : "Unsupported section"}
+              ? `${(content as { type: string }).type.replace("_", " ")} ${copy.sectionSuffix}`
+              : copy.unsupportedSection}
           </Typography>
         );
     }
@@ -997,8 +1054,8 @@ const SectionBlock: FC<SectionBlockProps> = ({
 
       <ConfirmDeleteModal
         open={showDeleteModal}
-        title="Delete Section"
-        message="Are you sure you want to delete this section? This action cannot be undone."
+        title={copy.deleteSectionTitle}
+        message={copy.deleteSectionMessage}
         itemName={getSectionLabel()}
         isDeleting={isDeleting}
         onConfirm={() => void handleDelete()}

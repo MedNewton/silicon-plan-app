@@ -4,6 +4,7 @@ import type { FC } from "react";
 import { Box, Typography } from "@mui/material";
 import CanvasSection, { type CanvasSectionItem, type AiSuggestion } from "../CanvasSection";
 import type { CanvasSectionsData } from "@/types/workspaces";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 export type PitchCanvasLayoutProps = Readonly<{
   sectionsData?: CanvasSectionsData;
@@ -41,6 +42,17 @@ const PitchCanvasLayout: FC<PitchCanvasLayoutProps> = ({
   loadingAISections = [],
   onDismissAISuggestions,
 }) => {
+  const { locale } = useLanguage();
+  const copy =
+    locale === "it"
+      ? {
+          header: "Flusso Pitch Deck",
+          subtitle: "Struttura la tua presentazione per investitori slide per slide",
+        }
+      : {
+          header: "Pitch Deck Flow",
+          subtitle: "Structure your investor presentation slide by slide",
+        };
   const getItems = (sectionId: string): CanvasSectionItem[] => {
     return sectionsData[sectionId] ?? [];
   };
@@ -98,7 +110,7 @@ const PitchCanvasLayout: FC<PitchCanvasLayoutProps> = ({
             color: "#111827",
           }}
         >
-          Pitch Deck Flow
+          {copy.header}
         </Typography>
         <Typography
           sx={{
@@ -107,7 +119,7 @@ const PitchCanvasLayout: FC<PitchCanvasLayoutProps> = ({
             mt: 0.5,
           }}
         >
-          Structure your investor presentation slide by slide
+          {copy.subtitle}
         </Typography>
       </Box>
 

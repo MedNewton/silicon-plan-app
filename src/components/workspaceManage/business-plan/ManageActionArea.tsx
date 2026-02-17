@@ -36,6 +36,7 @@ import CodeOutlinedIcon from "@mui/icons-material/CodeOutlined";
 import type { ManageTopTab } from "./ManageTopTabs";
 import { useBusinessPlan } from "./BusinessPlanContext";
 import SectionEditorModal from "./SectionEditorModal";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 import type {
   BusinessPlanCurrencyCode,
   BusinessPlanSection,
@@ -175,6 +176,7 @@ const sectionTools: SectionTool[] = [
 ];
 
 const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId }) => {
+  const { locale } = useLanguage();
   const {
     selectedChapterId,
     setSelectedChapterId,
@@ -201,6 +203,132 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
   const [isSavingFinanceSection, setIsSavingFinanceSection] = useState(false);
   const [exportAnchorEl, setExportAnchorEl] = useState<null | HTMLElement>(null);
   const [isExporting, setIsExporting] = useState(false);
+
+  const copy =
+    locale === "it"
+      ? {
+          rightTabSections: "Sezioni",
+          rightTabFinance: "Finanza",
+          rightTabCharts: "Grafici",
+          selectChapterAlert:
+            "Seleziona un capitolo dal pannello a sinistra per aggiungere sezioni.",
+          addingSection: "Aggiunta sezione...",
+          financialPlanTitle: "Piano finanziario",
+          financialPlanDescription:
+            "Modifica le tabelle finanziarie direttamente e scegli la valuta predefinita usata nelle esportazioni.",
+          defaultCurrency: "Valuta predefinita",
+          savingCurrencyPreference: "Salvataggio preferenza valuta...",
+          addFinancialTable: "Aggiungi tabella finanziaria",
+          adding: "Aggiunta...",
+          noFinancialTables:
+            "Nessuna tabella finanziaria ancora. Aggiungine una oppure genera una tabella da Ask AI e modificala qui.",
+          comparison: "Confronto",
+          table: "Tabella",
+          edit: "Modifica",
+          focus: "Focus",
+          chartsTitle: "Grafici e visualizzazioni",
+          comingSoon: "Prossimamente",
+          chartsDescription:
+            "Aggiungi grafici, tabelle e visualizzazioni dati al tuo business plan.",
+          exportSettings: "Impostazioni export",
+          paperSize: "Formato pagina",
+          headingColor: "Colore titoli piano",
+          fontFamily: "Famiglia font",
+          fontSize: "Dimensione font",
+          currency: "Valuta",
+          includeBranding: "Includi branding",
+          preparing: "Preparazione...",
+          download: "Scarica",
+          unsupportedSectionFormat: "Formato sezione non supportato",
+          noHeadersYet: "Nessuna intestazione ancora",
+          toastSaveCurrencyFailed:
+            "Impossibile salvare la valuta. Riprova.",
+          toastCreateChapterFirst:
+            "Crea prima un capitolo per aggiungere una tabella finanziaria.",
+          toastFinancialTableAdded: "Tabella finanziaria aggiunta.",
+          toastFinancialTableAddFailed:
+            "Impossibile aggiungere la tabella finanziaria.",
+          toastFinancialTableUpdated: "Tabella finanziaria aggiornata.",
+          toastSaveChangesFailed:
+            "Impossibile salvare le modifiche.",
+          toastNoBusinessPlan: "Nessun business plan da esportare.",
+          toastDocxExported: "Esportato in DOCX con successo",
+          toastPdfExported: "Esportato in PDF con successo",
+          toastExportFailed:
+            "Impossibile esportare il business plan. Riprova.",
+          colorBlue: "Blu",
+          colorNavy: "Blu notte",
+          colorBlack: "Nero",
+        }
+      : {
+          rightTabSections: "Sections",
+          rightTabFinance: "Finance",
+          rightTabCharts: "Charts",
+          selectChapterAlert:
+            "Select a chapter from the left panel to add sections.",
+          addingSection: "Adding section...",
+          financialPlanTitle: "Financial Plan",
+          financialPlanDescription:
+            "Edit financial tables directly and pick the default currency used in exports.",
+          defaultCurrency: "Default Currency",
+          savingCurrencyPreference: "Saving currency preference...",
+          addFinancialTable: "Add Financial Table",
+          adding: "Adding...",
+          noFinancialTables:
+            "No financial tables yet. Add one, or generate a table from Ask AI and edit it here.",
+          comparison: "Comparison",
+          table: "Table",
+          edit: "Edit",
+          focus: "Focus",
+          chartsTitle: "Charts & Visualizations",
+          comingSoon: "Coming Soon",
+          chartsDescription:
+            "Add charts, graphs, and data visualizations to your business plan.",
+          exportSettings: "Export Settings",
+          paperSize: "Paper Size",
+          headingColor: "Plan Heading Color",
+          fontFamily: "Font Family",
+          fontSize: "Font Size",
+          currency: "Currency",
+          includeBranding: "Include Branding",
+          preparing: "Preparing...",
+          download: "Download",
+          unsupportedSectionFormat: "Unsupported section format",
+          noHeadersYet: "No headers yet",
+          toastSaveCurrencyFailed:
+            "Failed to save currency. Please try again.",
+          toastCreateChapterFirst:
+            "Create a chapter first to add a financial table.",
+          toastFinancialTableAdded: "Financial table added.",
+          toastFinancialTableAddFailed: "Failed to add financial table.",
+          toastFinancialTableUpdated: "Financial table updated.",
+          toastSaveChangesFailed: "Failed to save changes.",
+          toastNoBusinessPlan: "No business plan to export yet.",
+          toastDocxExported: "Exported as DOCX successfully",
+          toastPdfExported: "Exported as PDF successfully",
+          toastExportFailed:
+            "Failed to export business plan. Please try again.",
+          colorBlue: "Blue",
+          colorNavy: "Navy",
+          colorBlack: "Black",
+        };
+
+  const sectionToolLabels: Record<string, string> =
+    locale === "it"
+      ? {
+          "section-title": "Titolo sezione",
+          subsection: "Sottosezione",
+          text: "Testo",
+          image: "Immagine",
+          table: "Tabella",
+          list: "Elenco",
+          "comparison-table": "Confronto",
+          timeline: "Timeline",
+          embed: "Embed",
+          "page-break": "Interruzione pagina",
+          "empty-space": "Spazio vuoto",
+        }
+      : {};
 
   const financeTableSections = useMemo<FinanceTableSectionItem[]>(() => {
     const collect = (
@@ -296,7 +424,7 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
     } catch (error) {
       console.error("Failed to save currency setting:", error);
       setCurrencyCode(previousCurrency);
-      toast.error("Failed to save currency. Please try again.");
+      toast.error(copy.toastSaveCurrencyFailed);
     } finally {
       setIsSavingCurrency(false);
     }
@@ -305,7 +433,7 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
   const handleAddFinancialTable = async () => {
     const targetChapterId = resolveFinanceChapterId();
     if (!targetChapterId) {
-      toast.error("Create a chapter first to add a financial table.");
+      toast.error(copy.toastCreateChapterFirst);
       return;
     }
 
@@ -323,10 +451,10 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
         ],
       });
       setSelectedChapterId(targetChapterId);
-      toast.success("Financial table added.");
+      toast.success(copy.toastFinancialTableAdded);
     } catch (error) {
       console.error("Failed to add financial table:", error);
-      toast.error("Failed to add financial table.");
+      toast.error(copy.toastFinancialTableAddFailed);
     } finally {
       setIsAddingFinanceTable(false);
     }
@@ -339,10 +467,10 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
     try {
       await updateSection(editingFinanceSection.id, newContent);
       setEditingFinanceSection(null);
-      toast.success("Financial table updated.");
+      toast.success(copy.toastFinancialTableUpdated);
     } catch (error) {
       console.error("Failed to save financial table:", error);
-      toast.error("Failed to save changes.");
+      toast.error(copy.toastSaveChangesFailed);
     } finally {
       setIsSavingFinanceSection(false);
     }
@@ -352,7 +480,7 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
 
   const handleExport = async (format: "pdf" | "docx") => {
     if (!businessPlan) {
-      toast.error("No business plan to export yet.");
+      toast.error(copy.toastNoBusinessPlan);
       return;
     }
 
@@ -389,7 +517,7 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
           workspaceName,
         });
         downloadBlob(blob, `${safeName}.docx`);
-        toast.success("Exported as DOCX successfully");
+        toast.success(copy.toastDocxExported);
         return;
       }
 
@@ -434,10 +562,10 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
       const safeName2 = sanitizeFileName(businessPlan.title || "business-plan", "business-plan");
       pdf.save(`${safeName2}.pdf`);
       container.remove();
-      toast.success("Exported as PDF successfully");
+      toast.success(copy.toastPdfExported);
     } catch (error) {
       console.error("Failed to export:", error);
-      toast.error("Failed to export business plan. Please try again.");
+      toast.error(copy.toastExportFailed);
     } finally {
       setIsExporting(false);
     }
@@ -462,13 +590,13 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
 
   const getFinanceTableSummary = (section: BusinessPlanSection): string => {
     if (section.content.type !== "table" && section.content.type !== "comparison_table") {
-      return "Unsupported section format";
+      return copy.unsupportedSectionFormat;
     }
     const headers = section.content.headers?.filter(Boolean) ?? [];
     if (headers.length > 0) {
       return headers.join(" | ");
     }
-    return "No headers yet";
+    return copy.noHeadersYet;
   };
 
   // ---------------- DOWNLOAD TAB ----------------
@@ -496,7 +624,7 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
           <Typography
             sx={{ fontSize: 16, fontWeight: 600, letterSpacing: 0.2 }}
           >
-            Export Settings
+            {copy.exportSettings}
           </Typography>
         </Box>
 
@@ -524,7 +652,7 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
                   mb: 0.7,
                 }}
               >
-                Paper Size
+                {copy.paperSize}
               </Typography>
               <FormControl fullWidth size="small">
                 <Select
@@ -553,7 +681,7 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
                   mb: 0.7,
                 }}
               >
-                Plan Heading Color
+                {copy.headingColor}
               </Typography>
               <FormControl fullWidth size="small">
                 <Select
@@ -566,9 +694,9 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
                     bgcolor: "#FFFFFF",
                   }}
                 >
-                  <MenuItem value="Blue">Blue</MenuItem>
-                  <MenuItem value="Navy">Navy</MenuItem>
-                  <MenuItem value="Black">Black</MenuItem>
+                  <MenuItem value="Blue">{copy.colorBlue}</MenuItem>
+                  <MenuItem value="Navy">{copy.colorNavy}</MenuItem>
+                  <MenuItem value="Black">{copy.colorBlack}</MenuItem>
                 </Select>
               </FormControl>
             </Box>
@@ -582,7 +710,7 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
                   mb: 0.7,
                 }}
               >
-                Font Family
+                {copy.fontFamily}
               </Typography>
               <FormControl fullWidth size="small">
                 <Select
@@ -611,7 +739,7 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
                   mb: 0.7,
                 }}
               >
-                Font Size
+                {copy.fontSize}
               </Typography>
               <FormControl fullWidth size="small">
                 <Select
@@ -640,7 +768,7 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
                   mb: 0.7,
                 }}
               >
-                Currency
+                {copy.currency}
               </Typography>
               <FormControl fullWidth size="small">
                 <Select
@@ -662,7 +790,7 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
               </FormControl>
               {isSavingCurrency && (
                 <Typography sx={{ mt: 0.8, fontSize: 12, color: "#6B7280" }}>
-                  Saving currency preference...
+                  {copy.savingCurrencyPreference}
                 </Typography>
               )}
             </Box>
@@ -683,7 +811,7 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
                     }}
                   />
                 }
-                label="Include Branding"
+                label={copy.includeBranding}
                 sx={{
                   m: 0,
                   "& .MuiFormControlLabel-label": {
@@ -727,7 +855,7 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
               },
             }}
           >
-            {isExporting ? "Preparing..." : "Download"}
+            {isExporting ? copy.preparing : copy.download}
           </Button>
           <Menu
             anchorEl={exportAnchorEl}
@@ -802,10 +930,10 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
           const isActive = rightTab === tab;
           const label =
             tab === "sections"
-              ? "Sections"
+              ? copy.rightTabSections
               : tab === "finance"
-              ? "Finance"
-              : "Charts";
+              ? copy.rightTabFinance
+              : copy.rightTabCharts;
           return (
             <Button
               key={tab}
@@ -858,7 +986,7 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
                   "& .MuiAlert-icon": { fontSize: 18 },
                 }}
               >
-                Select a chapter from the left panel to add sections.
+                {copy.selectChapterAlert}
               </Alert>
             )}
 
@@ -875,7 +1003,7 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
               >
                 <CircularProgress size={16} sx={{ color: "#4C6AD2" }} />
                 <Typography sx={{ fontSize: 13, color: "#6B7280" }}>
-                  Adding section...
+                  {copy.addingSection}
                 </Typography>
               </Box>
             )}
@@ -938,8 +1066,8 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
                         color: isDisabled ? "#9CA3AF" : "#111827",
                         textAlign: "center",
                       }}
-                    >
-                      {tool.label}
+                      >
+                      {sectionToolLabels[tool.id] ?? tool.label}
                     </Typography>
                   </Box>
                 );
@@ -960,10 +1088,10 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
               }}
             >
               <Typography sx={{ fontSize: 15, fontWeight: 700, color: "#1F2A44", mb: 0.6 }}>
-                Financial Plan
+                {copy.financialPlanTitle}
               </Typography>
               <Typography sx={{ fontSize: 13, color: "#5F6B83", lineHeight: 1.55 }}>
-                Edit financial tables directly and pick the default currency used in exports.
+                {copy.financialPlanDescription}
               </Typography>
             </Box>
 
@@ -976,7 +1104,7 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
                   mb: 0.8,
                 }}
               >
-                Default Currency
+                {copy.defaultCurrency}
               </Typography>
               <FormControl fullWidth size="small">
                 <Select
@@ -998,7 +1126,7 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
               </FormControl>
               {isSavingCurrency && (
                 <Typography sx={{ mt: 0.8, fontSize: 12, color: "#6B7280" }}>
-                  Saving currency preference...
+                  {copy.savingCurrencyPreference}
                 </Typography>
               )}
             </Box>
@@ -1022,7 +1150,7 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
                 },
               }}
             >
-              {isAddingFinanceTable ? "Adding..." : "Add Financial Table"}
+              {isAddingFinanceTable ? copy.adding : copy.addFinancialTable}
             </Button>
 
             {financeTableSections.length === 0 ? (
@@ -1033,7 +1161,7 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
                   "& .MuiAlert-icon": { fontSize: 18 },
                 }}
               >
-                No financial tables yet. Add one, or generate a table from Ask AI and edit it here.
+                {copy.noFinancialTables}
               </Alert>
             ) : (
               <Stack spacing={1.3}>
@@ -1064,8 +1192,8 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
                         size="small"
                         label={
                           item.section.content.type === "comparison_table"
-                            ? "Comparison"
-                            : "Table"
+                            ? copy.comparison
+                            : copy.table
                         }
                         sx={{
                           height: 20,
@@ -1105,7 +1233,7 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
                           px: 0.8,
                         }}
                       >
-                        Edit
+                        {copy.edit}
                       </Button>
                       <Button
                         size="small"
@@ -1122,7 +1250,7 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
                           px: 0.8,
                         }}
                       >
-                        Focus
+                        {copy.focus}
                       </Button>
                     </Stack>
                   </Box>
@@ -1168,7 +1296,7 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
                 mb: 1,
               }}
             >
-              Charts & Visualizations
+              {copy.chartsTitle}
             </Typography>
             <Typography
               sx={{
@@ -1177,7 +1305,7 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
                 mb: 2,
               }}
             >
-              Coming Soon
+              {copy.comingSoon}
             </Typography>
             <Typography
               sx={{
@@ -1186,7 +1314,7 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
                 lineHeight: 1.6,
               }}
             >
-              Add charts, graphs, and data visualizations to your business plan.
+              {copy.chartsDescription}
             </Typography>
           </Box>
         )}

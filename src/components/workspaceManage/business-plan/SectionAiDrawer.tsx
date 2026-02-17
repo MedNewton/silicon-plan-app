@@ -28,6 +28,7 @@ import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import { toast } from "react-toastify";
 
 import type { BusinessPlanSection, BusinessPlanSectionContent } from "@/types/workspaces";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 type AiAction = "summarize" | "rephrase" | "simplify" | "detail" | "grammar" | "translate";
 
@@ -40,16 +41,15 @@ type SectionAiDrawerProps = {
 
 const ACTIONS: Array<{
   id: AiAction;
-  label: string;
   icon: typeof SummarizeRoundedIcon;
   hasMenu?: boolean;
 }> = [
-  { id: "summarize", label: "Summarize", icon: SummarizeRoundedIcon },
-  { id: "rephrase", label: "Rephrase/Paraphrase", icon: FormatQuoteRoundedIcon },
-  { id: "simplify", label: "Rewrite for Simplicity", icon: TextFieldsRoundedIcon },
-  { id: "detail", label: "Explain in Detail", icon: NotesRoundedIcon },
-  { id: "grammar", label: "Correct Grammar", icon: SpellcheckRoundedIcon },
-  { id: "translate", label: "Translate", icon: TranslateRoundedIcon, hasMenu: true },
+  { id: "summarize", icon: SummarizeRoundedIcon },
+  { id: "rephrase", icon: FormatQuoteRoundedIcon },
+  { id: "simplify", icon: TextFieldsRoundedIcon },
+  { id: "detail", icon: NotesRoundedIcon },
+  { id: "grammar", icon: SpellcheckRoundedIcon },
+  { id: "translate", icon: TranslateRoundedIcon, hasMenu: true },
 ];
 
 const TRANSLATE_LANGUAGES = [
@@ -126,11 +126,72 @@ const getSectionText = (section: BusinessPlanSection | null): string => {
 };
 
 const SectionAiDrawer: FC<SectionAiDrawerProps> = ({ open, section, onClose, onSave }) => {
+  const { locale } = useLanguage();
   const params = useParams<{ workspaceId: string }>();
   const workspaceId = params?.workspaceId;
   const [draftText, setDraftText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [translateAnchor, setTranslateAnchor] = useState<null | HTMLElement>(null);
+
+  const copy =
+    locale === "it"
+      ? {
+          actionSummarize: "Riassumi",
+          actionRephrase: "Parafrasa",
+          actionSimplify: "Semplifica",
+          actionDetail: "Spiega in dettaglio",
+          actionGrammar: "Correggi grammatica",
+          actionTranslate: "Traduci",
+          toastGenerateFailed: "Impossibile generare suggerimento AI",
+          toastSectionUpdated: "Sezione aggiornata",
+          writeWithAi: "Scrivi con AI",
+          save: "Salva",
+          aiEditingOnlyText:
+            "La modifica AI e disponibile solo per sezioni testuali.",
+          contentPlaceholder: "Scrivi o migliora il contenuto della sezione...",
+          listFormat: "Formato: un elemento elenco per riga.",
+          tableFormat:
+            'Formato: prima riga intestazioni, righe successive valori. Usa " | " tra le celle.',
+        }
+      : {
+          actionSummarize: "Summarize",
+          actionRephrase: "Rephrase/Paraphrase",
+          actionSimplify: "Rewrite for Simplicity",
+          actionDetail: "Explain in Detail",
+          actionGrammar: "Correct Grammar",
+          actionTranslate: "Translate",
+          toastGenerateFailed: "Failed to generate AI suggestion",
+          toastSectionUpdated: "Section updated",
+          writeWithAi: "Write with AI",
+          save: "Save",
+          aiEditingOnlyText:
+            "AI editing is available for text-based sections only.",
+          contentPlaceholder: "Write or refine your section content...",
+          listFormat: "Format: one list item per line.",
+          tableFormat:
+            'Format: first line headers, next lines rows. Use " | " between cells.',
+        };
+
+  const actionLabels: Record<AiAction, string> = {
+    summarize: copy.actionSummarize,
+    rephrase: copy.actionRephrase,
+    simplify: copy.actionSimplify,
+    detail: copy.actionDetail,
+    grammar: copy.actionGrammar,
+    translate: copy.actionTranslate,
+  };
+
+  const translateLanguages =
+    locale === "it"
+      ? [
+          { value: "English", label: "Inglese" },
+          { value: "French", label: "Francese" },
+          { value: "Spanish", label: "Spagnolo" },
+          { value: "Arabic", label: "Arabo" },
+          { value: "German", label: "Tedesco" },
+          { value: "Italian", label: "Italiano" },
+        ]
+      : TRANSLATE_LANGUAGES.map((lang) => ({ value: lang, label: lang }));
 
   useEffect(() => {
     if (open) {
@@ -167,7 +228,7 @@ const SectionAiDrawer: FC<SectionAiDrawerProps> = ({ open, section, onClose, onS
       setDraftText(data.text ?? "");
     } catch (err) {
       console.error("AI suggestion error:", err);
-      toast.error("Failed to generate AI suggestion");
+      toast.error(copy.toastGenerateFailed);
     } finally {
       setIsLoading(false);
     }
@@ -208,7 +269,7 @@ const SectionAiDrawer: FC<SectionAiDrawerProps> = ({ open, section, onClose, onS
     } else {
       await onSave({ type, text: draftText } as BusinessPlanSectionContent);
     }
-    toast.success("Section updated");
+    toast.success(copy.toastSectionUpdated);
     onClose();
   };
 
@@ -254,7 +315,7 @@ const SectionAiDrawer: FC<SectionAiDrawerProps> = ({ open, section, onClose, onS
               <AutoFixHighRoundedIcon sx={{ fontSize: 20 }} />
             </Box>
             <Typography sx={{ fontSize: 18, fontWeight: 700, color: "#1F2A44" }}>
-              Write with AI
+              {copy.writeWithAi}
             </Typography>
           </Stack>
           <Stack direction="row" spacing={1}>
@@ -271,7 +332,7 @@ const SectionAiDrawer: FC<SectionAiDrawerProps> = ({ open, section, onClose, onS
                 "&:disabled": { bgcolor: "#C7CBD8", color: "#FFFFFF" },
               }}
             >
-              Save
+              {copy.save}
             </Button>
             <IconButton
               onClick={onClose}
@@ -298,7 +359,7 @@ const SectionAiDrawer: FC<SectionAiDrawerProps> = ({ open, section, onClose, onS
               }}
             >
               <Typography sx={{ fontSize: 14, color: "#6B7280" }}>
-                AI editing is available for text-based sections only.
+                {copy.aiEditingOnlyText}
               </Typography>
             </Box>
           ) : (
@@ -319,7 +380,7 @@ const SectionAiDrawer: FC<SectionAiDrawerProps> = ({ open, section, onClose, onS
                 maxRows={18}
                 value={draftText}
                 onChange={(event) => setDraftText(event.target.value)}
-                placeholder="Write or refine your section content..."
+                placeholder={copy.contentPlaceholder}
                 variant="standard"
                 InputProps={{
                   disableUnderline: true,
@@ -334,13 +395,13 @@ const SectionAiDrawer: FC<SectionAiDrawerProps> = ({ open, section, onClose, onS
               />
               {section?.content.type === "list" ? (
                 <Typography sx={{ mt: 1, fontSize: 12, color: "#6B7280" }}>
-                  Format: one list item per line.
+                  {copy.listFormat}
                 </Typography>
               ) : null}
               {section?.content.type === "table" ||
               section?.content.type === "comparison_table" ? (
                 <Typography sx={{ mt: 1, fontSize: 12, color: "#6B7280" }}>
-                  Format: first line headers, next lines rows. Use &quot; | &quot; between cells.
+                  {copy.tableFormat}
                 </Typography>
               ) : null}
             </Box>
@@ -381,7 +442,7 @@ const SectionAiDrawer: FC<SectionAiDrawerProps> = ({ open, section, onClose, onS
                       <Icon sx={{ fontSize: 20 }} />
                     </Box>
                     <Typography sx={{ fontSize: 14, fontWeight: 600, color: "#1F2A44" }}>
-                      {action.label}
+                      {actionLabels[action.id]}
                     </Typography>
                   </Box>
                 );
@@ -431,7 +492,7 @@ const SectionAiDrawer: FC<SectionAiDrawerProps> = ({ open, section, onClose, onS
                         <Icon sx={{ fontSize: 20 }} />
                       </Box>
                       <Typography sx={{ fontSize: 14, fontWeight: 600, color: "#1F2A44" }}>
-                        {action.label}
+                        {actionLabels[action.id]}
                       </Typography>
                     </Box>
                     {action.hasMenu ? (
@@ -468,15 +529,15 @@ const SectionAiDrawer: FC<SectionAiDrawerProps> = ({ open, section, onClose, onS
         open={Boolean(translateAnchor)}
         onClose={() => setTranslateAnchor(null)}
       >
-        {TRANSLATE_LANGUAGES.map((lang) => (
+        {translateLanguages.map((lang) => (
           <MenuItem
-            key={lang}
+            key={lang.value}
             onClick={() => {
               setTranslateAnchor(null);
-              void handleAction("translate", lang);
+              void handleAction("translate", lang.value);
             }}
           >
-            {lang}
+            {lang.label}
           </MenuItem>
         ))}
       </Menu>

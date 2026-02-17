@@ -24,6 +24,7 @@ import { toast } from "react-toastify";
 import type { CanvasSectionsData, WorkspaceCanvasTemplateType } from "@/types/workspaces";
 import { A4_MARGIN_MM, PPTX_TYPOGRAPHY, sanitizeFileName } from "@/lib/exportStyles";
 import { fetchWorkspaceBranding, fetchImageAsDataUrl } from "@/lib/workspaceBranding";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 export type ExportFormat = "pdf" | "pptx";
 
@@ -102,6 +103,7 @@ const ExportSettingsSidebar: FC<ExportSettingsSidebarProps> = ({
   sectionsData,
   onClose: _onClose,
 }) => {
+  const { locale } = useLanguage();
   const [settings, setSettings] = useState<ExportSettings>({
     format: "pdf",
     paperSize: "A4",
@@ -112,6 +114,67 @@ const ExportSettingsSidebar: FC<ExportSettingsSidebarProps> = ({
   const [includeBrandingExport, setIncludeBrandingExport] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
 
+  const copy =
+    locale === "it"
+      ? {
+          toastCanvasUnavailable: "Riferimento canvas non disponibile",
+          toastExportPdfSuccess: "Esportato in PDF con successo",
+          toastExportPdfFailed: "Esportazione PDF non riuscita. Riprova.",
+          toastExportPptxSuccess: "Esportato in PPTX con successo",
+          toastExportPptxFailed: "Esportazione PPTX non riuscita. Riprova.",
+          exportSettings: "Impostazioni export",
+          format: "Formato",
+          paperSize: "Formato pagina",
+          pitchColor: "Colore",
+          fontFamily: "Famiglia font",
+          fontSize: "Dimensione font",
+          includeBranding: "Includi branding",
+          exporting: "Esportazione...",
+          downloadPptx: "Scarica PPTX",
+          downloadPdf: "Scarica PDF",
+          colorBlue: "Blu",
+          colorGreen: "Verde",
+          colorPurple: "Viola",
+          colorRed: "Rosso",
+          colorOrange: "Arancione",
+        }
+      : {
+          toastCanvasUnavailable: "Canvas reference not available",
+          toastExportPdfSuccess: "Exported as PDF successfully",
+          toastExportPdfFailed: "Failed to export PDF. Please try again.",
+          toastExportPptxSuccess: "Exported as PPTX successfully",
+          toastExportPptxFailed: "Failed to export PPTX. Please try again.",
+          exportSettings: "Export Settings",
+          format: "Format",
+          paperSize: "Paper Size",
+          pitchColor: "Pitch Color",
+          fontFamily: "Font Family",
+          fontSize: "Font Size",
+          includeBranding: "Include Branding",
+          exporting: "Exporting...",
+          downloadPptx: "Download PPTX",
+          downloadPdf: "Download PDF",
+          colorBlue: "Blue",
+          colorGreen: "Green",
+          colorPurple: "Purple",
+          colorRed: "Red",
+          colorOrange: "Orange",
+        };
+
+  const localizedPitchColors = PITCH_COLORS.map((color) => ({
+    ...color,
+    label:
+      color.value === "blue"
+        ? copy.colorBlue
+        : color.value === "green"
+          ? copy.colorGreen
+          : color.value === "purple"
+            ? copy.colorPurple
+            : color.value === "red"
+              ? copy.colorRed
+              : copy.colorOrange,
+  }));
+
   const handleSettingChange = (key: keyof ExportSettings, value: string) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
   };
@@ -119,7 +182,7 @@ const ExportSettingsSidebar: FC<ExportSettingsSidebarProps> = ({
   const handleDownloadPdf = async () => {
     if (!canvasRef?.current) {
       console.error("Canvas reference not available");
-      toast.error("Canvas reference not available");
+      toast.error(copy.toastCanvasUnavailable);
       return;
     }
 
@@ -204,10 +267,10 @@ const ExportSettingsSidebar: FC<ExportSettingsSidebarProps> = ({
 
       const filename = `${sanitizeFileName(canvasTitle, "canvas-export")}.pdf`;
       pdf.save(filename);
-      toast.success("Exported as PDF successfully");
+      toast.success(copy.toastExportPdfSuccess);
     } catch (error) {
       console.error("Error generating PDF:", error);
-      toast.error("Failed to export PDF. Please try again.");
+      toast.error(copy.toastExportPdfFailed);
     } finally {
       setIsExporting(false);
     }
@@ -241,10 +304,10 @@ const ExportSettingsSidebar: FC<ExportSettingsSidebarProps> = ({
         parseFileNameFromContentDisposition(response.headers.get("content-disposition")) ??
         `${sanitizeFileName(canvasTitle, "canvas-export")}.pptx`;
       downloadBlob(blob, filename);
-      toast.success("Exported as PPTX successfully");
+      toast.success(copy.toastExportPptxSuccess);
     } catch (error) {
       console.error("Error generating PPTX:", error);
-      toast.error("Failed to export PPTX. Please try again.");
+      toast.error(copy.toastExportPptxFailed);
     } finally {
       setIsExporting(false);
     }
@@ -284,7 +347,7 @@ const ExportSettingsSidebar: FC<ExportSettingsSidebarProps> = ({
             color: "#FFFFFF",
           }}
         >
-          Export Settings
+          {copy.exportSettings}
         </Typography>
       </Box>
 
@@ -310,7 +373,7 @@ const ExportSettingsSidebar: FC<ExportSettingsSidebarProps> = ({
               letterSpacing: 0.5,
             }}
           >
-            Format
+            {copy.format}
           </Typography>
           <ToggleButtonGroup
             value={settings.format}
@@ -361,11 +424,11 @@ const ExportSettingsSidebar: FC<ExportSettingsSidebarProps> = ({
               },
             }}
           >
-            Paper Size
+            {copy.paperSize}
           </InputLabel>
           <Select
             value={settings.paperSize}
-            label="Paper Size"
+            label={copy.paperSize}
             onChange={(e) => handleSettingChange("paperSize", e.target.value)}
             sx={{
               fontSize: 14,
@@ -400,11 +463,11 @@ const ExportSettingsSidebar: FC<ExportSettingsSidebarProps> = ({
               },
             }}
           >
-            Pitch Color
+            {copy.pitchColor}
           </InputLabel>
           <Select
             value={settings.pitchColor}
-            label="Pitch Color"
+            label={copy.pitchColor}
             onChange={(e) => handleSettingChange("pitchColor", e.target.value)}
             sx={{
               fontSize: 14,
@@ -420,7 +483,7 @@ const ExportSettingsSidebar: FC<ExportSettingsSidebarProps> = ({
               },
             }}
             renderValue={(value) => {
-              const color = PITCH_COLORS.find((c) => c.value === value);
+              const color = localizedPitchColors.find((c) => c.value === value);
               return (
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                   <Box
@@ -436,7 +499,7 @@ const ExportSettingsSidebar: FC<ExportSettingsSidebarProps> = ({
               );
             }}
           >
-            {PITCH_COLORS.map((color) => (
+            {localizedPitchColors.map((color) => (
               <MenuItem key={color.value} value={color.value} sx={{ fontSize: 14 }}>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                   <Box
@@ -465,11 +528,11 @@ const ExportSettingsSidebar: FC<ExportSettingsSidebarProps> = ({
               },
             }}
           >
-            Font Family
+            {copy.fontFamily}
           </InputLabel>
           <Select
             value={settings.fontFamily}
-            label="Font Family"
+            label={copy.fontFamily}
             onChange={(e) => handleSettingChange("fontFamily", e.target.value)}
             sx={{
               fontSize: 14,
@@ -504,11 +567,11 @@ const ExportSettingsSidebar: FC<ExportSettingsSidebarProps> = ({
               },
             }}
           >
-            Font Size
+            {copy.fontSize}
           </InputLabel>
           <Select
             value={settings.fontSize}
-            label="Font Size"
+            label={copy.fontSize}
             onChange={(e) => handleSettingChange("fontSize", e.target.value)}
             sx={{
               fontSize: 14,
@@ -548,7 +611,7 @@ const ExportSettingsSidebar: FC<ExportSettingsSidebarProps> = ({
                 }}
               />
             }
-            label="Include Branding"
+            label={copy.includeBranding}
             sx={{
               m: 0,
               "& .MuiFormControlLabel-label": {
@@ -595,10 +658,10 @@ const ExportSettingsSidebar: FC<ExportSettingsSidebarProps> = ({
           }}
         >
           {isExporting
-            ? "Exporting..."
+            ? copy.exporting
             : settings.format === "pptx"
-              ? "Download PPTX"
-              : "Download PDF"}
+              ? copy.downloadPptx
+              : copy.downloadPdf}
         </Button>
       </Box>
     </Box>

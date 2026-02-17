@@ -4,6 +4,7 @@ import type { FC } from "react";
 import { Box, Typography } from "@mui/material";
 import CanvasSection, { type CanvasSectionItem, type AiSuggestion } from "../CanvasSection";
 import type { CanvasSectionsData } from "@/types/workspaces";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 export type ValuePropositionCanvasLayoutProps = Readonly<{
   sectionsData?: CanvasSectionsData;
@@ -26,6 +27,21 @@ const ValuePropositionCanvasLayout: FC<ValuePropositionCanvasLayoutProps> = ({
   loadingAISections = [],
   onDismissAISuggestions,
 }) => {
+  const { locale } = useLanguage();
+  const copy =
+    locale === "it"
+      ? {
+          valueMap: "Value Map",
+          valueMapSubtitle: "Come crei valore per i clienti",
+          customerProfile: "Profilo cliente",
+          customerProfileSubtitle: "Comprendere il tuo segmento cliente",
+        }
+      : {
+          valueMap: "Value Map",
+          valueMapSubtitle: "How you create value for customers",
+          customerProfile: "Customer Profile",
+          customerProfileSubtitle: "Understanding your customer segment",
+        };
   const getItems = (sectionId: string): CanvasSectionItem[] => {
     return sectionsData[sectionId] ?? [];
   };
@@ -98,7 +114,7 @@ const ValuePropositionCanvasLayout: FC<ValuePropositionCanvasLayoutProps> = ({
                 color: "#111827",
               }}
             >
-              Value Map
+              {copy.valueMap}
             </Typography>
             <Typography
               sx={{
@@ -107,7 +123,7 @@ const ValuePropositionCanvasLayout: FC<ValuePropositionCanvasLayoutProps> = ({
                 mt: 0.5,
               }}
             >
-              How you create value for customers
+              {copy.valueMapSubtitle}
             </Typography>
           </Box>
 
@@ -186,7 +202,7 @@ const ValuePropositionCanvasLayout: FC<ValuePropositionCanvasLayoutProps> = ({
                 color: "#111827",
               }}
             >
-              Customer Profile
+              {copy.customerProfile}
             </Typography>
             <Typography
               sx={{
@@ -195,7 +211,7 @@ const ValuePropositionCanvasLayout: FC<ValuePropositionCanvasLayoutProps> = ({
                 mt: 0.5,
               }}
             >
-              Understanding your customer segment
+              {copy.customerProfileSubtitle}
             </Typography>
           </Box>
 

@@ -26,21 +26,21 @@ import TranslateRoundedIcon from "@mui/icons-material/TranslateRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import { toast } from "react-toastify";
 import type { SlideEditTarget } from "./SlidePreview";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 type AiAction = "summarize" | "rephrase" | "simplify" | "detail" | "grammar" | "translate";
 
 const ACTIONS: Array<{
   id: AiAction;
-  label: string;
   icon: typeof SummarizeRoundedIcon;
   hasMenu?: boolean;
 }> = [
-  { id: "summarize", label: "Summarize", icon: SummarizeRoundedIcon },
-  { id: "rephrase", label: "Rephrase/Paraphrase", icon: FormatQuoteRoundedIcon },
-  { id: "simplify", label: "Rewrite for Simplicity", icon: TextFieldsRoundedIcon },
-  { id: "detail", label: "Explain in Detail", icon: NotesRoundedIcon },
-  { id: "grammar", label: "Correct Grammar", icon: SpellcheckRoundedIcon },
-  { id: "translate", label: "Translate", icon: TranslateRoundedIcon, hasMenu: true },
+  { id: "summarize", icon: SummarizeRoundedIcon },
+  { id: "rephrase", icon: FormatQuoteRoundedIcon },
+  { id: "simplify", icon: TextFieldsRoundedIcon },
+  { id: "detail", icon: NotesRoundedIcon },
+  { id: "grammar", icon: SpellcheckRoundedIcon },
+  { id: "translate", icon: TranslateRoundedIcon, hasMenu: true },
 ];
 
 const TRANSLATE_LANGUAGES = [
@@ -67,10 +67,75 @@ const SlideAiDrawer: FC<SlideAiDrawerProps> = ({
   onClose,
   onApply,
 }) => {
+  const { locale } = useLanguage();
   const [draftText, setDraftText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [translateAnchor, setTranslateAnchor] = useState<null | HTMLElement>(null);
   const [targetLanguage, setTargetLanguage] = useState("English");
+
+  const copy =
+    locale === "it"
+      ? {
+          actionSummarize: "Riassumi",
+          actionRephrase: "Parafrasa",
+          actionSimplify: "Semplifica",
+          actionDetail: "Spiega in dettaglio",
+          actionGrammar: "Correggi grammatica",
+          actionTranslate: "Traduci",
+          toastGenerateFailed: "Impossibile generare suggerimento AI",
+          toastSlideUpdated: "Contenuto slide aggiornato",
+          writeWithAi: "Scrivi con AI",
+          selectedContent: "Contenuto selezionato",
+          placeholder: "Seleziona contenuto da modificare",
+          cancel: "Annulla",
+          apply: "Applica",
+        }
+      : {
+          actionSummarize: "Summarize",
+          actionRephrase: "Rephrase/Paraphrase",
+          actionSimplify: "Rewrite for Simplicity",
+          actionDetail: "Explain in Detail",
+          actionGrammar: "Correct Grammar",
+          actionTranslate: "Translate",
+          toastGenerateFailed: "Failed to generate AI suggestion",
+          toastSlideUpdated: "Slide content updated",
+          writeWithAi: "Write with AI",
+          selectedContent: "Selected content",
+          placeholder: "Select content to edit",
+          cancel: "Cancel",
+          apply: "Apply",
+        };
+
+  const actionLabels: Record<AiAction, string> = useMemo(
+    () => ({
+      summarize: copy.actionSummarize,
+      rephrase: copy.actionRephrase,
+      simplify: copy.actionSimplify,
+      detail: copy.actionDetail,
+      grammar: copy.actionGrammar,
+      translate: copy.actionTranslate,
+    }),
+    [
+      copy.actionSummarize,
+      copy.actionRephrase,
+      copy.actionSimplify,
+      copy.actionDetail,
+      copy.actionGrammar,
+      copy.actionTranslate,
+    ]
+  );
+
+  const translateLanguages =
+    locale === "it"
+      ? [
+          { value: "English", label: "Inglese" },
+          { value: "French", label: "Francese" },
+          { value: "Spanish", label: "Spagnolo" },
+          { value: "Arabic", label: "Arabo" },
+          { value: "German", label: "Tedesco" },
+          { value: "Italian", label: "Italiano" },
+        ]
+      : TRANSLATE_LANGUAGES.map((lang) => ({ value: lang, label: lang }));
 
   useEffect(() => {
     if (open) {
@@ -105,16 +170,16 @@ const SlideAiDrawer: FC<SlideAiDrawerProps> = ({
       setDraftText(data.text ?? "");
     } catch (err) {
       console.error("AI suggestion error:", err);
-      toast.error("Failed to generate AI suggestion");
+      toast.error(copy.toastGenerateFailed);
     } finally {
       setIsLoading(false);
     }
-  }, [workspaceId, target, draftText]);
+  }, [workspaceId, target, draftText, copy.toastGenerateFailed]);
 
   const handleSave = async () => {
     if (!target) return;
     await onApply(draftText);
-    toast.success("Slide content updated");
+    toast.success(copy.toastSlideUpdated);
     onClose();
   };
 
@@ -150,10 +215,10 @@ const SlideAiDrawer: FC<SlideAiDrawerProps> = ({
             },
           }}
         >
-          {action.label}
+          {actionLabels[action.id]}
         </Button>
       )),
-    [handleAction]
+    [handleAction, actionLabels]
   );
 
   return (
@@ -185,7 +250,7 @@ const SlideAiDrawer: FC<SlideAiDrawerProps> = ({
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
             <AutoFixHighRoundedIcon sx={{ color: "#5B61D6" }} />
             <Typography sx={{ fontSize: 18, fontWeight: 600, color: "#2B2E4A" }}>
-              Write with AI
+              {copy.writeWithAi}
             </Typography>
           </Box>
           <IconButton onClick={onClose} sx={{ color: "#4B5563" }}>
@@ -203,7 +268,7 @@ const SlideAiDrawer: FC<SlideAiDrawerProps> = ({
           }}
         >
           <Typography sx={{ fontSize: 12, color: "#6B7280", mb: 1 }}>
-            {target?.label ?? "Selected content"}
+            {target?.label ?? copy.selectedContent}
           </Typography>
           <TextField
             value={draftText}
@@ -211,7 +276,7 @@ const SlideAiDrawer: FC<SlideAiDrawerProps> = ({
             multiline
             minRows={8}
             fullWidth
-            placeholder="Select content to edit"
+            placeholder={copy.placeholder}
             sx={{
               mb: 3,
               bgcolor: "#FFFFFF",
@@ -253,7 +318,7 @@ const SlideAiDrawer: FC<SlideAiDrawerProps> = ({
               },
             }}
           >
-            Cancel
+            {copy.cancel}
           </Button>
           <Button
             onClick={handleSave}
@@ -276,7 +341,7 @@ const SlideAiDrawer: FC<SlideAiDrawerProps> = ({
               },
             }}
           >
-            {isLoading ? <CircularProgress size={18} sx={{ color: "#FFFFFF" }} /> : "Apply"}
+            {isLoading ? <CircularProgress size={18} sx={{ color: "#FFFFFF" }} /> : copy.apply}
           </Button>
         </Box>
       </Box>
@@ -288,17 +353,17 @@ const SlideAiDrawer: FC<SlideAiDrawerProps> = ({
         anchorOrigin={{ vertical: "top", horizontal: "right" }}
         transformOrigin={{ vertical: "top", horizontal: "left" }}
       >
-        {TRANSLATE_LANGUAGES.map((lang) => (
+        {translateLanguages.map((lang) => (
           <MenuItem
-            key={lang}
-            selected={lang === targetLanguage}
+            key={lang.value}
+            selected={lang.value === targetLanguage}
             onClick={() => {
               setTranslateAnchor(null);
-              setTargetLanguage(lang);
-              void handleAction("translate", lang);
+              setTargetLanguage(lang.value);
+              void handleAction("translate", lang.value);
             }}
           >
-            {lang}
+            {lang.label}
           </MenuItem>
         ))}
       </Menu>

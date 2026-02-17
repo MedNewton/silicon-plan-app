@@ -31,6 +31,7 @@ import type {
   CanvasSectionsData,
   CanvasSectionItem,
 } from "@/types/workspaces";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 export type CanvasModelEditPageProps = Readonly<{
   workspaceId: string;
@@ -42,10 +43,11 @@ const CanvasModelEditPage: FC<CanvasModelEditPageProps> = ({
   canvasId,
 }) => {
   const router = useRouter();
+  const { locale } = useLanguage();
   const [canvas, setCanvas] = useState<WorkspaceCanvasModel | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<"notFound" | "loadFailed" | null>(null);
   const [showExportSidebar, setShowExportSidebar] = useState(false);
   const [showAiPanel, setShowAiPanel] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -54,6 +56,33 @@ const CanvasModelEditPage: FC<CanvasModelEditPageProps> = ({
   const [loadingAISections, setLoadingAISections] = useState<string[]>([]);
   const [isGeneratingAll, setIsGeneratingAll] = useState(false);
   const canvasLayoutRef = useRef<HTMLDivElement>(null);
+
+  const copy =
+    locale === "it"
+      ? {
+          canvasNotFound: "Canvas non trovato",
+          failedToLoadCanvas: "Impossibile caricare il canvas",
+          backToCanvasModels: "Torna ai modelli canvas",
+          back: "Indietro",
+          saving: "Salvataggio...",
+          saveModel: "Salva modello",
+          download: "Scarica",
+          askAi: "Chiedi all'AI",
+          generateWithAi: "Genera con AI",
+          generating: "Generazione...",
+        }
+      : {
+          canvasNotFound: "Canvas not found",
+          failedToLoadCanvas: "Failed to load canvas",
+          backToCanvasModels: "Back to Canvas Models",
+          back: "Back",
+          saving: "Saving...",
+          saveModel: "Save Model",
+          download: "Download",
+          askAi: "Ask AI",
+          generateWithAi: "Generate With AI",
+          generating: "Generating...",
+        };
 
   // Load canvas data
   useEffect(() => {
@@ -65,9 +94,9 @@ const CanvasModelEditPage: FC<CanvasModelEditPageProps> = ({
 
         if (!response.ok) {
           if (response.status === 404) {
-            setError("Canvas not found");
+            setError("notFound");
           } else {
-            setError("Failed to load canvas");
+            setError("loadFailed");
           }
           return;
         }
@@ -77,7 +106,7 @@ const CanvasModelEditPage: FC<CanvasModelEditPageProps> = ({
         setEditedTitle(data.canvasModel.title);
       } catch (err) {
         console.error("Error loading canvas:", err);
-        setError("Failed to load canvas");
+        setError("loadFailed");
       } finally {
         setIsLoading(false);
       }
@@ -479,14 +508,14 @@ const CanvasModelEditPage: FC<CanvasModelEditPageProps> = ({
         }}
       >
         <Typography sx={{ fontSize: 18, color: "#6B7280" }}>
-          {error ?? "Canvas not found"}
+          {error === "notFound" ? copy.canvasNotFound : copy.failedToLoadCanvas}
         </Typography>
         <Button
           variant="outlined"
           onClick={() => router.push(`/workspaces/${workspaceId}/manage/canvas-models`)}
           sx={{ borderColor: "#4C6AD2", color: "#4C6AD2" }}
         >
-          Back to Canvas Models
+          {copy.backToCanvasModels}
         </Button>
       </Box>
     );
@@ -543,7 +572,7 @@ const CanvasModelEditPage: FC<CanvasModelEditPageProps> = ({
             }}
           >
             <ArrowBackIosNewIcon sx={{ fontSize: 16 }} />
-            <Typography sx={{ fontSize: 14, fontWeight: 500 }}>Back</Typography>
+            <Typography sx={{ fontSize: 14, fontWeight: 500 }}>{copy.back}</Typography>
           </Box>
 
           {/* Center - SAVE MODEL and DOWNLOAD buttons */}
@@ -551,7 +580,7 @@ const CanvasModelEditPage: FC<CanvasModelEditPageProps> = ({
             {isSaving && (
               <Stack direction="row" spacing={1} alignItems="center" sx={{ color: "#9CA3AF" }}>
                 <CircularProgress size={16} sx={{ color: "#9CA3AF" }} />
-                <Typography sx={{ fontSize: 12 }}>Saving...</Typography>
+                <Typography sx={{ fontSize: 12 }}>{copy.saving}</Typography>
               </Stack>
             )}
             <Button
@@ -574,7 +603,7 @@ const CanvasModelEditPage: FC<CanvasModelEditPageProps> = ({
                 },
               }}
             >
-              Save Model
+              {copy.saveModel}
             </Button>
             <Button
               variant="text"
@@ -591,7 +620,7 @@ const CanvasModelEditPage: FC<CanvasModelEditPageProps> = ({
                 },
               }}
             >
-              Download
+              {copy.download}
             </Button>
           </Stack>
 
@@ -615,7 +644,7 @@ const CanvasModelEditPage: FC<CanvasModelEditPageProps> = ({
               },
             }}
           >
-            Ask AI
+            {copy.askAi}
           </Button>
         </Box>
 
@@ -725,7 +754,7 @@ const CanvasModelEditPage: FC<CanvasModelEditPageProps> = ({
               },
             }}
           >
-            {isGeneratingAll ? "Generating..." : "Generate With AI"}
+            {isGeneratingAll ? copy.generating : copy.generateWithAi}
           </Button>
         </Box>
 

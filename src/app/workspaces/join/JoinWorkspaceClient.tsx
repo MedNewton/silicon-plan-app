@@ -13,6 +13,7 @@ import {
 } from "@mui/material";
 
 import type { WorkspaceRole } from "@/types/workspaces";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 type Props = {
   inviteId: string;
@@ -30,6 +31,73 @@ type InspectResponse = {
 export default function JoinWorkspaceClient({ inviteId }: Props) {
   const theme = useTheme();
   const router = useRouter();
+  const { locale } = useLanguage();
+
+  const copy =
+    locale === "it"
+      ? {
+          loadInviteFailed: "Impossibile caricare l'invito.",
+          loadInviteError:
+            "Si e verificato un errore durante il caricamento dell'invito.",
+          joinWorkspaceFailed: "Impossibile entrare nel workspace.",
+          joinWorkspaceError:
+            "Si e verificato un errore durante l'ingresso nel workspace.",
+          declineInviteFailed: "Impossibile rifiutare l'invito.",
+          declineInviteError:
+            "Si e verificato un errore durante il rifiuto dell'invito al workspace.",
+          invitationIssue: "Problema con l'invito",
+          invitationInvalid: "Questo invito risulta non valido o scaduto.",
+          goToDashboard: "Vai alla dashboard",
+          joinWorkspace: "Unisciti al workspace",
+          invitedToJoin: "Sei stato invitato a unirti a",
+          by: "da",
+          joinAs: "Entrerai come:",
+          inviteSentFrom: "Invito inviato da:",
+          alreadyMember: "Sei gia membro di questo workspace.",
+          cancel: "Annulla",
+          decline: "Rifiuta",
+          declining: "Rifiuto...",
+          openWorkspace: "Apri workspace",
+          joining: "Accesso...",
+          joinWorkspaceAction: "Unisciti al workspace",
+          roleLabels: {
+            owner: "Proprietario",
+            admin: "Admin",
+            editor: "Editor",
+            viewer: "Viewer",
+          } as Record<WorkspaceRole, string>,
+        }
+      : {
+          loadInviteFailed: "Failed to load invitation.",
+          loadInviteError: "Something went wrong loading the invitation.",
+          joinWorkspaceFailed: "Failed to join workspace.",
+          joinWorkspaceError:
+            "Something went wrong while joining the workspace.",
+          declineInviteFailed: "Failed to decline invitation.",
+          declineInviteError:
+            "Something went wrong while declining the workspace invitation.",
+          invitationIssue: "Invitation issue",
+          invitationInvalid: "This invitation appears to be invalid or expired.",
+          goToDashboard: "Go to dashboard",
+          joinWorkspace: "Join workspace",
+          invitedToJoin: "You've been invited to join",
+          by: "by",
+          joinAs: "You'll join as:",
+          inviteSentFrom: "Invitation sent from:",
+          alreadyMember: "You're already a member of this workspace.",
+          cancel: "Cancel",
+          decline: "Decline",
+          declining: "Declining...",
+          openWorkspace: "Open workspace",
+          joining: "Joining...",
+          joinWorkspaceAction: "Join workspace",
+          roleLabels: {
+            owner: "Owner",
+            admin: "Admin",
+            editor: "Editor",
+            viewer: "Viewer",
+          } as Record<WorkspaceRole, string>,
+        };
 
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
@@ -53,7 +121,7 @@ export default function JoinWorkspaceClient({ inviteId }: Props) {
           const json = (await res.json().catch(() => ({}))) as {
             error?: string;
           };
-          setError(json.error ?? "Failed to load invitation.");
+          setError(json.error ?? copy.loadInviteFailed);
           return;
         }
 
@@ -61,14 +129,14 @@ export default function JoinWorkspaceClient({ inviteId }: Props) {
         setData(json);
       } catch (err) {
         console.error(err);
-        setError("Something went wrong loading the invitation.");
+        setError(copy.loadInviteError);
       } finally {
         setLoading(false);
       }
     };
 
     void run();
-  }, [inviteId]);
+  }, [copy.loadInviteError, copy.loadInviteFailed, inviteId]);
 
   const handleJoin = async () => {
     if (!data) return;
@@ -91,7 +159,7 @@ export default function JoinWorkspaceClient({ inviteId }: Props) {
         const json = (await res.json().catch(() => ({}))) as {
           error?: string;
         };
-        setError(json.error ?? "Failed to join workspace.");
+        setError(json.error ?? copy.joinWorkspaceFailed);
         setJoining(false);
         return;
       }
@@ -100,7 +168,7 @@ export default function JoinWorkspaceClient({ inviteId }: Props) {
       router.push(`/`);
     } catch (err) {
       console.error(err);
-      setError("Something went wrong while joining the workspace.");
+      setError(copy.joinWorkspaceError);
       setJoining(false);
     }
   };
@@ -126,7 +194,7 @@ export default function JoinWorkspaceClient({ inviteId }: Props) {
         const json = (await res.json().catch(() => ({}))) as {
           error?: string;
         };
-        setError(json.error ?? "Failed to decline invitation.");
+        setError(json.error ?? copy.declineInviteFailed);
         setDeclining(false);
         return;
       }
@@ -134,7 +202,7 @@ export default function JoinWorkspaceClient({ inviteId }: Props) {
       router.push("/");
     } catch (err) {
       console.error(err);
-      setError("Something went wrong while declining the workspace invitation.");
+      setError(copy.declineInviteError);
       setDeclining(false);
     }
   };
@@ -181,12 +249,12 @@ export default function JoinWorkspaceClient({ inviteId }: Props) {
           <Typography
             sx={{ fontSize: 18, fontWeight: 600, mb: 1.5, color: "#111827" }}
           >
-            Invitation issue
+            {copy.invitationIssue}
           </Typography>
           <Typography
             sx={{ fontSize: 14, color: theme.palette.text.secondary, mb: 2.5 }}
           >
-            {error ?? "This invitation appears to be invalid or expired."}
+            {error ?? copy.invitationInvalid}
           </Typography>
           <Button
             variant="contained"
@@ -209,7 +277,7 @@ export default function JoinWorkspaceClient({ inviteId }: Props) {
               },
             }}
           >
-            Go to dashboard
+            {copy.goToDashboard}
           </Button>
         </Box>
       </Box>
@@ -246,7 +314,7 @@ export default function JoinWorkspaceClient({ inviteId }: Props) {
             color: "#111827",
           }}
         >
-          Join workspace
+          {copy.joinWorkspace}
         </Typography>
 
         <Typography
@@ -256,12 +324,12 @@ export default function JoinWorkspaceClient({ inviteId }: Props) {
             mb: 3,
           }}
         >
-          You&apos;ve been invited to join{" "}
+          {copy.invitedToJoin}{" "}
           <strong>{data.workspaceName}</strong>
           {data.inviterName && (
             <>
               {" "}
-              by <strong>{data.inviterName}</strong>
+              {copy.by} <strong>{data.inviterName}</strong>
             </>
           )}
           .
@@ -269,17 +337,19 @@ export default function JoinWorkspaceClient({ inviteId }: Props) {
 
         <Stack spacing={1.2} sx={{ mb: 3 }}>
           <Typography sx={{ fontSize: 14, color: "#4B5563" }}>
-            You&apos;ll join as:{" "}
-            <strong style={{ textTransform: "capitalize" }}>{data.role}</strong>
+            {copy.joinAs}{" "}
+            <strong style={{ textTransform: "capitalize" }}>
+              {copy.roleLabels[data.role] ?? data.role}
+            </strong>
           </Typography>
           {data.inviterEmail && (
             <Typography sx={{ fontSize: 13, color: "#6B7280" }}>
-              Invitation sent from: {data.inviterEmail}
+              {copy.inviteSentFrom} {data.inviterEmail}
             </Typography>
           )}
           {data.alreadyMember && (
             <Typography sx={{ fontSize: 13, color: "#059669" }}>
-              You&apos;re already a member of this workspace.
+              {copy.alreadyMember}
             </Typography>
           )}
         </Stack>
@@ -305,7 +375,7 @@ export default function JoinWorkspaceClient({ inviteId }: Props) {
               },
             }}
           >
-            Cancel
+            {copy.cancel}
           </Button>
 
           {!data.alreadyMember && (
@@ -334,7 +404,7 @@ export default function JoinWorkspaceClient({ inviteId }: Props) {
                 },
               }}
             >
-              {declining ? "Declining…" : "Decline"}
+              {declining ? copy.declining : copy.decline}
             </Button>
           )}
 
@@ -366,10 +436,10 @@ export default function JoinWorkspaceClient({ inviteId }: Props) {
             }}
           >
             {data.alreadyMember
-              ? "Open workspace"
+              ? copy.openWorkspace
               : joining
-              ? "Joining…"
-              : "Join workspace"}
+                ? copy.joining
+                : copy.joinWorkspaceAction}
           </Button>
         </Stack>
       </Box>

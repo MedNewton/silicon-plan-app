@@ -26,6 +26,7 @@ import type {
   PitchDeckMetricsContent,
   PitchDeckQuoteContent,
 } from "@/types/workspaces";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 type SlidePreviewProps = {
   slide: PitchDeckSlide;
@@ -1192,6 +1193,11 @@ const SlidePreview: FC<SlidePreviewProps> = ({
   workspaceName,
   workspaceLogoDataUrl,
 }) => {
+  const { locale } = useLanguage();
+  const copy =
+    locale === "it"
+      ? { unsupportedContentType: "Tipo contenuto non supportato" }
+      : { unsupportedContentType: "Unsupported content type" };
   const isCover = slide.slide_type === "cover";
   const backgroundStyle = getBackgroundStyle(template, isCover);
   const colors = getTextColors(template, isCover);
@@ -1295,7 +1301,7 @@ const SlidePreview: FC<SlidePreviewProps> = ({
       default:
         return (
           <Box sx={{ p: 5 }}>
-            <Typography sx={{ color: colors.title }}>Unsupported content type</Typography>
+            <Typography sx={{ color: colors.title }}>{copy.unsupportedContentType}</Typography>
           </Box>
         );
     }

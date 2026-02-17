@@ -9,6 +9,7 @@ import FolderOutlinedIcon from "@mui/icons-material/FolderOutlined";
 
 import ManageSidebar from "@/components/workspaceManage/business-plan/ManageSidebar";
 import type { WorkspaceCanvasTemplateType } from "@/types/workspaces";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 export type CanvasModelsPageProps = Readonly<{
   workspaceId: string;
@@ -75,7 +76,49 @@ const MODELS: CanvasModel[] = [
 
 const CanvasModelsPage: FC<CanvasModelsPageProps> = ({ workspaceId }) => {
   const router = useRouter();
+  const { locale } = useLanguage();
   const [isCreating, setIsCreating] = useState<string | null>(null);
+
+  const copy =
+    locale === "it"
+      ? {
+          allModels: "TUTTI I MODELLI",
+          myModels: "I MIEI MODELLI",
+          modelTitles: {
+            "business-model": "Business Model Canvas",
+            "four-quarters": "Canvas 4 Trimestri",
+            "value-proposition": "Value Proposition Canvas",
+            pitch: "Pitch Canvas",
+            startup: "Startup Canvas",
+            lean: "Lean Canvas",
+          } as Record<string, string>,
+          modelDescriptions: {
+            "business-model":
+              "Strumento strategico visuale su una pagina per creare, descrivere e analizzare il modello di business.",
+            "four-quarters":
+              "Piano annuale: definisci obiettivi trimestrali, milestone, metriche e rischi/responsabili per allineare il team.",
+            "value-proposition":
+              "Allinea in modo sistematico le caratteristiche del prodotto con cio che i clienti valorizzano davvero.",
+            pitch:
+              "Struttura del deck: hook, problema, soluzione, demo prodotto, mercato, GTM, traction, modello business, concorrenza.",
+            startup:
+              "Valida e comunica la venture: problema, soluzione, segmenti clienti, proposta di valore, dimensione mercato.",
+            lean:
+              "Snapshot startup focalizzato sui rischi: problema, segmenti clienti, UVP, soluzione, canali e altro.",
+          } as Record<string, string>,
+        }
+      : {
+          allModels: "ALL MODELS",
+          myModels: "MY MODELS",
+          modelTitles: {} as Record<string, string>,
+          modelDescriptions: {} as Record<string, string>,
+        };
+
+  const models = MODELS.map((model) => ({
+    ...model,
+    title: copy.modelTitles[model.id] ?? model.title,
+    description: copy.modelDescriptions[model.id] ?? model.description,
+  }));
 
   const handleCanvasClick = async (templateType: WorkspaceCanvasTemplateType, title: string) => {
     if (isCreating) return;
@@ -166,7 +209,7 @@ const CanvasModelsPage: FC<CanvasModelsPageProps> = ({ workspaceId }) => {
                 letterSpacing: 1,
               }}
             >
-              ALL MODELS
+              {copy.allModels}
             </Typography>
           </Box>
 
@@ -194,7 +237,7 @@ const CanvasModelsPage: FC<CanvasModelsPageProps> = ({ workspaceId }) => {
                 letterSpacing: 1,
               }}
             >
-              MY MODELS
+              {copy.myModels}
             </Typography>
           </Box>
         </Box>
@@ -219,7 +262,7 @@ const CanvasModelsPage: FC<CanvasModelsPageProps> = ({ workspaceId }) => {
             }}
           >
             <Grid container spacing={3}>
-              {MODELS.map((model) => (
+              {models.map((model) => (
                 <Grid key={model.id} size={{ xs: 12, sm: 6, lg: 4 }}>
                   <Box
                     onClick={() => handleCanvasClick(model.id as WorkspaceCanvasTemplateType, model.title)}
@@ -341,19 +384,19 @@ const CanvasModelsPage: FC<CanvasModelsPageProps> = ({ workspaceId }) => {
                           mb: 1,
                         }}
                       >
-                        {model.title}
-                      </Typography>
-                      <Typography
-                        sx={{
+                          {model.title}
+                        </Typography>
+                        <Typography
+                          sx={{
                           fontSize: 13,
                           color: "#4B5563",
                           lineHeight: 1.6,
-                        }}
-                      >
-                        {model.description}
-                      </Typography>
+                          }}
+                        >
+                          {model.description}
+                        </Typography>
+                      </Box>
                     </Box>
-                  </Box>
                 </Grid>
               ))}
             </Grid>

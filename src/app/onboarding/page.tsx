@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useUser } from "@clerk/nextjs";
 import { Box, Button, Stack, Typography, useTheme } from "@mui/material";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 import step1 from "@/assets/onboarding/step1.png";
 import step2 from "@/assets/onboarding/step2.png";
@@ -22,7 +23,7 @@ type OnboardingMetadata = {
   onboardingCompleted?: boolean;
 };
 
-const STEPS: OnboardingStep[] = [
+const EN_STEPS: OnboardingStep[] = [
   {
     id: 1,
     title:
@@ -52,6 +53,36 @@ const STEPS: OnboardingStep[] = [
   },
 ];
 
+const IT_STEPS: OnboardingStep[] = [
+  {
+    id: 1,
+    title:
+      "Benvenuto in Silicon Plan - il luogo dove le tue idee diventano un vero business",
+    subtitle: "Crea documenti smart con l'AI",
+    description:
+      "Trasforma la tua visione imprenditoriale in realta con facilita. Genera business plan professionali, canvas model e pitch deck in pochi minuti.",
+    image: step1.src,
+  },
+  {
+    id: 2,
+    title:
+      "Benvenuto in Silicon Plan - il luogo dove le tue idee diventano un vero business",
+    subtitle: "Esplora il marketplace degli esperti",
+    description:
+      "Connettiti con specialisti di settori diversi, dalla finanza al marketing fino a design e servizi legali. Trova il partner giusto per rafforzare il tuo progetto e crescere piu velocemente.",
+    image: step2.src,
+  },
+  {
+    id: 3,
+    title:
+      "Benvenuto in Silicon Plan - il luogo dove le tue idee diventano un vero business",
+    subtitle: "Prenota consulenze dedicate",
+    description:
+      "Prenota consulenze su misura con esperti selezionati. Valida le tue idee, perfeziona la strategia e sblocca nuove opportunita di crescita per il tuo business.",
+    image: step3.src,
+  },
+];
+
 function hasOnboardingMetadata(
   metadata: unknown,
 ): metadata is OnboardingMetadata {
@@ -64,13 +95,28 @@ export default function OnboardingPage() {
   const theme = useTheme();
   const router = useRouter();
   const { user, isLoaded } = useUser();
+  const { locale } = useLanguage();
 
   const [activeStepIndex, setActiveStepIndex] = useState<number>(0);
   const [completing, setCompleting] = useState<boolean>(false);
   const [hasRedirected, setHasRedirected] = useState(false);
 
-  const activeStep = STEPS[activeStepIndex];
-  const isLastStep = activeStepIndex === STEPS.length - 1;
+  const copy =
+    locale === "it"
+      ? {
+          preparingWorkspace: "Stiamo preparando il tuo workspace...",
+          gettingStarted: "Inizia ora",
+          next: "Avanti",
+        }
+      : {
+          preparingWorkspace: "Preparing your workspace...",
+          gettingStarted: "Getting Started",
+          next: "Next",
+        };
+
+  const steps = locale === "it" ? IT_STEPS : EN_STEPS;
+  const activeStep = steps[activeStepIndex];
+  const isLastStep = activeStepIndex === steps.length - 1;
 
   const onboardingCompleted = useMemo(() => {
     if (!user) return false;
@@ -107,7 +153,7 @@ export default function OnboardingPage() {
         }}
       >
         <Typography variant="body1" color="text.secondary">
-          Preparing your workspace...
+          {copy.preparingWorkspace}
         </Typography>
       </Box>
     );
@@ -177,7 +223,7 @@ export default function OnboardingPage() {
           spacing={1}
           sx={{ mb: 5 }}
         >
-          {STEPS.map((step, index) => (
+          {steps.map((step, index) => (
             <Box
               key={step.id}
               sx={{
@@ -283,7 +329,7 @@ export default function OnboardingPage() {
               },
             }}
           >
-            Getting Started
+            {copy.gettingStarted}
           </Button>
 
           <Button
@@ -308,7 +354,7 @@ export default function OnboardingPage() {
               },
             }}
           >
-            Next
+            {copy.next}
           </Button>
         </Stack>
       </Box>

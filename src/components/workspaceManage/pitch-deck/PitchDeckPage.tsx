@@ -26,6 +26,7 @@ import MoreVertIcon from "@mui/icons-material/MoreVert";
 import AddIcon from "@mui/icons-material/Add";
 import type { PitchDeckTemplate, PitchDeck } from "@/types/workspaces";
 import ManageSidebar from "@/components/workspaceManage/business-plan/ManageSidebar";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 export type PitchDeckPageProps = Readonly<{
   workspaceId: string;
@@ -33,8 +34,59 @@ export type PitchDeckPageProps = Readonly<{
 
 type TabType = "templates" | "my-decks";
 
+type TemplateKey =
+  | "concept"
+  | "prototype"
+  | "growth"
+  | "impact"
+  | "innovation"
+  | "corporate";
+
+const TEMPLATE_KEYS: TemplateKey[] = [
+  "concept",
+  "prototype",
+  "growth",
+  "impact",
+  "innovation",
+  "corporate",
+];
+
+const IT_TEMPLATE_COPY: Record<TemplateKey, { name: string; description: string }> = {
+  concept: {
+    name: "Concept",
+    description:
+      "Template essenziale per presentare problema, soluzione e valore in modo chiaro e immediato.",
+  },
+  prototype: {
+    name: "Prototype",
+    description:
+      "Ideale per mostrare MVP, demo prodotto e prossimi passi di sviluppo con messaggi concreti.",
+  },
+  growth: {
+    name: "Growth",
+    description:
+      "Focalizzato su traction, metriche e strategia di crescita per evidenziare momentum e scalabilita.",
+  },
+  impact: {
+    name: "Impact",
+    description:
+      "Pensato per startup orientate a impatto sociale o ambientale, con risultati e valore misurabile.",
+  },
+  innovation: {
+    name: "Innovation",
+    description:
+      "Per prodotti innovativi: evidenzia tecnologia, vantaggio competitivo e differenziazione sul mercato.",
+  },
+  corporate: {
+    name: "Corporate",
+    description:
+      "Stile professionale per contesti business tradizionali, partnership e presentazioni istituzionali.",
+  },
+};
+
 const PitchDeckPage: FC<PitchDeckPageProps> = ({ workspaceId }) => {
   const router = useRouter();
+  const { locale } = useLanguage();
   const [activeTab, setActiveTab] = useState<TabType>("templates");
   const [templates, setTemplates] = useState<PitchDeckTemplate[]>([]);
   const [myDecks, setMyDecks] = useState<PitchDeck[]>([]);
@@ -50,6 +102,63 @@ const PitchDeckPage: FC<PitchDeckPageProps> = ({ workspaceId }) => {
   // Deck menu
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [menuDeckId, setMenuDeckId] = useState<string | null>(null);
+
+  const copy =
+    locale === "it"
+      ? {
+          allTemplates: "TUTTI I TEMPLATE",
+          myDecks: "I MIEI DECK",
+          noPitchDecksYet: "Nessun pitch deck ancora",
+          createFromTemplate: "Crea da template",
+          updated: "Aggiornato",
+          createPitchDeck: "Crea Pitch Deck",
+          deckTitle: "Titolo deck",
+          cancel: "Annulla",
+          creating: "Creazione...",
+          create: "Crea",
+          duplicate: "Duplica",
+          delete: "Elimina",
+          pitchDeckSuffix: "Pitch Deck",
+          newPitchDeck: "Nuovo Pitch Deck",
+        }
+      : {
+          allTemplates: "ALL TEMPLATES",
+          myDecks: "MY DECKS",
+          noPitchDecksYet: "No pitch decks yet",
+          createFromTemplate: "Create from Template",
+          updated: "Updated",
+          createPitchDeck: "Create Pitch Deck",
+          deckTitle: "Deck Title",
+          cancel: "Cancel",
+          creating: "Creating...",
+          create: "Create",
+          duplicate: "Duplicate",
+          delete: "Delete",
+          pitchDeckSuffix: "Pitch Deck",
+          newPitchDeck: "New Pitch Deck",
+        };
+
+  const getTemplateKey = (template: PitchDeckTemplate): TemplateKey | null => {
+    const value = `${template.name ?? ""}`.toLowerCase();
+    for (const key of TEMPLATE_KEYS) {
+      if (value.includes(key)) return key;
+    }
+    return null;
+  };
+
+  const getTemplateName = (template: PitchDeckTemplate): string => {
+    const fallback = template.name ?? "Template";
+    if (locale !== "it") return fallback;
+    const key = getTemplateKey(template);
+    return key ? IT_TEMPLATE_COPY[key].name : fallback;
+  };
+
+  const getTemplateDescription = (template: PitchDeckTemplate): string => {
+    const fallback = template.description ?? "";
+    if (locale !== "it") return fallback;
+    const key = getTemplateKey(template);
+    return key ? IT_TEMPLATE_COPY[key].description : fallback;
+  };
 
   // Fetch templates
   useEffect(() => {
@@ -110,7 +219,9 @@ const PitchDeckPage: FC<PitchDeckPageProps> = ({ workspaceId }) => {
   const handleTemplateClick = (templateId: string) => {
     setSelectedTemplateId(templateId);
     const template = templates.find((t) => t.id === templateId);
-    setNewDeckTitle(template ? `${template.name} Pitch Deck` : "New Pitch Deck");
+    setNewDeckTitle(
+      template ? `${getTemplateName(template)} ${copy.pitchDeckSuffix}` : copy.newPitchDeck
+    );
     setCreateDialogOpen(true);
   };
 
@@ -264,7 +375,7 @@ const PitchDeckPage: FC<PitchDeckPageProps> = ({ workspaceId }) => {
                 letterSpacing: 2,
               }}
             >
-              ALL TEMPLATES
+              {copy.allTemplates}
             </Typography>
           </Stack>
           <Stack
@@ -286,7 +397,7 @@ const PitchDeckPage: FC<PitchDeckPageProps> = ({ workspaceId }) => {
                 letterSpacing: 2,
               }}
             >
-              MY DECKS
+              {copy.myDecks}
             </Typography>
           </Stack>
         </Box>
@@ -354,7 +465,7 @@ const PitchDeckPage: FC<PitchDeckPageProps> = ({ workspaceId }) => {
                                 textAlign: "center",
                               }}
                             >
-                              {template.name}
+                              {getTemplateName(template)}
                             </Typography>
                           </Box>
                         </Box>
@@ -367,7 +478,7 @@ const PitchDeckPage: FC<PitchDeckPageProps> = ({ workspaceId }) => {
                               mb: 0.6,
                             }}
                           >
-                            {template.name}
+                            {getTemplateName(template)}
                           </Typography>
                           <Typography
                             sx={{
@@ -376,7 +487,7 @@ const PitchDeckPage: FC<PitchDeckPageProps> = ({ workspaceId }) => {
                               lineHeight: 1.6,
                             }}
                           >
-                            {template.description}
+                            {getTemplateDescription(template)}
                           </Typography>
                         </Box>
                       </Box>
@@ -401,7 +512,7 @@ const PitchDeckPage: FC<PitchDeckPageProps> = ({ workspaceId }) => {
               >
                 <FolderOutlinedIcon sx={{ fontSize: 48, color: "#9CA3AF" }} />
                 <Typography sx={{ fontSize: 16, color: "#6B7280" }}>
-                  No pitch decks yet
+                  {copy.noPitchDecksYet}
                 </Typography>
                 <Button
                   variant="contained"
@@ -415,7 +526,7 @@ const PitchDeckPage: FC<PitchDeckPageProps> = ({ workspaceId }) => {
                     borderRadius: 2,
                   }}
                 >
-                  Create from Template
+                  {copy.createFromTemplate}
                 </Button>
               </Box>
             ) : (
@@ -502,7 +613,10 @@ const PitchDeckPage: FC<PitchDeckPageProps> = ({ workspaceId }) => {
                               color: "#9CA3AF",
                             }}
                           >
-                            Updated {new Date(deck.updated_at).toLocaleDateString()}
+                            {copy.updated}{" "}
+                            {new Date(deck.updated_at).toLocaleDateString(
+                              locale === "it" ? "it-IT" : "en-US"
+                            )}
                           </Typography>
                         </Box>
                       </Box>
@@ -522,12 +636,12 @@ const PitchDeckPage: FC<PitchDeckPageProps> = ({ workspaceId }) => {
         maxWidth="xs"
         fullWidth
       >
-        <DialogTitle sx={{ fontWeight: 600 }}>Create Pitch Deck</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 600 }}>{copy.createPitchDeck}</DialogTitle>
         <DialogContent>
           <TextField
             autoFocus
             fullWidth
-            label="Deck Title"
+            label={copy.deckTitle}
             value={newDeckTitle}
             onChange={(e) => setNewDeckTitle(e.target.value)}
             sx={{ mt: 1 }}
@@ -535,7 +649,7 @@ const PitchDeckPage: FC<PitchDeckPageProps> = ({ workspaceId }) => {
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setCreateDialogOpen(false)} sx={{ color: "#6B7280" }}>
-            Cancel
+            {copy.cancel}
           </Button>
           <Button
             variant="contained"
@@ -547,7 +661,7 @@ const PitchDeckPage: FC<PitchDeckPageProps> = ({ workspaceId }) => {
               textTransform: "none",
             }}
           >
-            {isCreating ? "Creating..." : "Create"}
+            {isCreating ? copy.creating : copy.create}
           </Button>
         </DialogActions>
       </Dialog>
@@ -558,9 +672,9 @@ const PitchDeckPage: FC<PitchDeckPageProps> = ({ workspaceId }) => {
         open={Boolean(menuAnchor)}
         onClose={handleMenuClose}
       >
-        <MenuItem onClick={handleDuplicateDeck}>Duplicate</MenuItem>
+        <MenuItem onClick={handleDuplicateDeck}>{copy.duplicate}</MenuItem>
         <MenuItem onClick={handleDeleteDeck} sx={{ color: "#EF4444" }}>
-          Delete
+          {copy.delete}
         </MenuItem>
       </Menu>
     </Box>

@@ -36,6 +36,7 @@ import AiFieldActionButton, {
 } from "@/components/workspaceSettings/AiFieldActionButton";
 import AtecoSearchField from "@/components/onboarding/AtecoSearchField";
 import { getOnboardingSectors } from "@/lib/sectorMapping";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 type GetWorkspaceResponse = {
   workspace: Workspace;
@@ -223,104 +224,6 @@ function mapProfileToOnboardingData(
   };
 }
 
-function validateStep(
-  data: WorkspaceOnboardingData,
-  stepIndex: number,
-): FieldErrors {
-  const errors: FieldErrors = {};
-
-  if (stepIndex === 0 && !data.workspaceName.trim()) {
-    errors.workspaceName = "Workspace name is required.";
-  }
-
-  if (stepIndex === 1 && !data.businessName.trim()) {
-    errors.businessName = "Business name is required.";
-  }
-
-  if (stepIndex === 2) {
-    if (!data.isOperating) {
-      errors.isOperating = "Please select operation status.";
-    }
-    if (!data.businessPlanPurpose.trim()) {
-      errors.businessPlanPurpose = "Please select or provide the plan purpose.";
-    }
-  }
-
-  if (stepIndex === 3) {
-    if (!data.industryOption) {
-      errors.industryOption = "Industry selection is required.";
-    }
-    if (data.industryOption === "Other" && !data.industryCustom.trim()) {
-      errors.industryCustom = "Please provide a custom industry.";
-    }
-  }
-
-  if (stepIndex === 4) {
-    if (!data.companyStageOption) {
-      errors.companyStageOption = "Company stage is required.";
-    }
-    if (data.companyStageOption === "Other" && !data.companyStageCustom.trim()) {
-      errors.companyStageCustom = "Please provide a custom company stage.";
-    }
-  }
-
-  if (stepIndex === 5) {
-    if (!data.problemShortOption) {
-      errors.problemShortOption = "Problem target selection is required.";
-    }
-    if (data.problemShortOption === "Other" && !data.problemShortCustom.trim()) {
-      errors.problemShortCustom = "Please provide a custom problem target.";
-    }
-  }
-
-  if (stepIndex === 6 && !data.problemLong.trim()) {
-    errors.problemLong = "Detailed problem description is required.";
-  }
-
-  if (stepIndex === 7 && !data.solutionAndUniqueness.trim()) {
-    errors.solutionAndUniqueness = "Solution details are required.";
-  }
-
-  if (stepIndex === 8) {
-    if (!data.productOrService.trim()) {
-      errors.productOrService = "Product/service description is required.";
-    }
-    if (!data.salesChannel.trim()) {
-      errors.salesChannel = "Sales channel is required.";
-    }
-  }
-
-  if (stepIndex === 9) {
-    if (!data.targetMarket.trim()) {
-      errors.targetMarket = "Target market is required.";
-    }
-    if (!data.teamSize.trim()) {
-      errors.teamSize = "Team size is required.";
-    }
-  }
-
-  if (stepIndex === 10 && !data.teamAndRoles.trim()) {
-    errors.teamAndRoles = "Team roles are required.";
-  }
-
-  if (stepIndex === 11) {
-    if (!data.financialProjections.trim()) {
-      errors.financialProjections = "Financial projections are required.";
-    }
-    if (!data.risksAndMitigation.trim()) {
-      errors.risksAndMitigation = "Risk and mitigation plan is required.";
-    }
-    if (!data.successMetrics.trim()) {
-      errors.successMetrics = "Success metrics are required.";
-    }
-    if (!data.growthPartnerships.trim()) {
-      errors.growthPartnerships = "Growth partnerships are required.";
-    }
-  }
-
-  return errors;
-}
-
 function readDraft(storageKey: string): DraftData | null {
   if (!storageKey) return null;
   try {
@@ -339,9 +242,357 @@ function readDraft(storageKey: string): DraftData | null {
   }
 }
 
+function withVars(
+  template: string,
+  vars: Record<string, string | number>,
+): string {
+  return Object.entries(vars).reduce((value, [key, replacement]) => {
+    return value.replace(`{${key}}`, String(replacement));
+  }, template);
+}
+
+function getOptionLabel(
+  value: string,
+  labels: Record<string, string>,
+): string {
+  return labels[value] ?? value;
+}
+
 export default function WorkspaceBusinessSetupPage() {
   const router = useRouter();
   const params = useParams();
+  const { locale } = useLanguage();
+
+  const copy =
+    locale === "it"
+      ? {
+          setupBusiness: "Configura azienda",
+          wizardDescription:
+            "Onboarding in 12 passaggi per strutturare il contesto del workspace per pianificazione e generazione AI.",
+          stepOf: "Passo {step} di {total}: {title}",
+          workspaceLabel: "Workspace",
+          workspaceNotSet: "Non ancora impostato",
+          stepLabel: "PASSO {step} / {total}",
+          draftRestored:
+            "Bozza locale piu recente ripristinata per questo workspace.",
+          draftSaved: "Bozza salvata automaticamente",
+          back: "Indietro",
+          createWorkspace: "Crea workspace",
+          saving: "Salvataggio...",
+          nextStep: "Passo successivo",
+          yes: "Si",
+          no: "No",
+          select: "Seleziona",
+          other: "Altro",
+          workspaceName: "Nome workspace",
+          workspaceNamePlaceholder: "Es. Silicon Growth Lab",
+          businessName: "Nome azienda",
+          businessNamePlaceholder: "Es. Silicon Plan LLC",
+          isOperating: "Questa azienda e attualmente operativa?",
+          businessPlanPurpose: "Perche stai creando questo business plan?",
+          businessPlanPurposePlaceholder:
+            "Scopo personalizzato (opzionale se una scelta predefinita e adatta)",
+          selectIndustry: "Seleziona un settore",
+          customIndustry: "Settore personalizzato",
+          customIndustryPlaceholder: "Inserisci il tuo settore",
+          companyStage: "Stadio aziendale",
+          customCompanyStage: "Stadio aziendale personalizzato",
+          customCompanyStagePlaceholder: "Inserisci lo stadio aziendale",
+          atecoCode: "Codice ATECO (opzionale ma consigliato)",
+          atecoHelp:
+            "Cerca per codice o nome categoria. Ci aiuta a fornire benchmark di settore e multipli di valutazione accurati.",
+          selectedAteco: "ATECO selezionato:",
+          problemShort: "Quale problema risolvi e per chi?",
+          customProblemTarget: "Target problema personalizzato",
+          customProblemTargetPlaceholder:
+            "Inserisci problema e segmento target",
+          problemDetails: "Dettagli problema",
+          problemDetailsPlaceholder:
+            "Descrivi i principali pain point e le alternative attuali",
+          solutionUniqueness: "Soluzione e unicita",
+          solutionUniquenessPlaceholder:
+            "Descrivi la soluzione e cosa la differenzia",
+          productService: "Prodotto o servizio",
+          productServicePlaceholder: "Descrivi cosa vendi",
+          salesChannel: "Canale di vendita",
+          salesChannelPlaceholder:
+            "Canale di vendita personalizzato (opzionale se una scelta predefinita e adatta)",
+          targetMarket: "Mercato target",
+          targetMarketPlaceholder:
+            "Descrivi clienti target e area geografica",
+          teamSize: "Dimensione team",
+          teamSizePlaceholder:
+            "Dimensione team personalizzata (opzionale se una scelta predefinita e adatta)",
+          teamRoles: "Ruoli e responsabilita del team",
+          teamRolesPlaceholder: "Descrivi membri chiave e ruoli",
+          financialProjections: "Proiezioni finanziarie",
+          financialProjectionsPlaceholder:
+            "Descrivi la prospettiva a 3-5 anni",
+          risksMitigation: "Rischi e mitigazione",
+          risksMitigationPlaceholder:
+            "Descrivi rischi principali e azioni di mitigazione",
+          successMetrics: "Metriche di successo",
+          successMetricsPlaceholder: "Descrivi KPI e obiettivi",
+          growthPartnerships: "Partnership di crescita",
+          growthPartnershipsPlaceholder:
+            "Descrivi partnership strategiche",
+          errWorkspaceName: "Il nome workspace e obbligatorio.",
+          errBusinessName: "Il nome azienda e obbligatorio.",
+          errOperationStatus: "Seleziona lo stato operativo.",
+          errPlanPurpose: "Seleziona o inserisci lo scopo del piano.",
+          errIndustry: "La selezione del settore e obbligatoria.",
+          errIndustryCustom: "Inserisci un settore personalizzato.",
+          errCompanyStage: "Lo stadio aziendale e obbligatorio.",
+          errCompanyStageCustom: "Inserisci uno stadio aziendale personalizzato.",
+          errProblemTarget: "La selezione del target problema e obbligatoria.",
+          errProblemTargetCustom: "Inserisci un target problema personalizzato.",
+          errProblemLong: "La descrizione dettagliata del problema e obbligatoria.",
+          errSolution: "I dettagli della soluzione sono obbligatori.",
+          errProductService: "La descrizione prodotto/servizio e obbligatoria.",
+          errSalesChannel: "Il canale di vendita e obbligatorio.",
+          errTargetMarket: "Il mercato target e obbligatorio.",
+          errTeamSize: "La dimensione del team e obbligatoria.",
+          errTeamRoles: "I ruoli del team sono obbligatori.",
+          errFinancial: "Le proiezioni finanziarie sono obbligatorie.",
+          errRisk: "Il piano rischi e mitigazione e obbligatorio.",
+          errSuccess: "Le metriche di successo sono obbligatorie.",
+          errGrowth: "Le partnership di crescita sono obbligatorie.",
+          aiFieldUpdated: "Campo aggiornato con AI.",
+          aiFieldFailed: "Impossibile eseguire l'azione AI.",
+          aiFieldError:
+            "Si e verificato un errore durante l'azione AI.",
+        }
+      : {
+          setupBusiness: "Setup Business",
+          wizardDescription:
+            "12-step onboarding to structure your workspace context for planning and AI generation.",
+          stepOf: "Step {step} of {total}: {title}",
+          workspaceLabel: "Workspace",
+          workspaceNotSet: "Not set yet",
+          stepLabel: "STEP {step} / {total}",
+          draftRestored: "Restored your latest local draft for this workspace.",
+          draftSaved: "Draft auto-saved",
+          back: "Back",
+          createWorkspace: "Create Workspace",
+          saving: "Saving...",
+          nextStep: "Next Step",
+          yes: "Yes",
+          no: "No",
+          select: "Select",
+          other: "Other",
+          workspaceName: "Workspace name",
+          workspaceNamePlaceholder: "Ex. Silicon Growth Lab",
+          businessName: "Business name",
+          businessNamePlaceholder: "Ex. Silicon Plan LLC",
+          isOperating: "Is this company currently in operation?",
+          businessPlanPurpose: "Why are you creating this business plan?",
+          businessPlanPurposePlaceholder:
+            "Custom purpose (optional if selected option fits)",
+          selectIndustry: "Select an industry",
+          customIndustry: "Custom industry",
+          customIndustryPlaceholder: "Type your industry",
+          companyStage: "Company stage",
+          customCompanyStage: "Custom company stage",
+          customCompanyStagePlaceholder: "Type your company stage",
+          atecoCode: "ATECO code (optional but recommended)",
+          atecoHelp:
+            "Search by code or category name. This helps us provide accurate industry benchmarks and valuation multiples.",
+          selectedAteco: "Selected ATECO:",
+          problemShort: "What problem do you solve, and for whom?",
+          customProblemTarget: "Custom problem target",
+          customProblemTargetPlaceholder: "Type the problem and target segment",
+          problemDetails: "Problem details",
+          problemDetailsPlaceholder:
+            "Describe the core pain points and current alternatives",
+          solutionUniqueness: "Solution and uniqueness",
+          solutionUniquenessPlaceholder:
+            "Describe your solution and why it is differentiated",
+          productService: "Product or service",
+          productServicePlaceholder: "Describe what you sell",
+          salesChannel: "Sales channel",
+          salesChannelPlaceholder:
+            "Custom sales channel (optional if selected option fits)",
+          targetMarket: "Target market",
+          targetMarketPlaceholder:
+            "Describe your target customers and geography",
+          teamSize: "Team size",
+          teamSizePlaceholder:
+            "Custom team size (optional if selected option fits)",
+          teamRoles: "Team roles and responsibilities",
+          teamRolesPlaceholder: "Describe core team members and their roles",
+          financialProjections: "Financial projections",
+          financialProjectionsPlaceholder: "Describe 3-5 year outlook",
+          risksMitigation: "Risks and mitigation",
+          risksMitigationPlaceholder: "Describe key risks and mitigation actions",
+          successMetrics: "Success metrics",
+          successMetricsPlaceholder: "Describe KPIs and goals",
+          growthPartnerships: "Growth partnerships",
+          growthPartnershipsPlaceholder: "Describe strategic partnerships",
+          errWorkspaceName: "Workspace name is required.",
+          errBusinessName: "Business name is required.",
+          errOperationStatus: "Please select operation status.",
+          errPlanPurpose: "Please select or provide the plan purpose.",
+          errIndustry: "Industry selection is required.",
+          errIndustryCustom: "Please provide a custom industry.",
+          errCompanyStage: "Company stage is required.",
+          errCompanyStageCustom: "Please provide a custom company stage.",
+          errProblemTarget: "Problem target selection is required.",
+          errProblemTargetCustom: "Please provide a custom problem target.",
+          errProblemLong: "Detailed problem description is required.",
+          errSolution: "Solution details are required.",
+          errProductService: "Product/service description is required.",
+          errSalesChannel: "Sales channel is required.",
+          errTargetMarket: "Target market is required.",
+          errTeamSize: "Team size is required.",
+          errTeamRoles: "Team roles are required.",
+          errFinancial: "Financial projections are required.",
+          errRisk: "Risk and mitigation plan is required.",
+          errSuccess: "Success metrics are required.",
+          errGrowth: "Growth partnerships are required.",
+          aiFieldUpdated: "Field updated with AI.",
+          aiFieldFailed: "Failed to run AI action.",
+          aiFieldError: "Something went wrong while running AI action.",
+        };
+
+  const localizedStepDefinitions = useMemo(() => {
+    const itById: Record<string, { title: string; subtitle: string }> = {
+      workspace_name: {
+        title: "Nome workspace",
+        subtitle: "Imposta il nome business/workspace usato nella pianificazione",
+      },
+      business_name: {
+        title: "Nome azienda",
+        subtitle: "Imposta il nome aziendale usato nel piano",
+      },
+      operation_and_purpose: {
+        title: "Operativita e obiettivo",
+        subtitle: "Definisci stato operativo e obiettivo di pianificazione",
+      },
+      industry_selection: {
+        title: "Settore",
+        subtitle: "Seleziona il macro-settore o inseriscine uno personalizzato",
+      },
+      company_stage_and_ateco: {
+        title: "Stadio e ATECO",
+        subtitle: "Imposta maturita aziendale e dettagli ATECO opzionali",
+      },
+      problem_target: {
+        title: "Target problema",
+        subtitle: "Identifica chi servi e quale problema affronti",
+      },
+      problem_details: {
+        title: "Dettagli problema",
+        subtitle: "Descrivi il contesto del problema con dettagli concreti",
+      },
+      solution_uniqueness: {
+        title: "Soluzione",
+        subtitle: "Spiega la soluzione e cosa la rende diversa",
+      },
+      offering_and_channel: {
+        title: "Offerta e canali",
+        subtitle: "Descrivi prodotto/servizio e canali di vendita",
+      },
+      market_and_team_size: {
+        title: "Mercato e team",
+        subtitle: "Definisci mercato target e dimensione del team",
+      },
+      team_roles: {
+        title: "Ruoli team",
+        subtitle: "Chiarisci composizione e responsabilita del team",
+      },
+      financial_execution: {
+        title: "Finanza ed esecuzione",
+        subtitle: "Raccogli proiezioni, rischi, KPI e partnership di crescita",
+      },
+    };
+
+    if (locale !== "it") return ONBOARDING_STEP_DEFINITIONS;
+    return ONBOARDING_STEP_DEFINITIONS.map((step) => ({
+      ...step,
+      title: itById[step.id]?.title ?? step.title,
+      subtitle: itById[step.id]?.subtitle ?? step.subtitle,
+    }));
+  }, [locale]);
+
+  const industryOptionLabels: Record<string, string> =
+    locale === "it"
+      ? {
+          "Software / SaaS / IT": "Software / SaaS / IT",
+          "IT Services / IT Consulting": "Servizi IT / Consulenza IT",
+          "E-commerce / Retail": "E-commerce / Retail",
+          "FinTech / Payments / InsurTech": "FinTech / Pagamenti / InsurTech",
+          "Health / MedTech / Biotech": "Salute / MedTech / Biotech",
+          "Education / EdTech": "Formazione / EdTech",
+          "Media / Marketing / Advertising": "Media / Marketing / Advertising",
+          "Tourism / Hospitality / Food service": "Turismo / Hospitality / Ristorazione",
+          "Logistics / Transport / Mobility": "Logistica / Trasporti / Mobilita",
+          "Manufacturing / Industry 4.0": "Produzione / Industria 4.0",
+          "Agriculture / Food production": "Agricoltura / Produzione alimentare",
+          "Energy / Utilities": "Energia / Utilities",
+          "Construction / Real Estate": "Costruzioni / Real Estate",
+          "Professional Services": "Servizi professionali",
+          "Business Services / B2B": "Servizi alle imprese / B2B",
+          Other: copy.other,
+        }
+      : {};
+
+  const companyStageOptionLabels: Record<string, string> =
+    locale === "it"
+      ? {
+          "Idea / Pre-seed": "Idea / Pre-seed",
+          "Early Growth (Seed to Series A)": "Crescita iniziale (Seed - Serie A)",
+          "Scale-up": "Scale-up",
+          Established: "Consolidata",
+          Other: copy.other,
+        }
+      : {};
+
+  const problemShortOptionLabels: Record<string, string> =
+    locale === "it"
+      ? {
+          "Founders who need structured business plans":
+            "Founder che hanno bisogno di business plan strutturati",
+          "Small businesses needing funding-ready docs":
+            "Piccole imprese che necessitano documenti pronti per investitori",
+          "Consultants serving SME clients":
+            "Consulenti che supportano clienti PMI",
+          Other: copy.other,
+        }
+      : {};
+
+  const purposeOptionLabels: Record<string, string> =
+    locale === "it"
+      ? {
+          "Create a complete business plan": "Creare un business plan completo",
+          "Prepare for fundraising": "Prepararsi alla raccolta fondi",
+          "Clarify business strategy": "Chiarire la strategia aziendale",
+          "Improve internal planning": "Migliorare la pianificazione interna",
+          Other: copy.other,
+        }
+      : {};
+
+  const salesChannelOptionLabels: Record<string, string> =
+    locale === "it"
+      ? {
+          "Direct sales": "Vendita diretta",
+          "Online channels": "Canali online",
+          "Partner network": "Rete partner",
+          "Mixed channels": "Canali misti",
+          Other: copy.other,
+        }
+      : {};
+
+  const teamSizeOptionLabels: Record<string, string> =
+    locale === "it"
+      ? {
+          "Solo founder": "Founder singolo",
+          "2-5 people": "2-5 persone",
+          "6-20 people": "6-20 persone",
+          "21-50 people": "21-50 persone",
+          "50+ people": "50+ persone",
+          Other: copy.other,
+        }
+      : {};
 
   const workspaceId =
     typeof params.workspaceId === "string"
@@ -371,12 +622,14 @@ export default function WorkspaceBusinessSetupPage() {
   const [lastDraftSavedAt, setLastDraftSavedAt] = useState<string | null>(null);
   const [aiBusyField, setAiBusyField] = useState<AiAssistFieldKey | null>(null);
 
-  const totalSteps = ONBOARDING_STEP_DEFINITIONS.length;
+  const totalSteps = localizedStepDefinitions.length;
   const lastStepIndex = totalSteps - 1;
   const isFinalStep = currentStep === lastStepIndex;
   const progress = ((currentStep + 1) / totalSteps) * 100;
   const isBusy = loading || saving || !workspaceId;
   const stepMeta =
+    localizedStepDefinitions[currentStep] ?? localizedStepDefinitions[0];
+  const canonicalStepMeta =
     ONBOARDING_STEP_DEFINITIONS[currentStep] ?? ONBOARDING_STEP_DEFINITIONS[0];
 
   useEffect(() => {
@@ -512,6 +765,113 @@ export default function WorkspaceBusinessSetupPage() {
     }
   };
 
+  const validateStep = (
+    currentData: WorkspaceOnboardingData,
+    stepIndex: number,
+  ): FieldErrors => {
+    const errors: FieldErrors = {};
+
+    if (stepIndex === 0 && !currentData.workspaceName.trim()) {
+      errors.workspaceName = copy.errWorkspaceName;
+    }
+
+    if (stepIndex === 1 && !currentData.businessName.trim()) {
+      errors.businessName = copy.errBusinessName;
+    }
+
+    if (stepIndex === 2) {
+      if (!currentData.isOperating) {
+        errors.isOperating = copy.errOperationStatus;
+      }
+      if (!currentData.businessPlanPurpose.trim()) {
+        errors.businessPlanPurpose = copy.errPlanPurpose;
+      }
+    }
+
+    if (stepIndex === 3) {
+      if (!currentData.industryOption) {
+        errors.industryOption = copy.errIndustry;
+      }
+      if (
+        currentData.industryOption === "Other" &&
+        !currentData.industryCustom.trim()
+      ) {
+        errors.industryCustom = copy.errIndustryCustom;
+      }
+    }
+
+    if (stepIndex === 4) {
+      if (!currentData.companyStageOption) {
+        errors.companyStageOption = copy.errCompanyStage;
+      }
+      if (
+        currentData.companyStageOption === "Other" &&
+        !currentData.companyStageCustom.trim()
+      ) {
+        errors.companyStageCustom = copy.errCompanyStageCustom;
+      }
+    }
+
+    if (stepIndex === 5) {
+      if (!currentData.problemShortOption) {
+        errors.problemShortOption = copy.errProblemTarget;
+      }
+      if (
+        currentData.problemShortOption === "Other" &&
+        !currentData.problemShortCustom.trim()
+      ) {
+        errors.problemShortCustom = copy.errProblemTargetCustom;
+      }
+    }
+
+    if (stepIndex === 6 && !currentData.problemLong.trim()) {
+      errors.problemLong = copy.errProblemLong;
+    }
+
+    if (stepIndex === 7 && !currentData.solutionAndUniqueness.trim()) {
+      errors.solutionAndUniqueness = copy.errSolution;
+    }
+
+    if (stepIndex === 8) {
+      if (!currentData.productOrService.trim()) {
+        errors.productOrService = copy.errProductService;
+      }
+      if (!currentData.salesChannel.trim()) {
+        errors.salesChannel = copy.errSalesChannel;
+      }
+    }
+
+    if (stepIndex === 9) {
+      if (!currentData.targetMarket.trim()) {
+        errors.targetMarket = copy.errTargetMarket;
+      }
+      if (!currentData.teamSize.trim()) {
+        errors.teamSize = copy.errTeamSize;
+      }
+    }
+
+    if (stepIndex === 10 && !currentData.teamAndRoles.trim()) {
+      errors.teamAndRoles = copy.errTeamRoles;
+    }
+
+    if (stepIndex === 11) {
+      if (!currentData.financialProjections.trim()) {
+        errors.financialProjections = copy.errFinancial;
+      }
+      if (!currentData.risksAndMitigation.trim()) {
+        errors.risksAndMitigation = copy.errRisk;
+      }
+      if (!currentData.successMetrics.trim()) {
+        errors.successMetrics = copy.errSuccess;
+      }
+      if (!currentData.growthPartnerships.trim()) {
+        errors.growthPartnerships = copy.errGrowth;
+      }
+    }
+
+    return errors;
+  };
+
   const validateCurrentStep = (): boolean => {
     const errors = validateStep(data, currentStep);
     setFieldErrors(errors);
@@ -616,8 +976,8 @@ export default function WorkspaceBusinessSetupPage() {
           problemShortOption: data.problemShortOption,
           problemShortCustom: data.problemShortCustom,
           onboardingStepIndex: currentStep,
-          onboardingStepId: stepMeta?.id ?? "",
-          onboardingStepTitle: stepMeta?.title ?? "",
+          onboardingStepId: canonicalStepMeta?.id ?? "",
+          onboardingStepTitle: canonicalStepMeta?.title ?? "",
           onboardingTotalSteps: totalSteps,
           draftSavedAt: new Date().toISOString(),
         },
@@ -712,15 +1072,15 @@ export default function WorkspaceBusinessSetupPage() {
         | null;
 
       if (!res.ok || !payload?.text) {
-        toast.error(payload?.error ?? "Failed to run AI action.");
+        toast.error(payload?.error ?? copy.aiFieldFailed);
         return;
       }
 
       updateField(field, payload.text);
-      toast.success("Field updated with AI.");
+      toast.success(copy.aiFieldUpdated);
     } catch (error) {
       console.error("Failed to run AI onboarding action", error);
-      toast.error("Something went wrong while running AI action.");
+      toast.error(copy.aiFieldError);
     } finally {
       setAiBusyField(null);
     }
@@ -744,11 +1104,11 @@ export default function WorkspaceBusinessSetupPage() {
       return (
         <Box>
           <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
-            Workspace name
+            {copy.workspaceName}
           </Typography>
           <TextField
             fullWidth
-            placeholder="Ex. Silicon Growth Lab"
+            placeholder={copy.workspaceNamePlaceholder}
             value={data.workspaceName}
             onChange={(e) => updateField("workspaceName", e.target.value)}
             error={Boolean(fieldErrors.workspaceName)}
@@ -763,11 +1123,11 @@ export default function WorkspaceBusinessSetupPage() {
       return (
         <Box>
           <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
-            Business name
+            {copy.businessName}
           </Typography>
           <TextField
             fullWidth
-            placeholder="Ex. Silicon Plan LLC"
+            placeholder={copy.businessNamePlaceholder}
             value={data.businessName}
             onChange={(e) => updateField("businessName", e.target.value)}
             error={Boolean(fieldErrors.businessName)}
@@ -783,7 +1143,7 @@ export default function WorkspaceBusinessSetupPage() {
         <Stack spacing={3}>
           <Box>
             <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
-              Is this company currently in operation?
+              {copy.isOperating}
             </Typography>
             <RadioGroup
               row
@@ -795,12 +1155,12 @@ export default function WorkspaceBusinessSetupPage() {
               <FormControlLabel
                 value="yes"
                 control={<Radio size="small" />}
-                label="Yes"
+                label={copy.yes}
               />
               <FormControlLabel
                 value="no"
                 control={<Radio size="small" />}
-                label="No"
+                label={copy.no}
               />
             </RadioGroup>
             {renderFieldError("isOperating")}
@@ -808,12 +1168,18 @@ export default function WorkspaceBusinessSetupPage() {
 
           <Box>
             <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
-              Why are you creating this business plan?
+              {copy.businessPlanPurpose}
             </Typography>
             <Select
               fullWidth
               displayEmpty
-              value={PURPOSE_OPTIONS.includes(data.businessPlanPurpose as never) ? data.businessPlanPurpose : data.businessPlanPurpose ? "Other" : ""}
+              value={
+                PURPOSE_OPTIONS.includes(data.businessPlanPurpose as never)
+                  ? data.businessPlanPurpose
+                  : data.businessPlanPurpose
+                    ? "Other"
+                    : ""
+              }
               onChange={(event) => {
                 const next = event.target.value;
                 if (next === "Other") {
@@ -823,22 +1189,26 @@ export default function WorkspaceBusinessSetupPage() {
                 }
               }}
               sx={selectBaseSx}
-              renderValue={(selected) => (selected ? selected : "Select")}
+              renderValue={(selected) =>
+                selected
+                  ? getOptionLabel(selected, purposeOptionLabels)
+                  : copy.select
+              }
             >
               <MenuItem disabled value="">
-                <Typography color="text.secondary">Select</Typography>
+                <Typography color="text.secondary">{copy.select}</Typography>
               </MenuItem>
               {PURPOSE_OPTIONS.map((option) => (
                 <MenuItem key={option} value={option}>
-                  {option}
+                  {getOptionLabel(option, purposeOptionLabels)}
                 </MenuItem>
               ))}
-              <MenuItem value="Other">Other</MenuItem>
+              <MenuItem value="Other">{copy.other}</MenuItem>
             </Select>
             <TextField
               fullWidth
               sx={{ mt: 1.5 }}
-              placeholder="Custom purpose (optional if selected option fits)"
+              placeholder={copy.businessPlanPurposePlaceholder}
               value={data.businessPlanPurpose}
               onChange={(e) => updateField("businessPlanPurpose", e.target.value)}
               error={Boolean(fieldErrors.businessPlanPurpose)}
@@ -855,7 +1225,7 @@ export default function WorkspaceBusinessSetupPage() {
         <Stack spacing={3}>
           <Box>
             <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
-              Select an industry
+              {copy.selectIndustry}
             </Typography>
             <Select
               fullWidth
@@ -864,17 +1234,21 @@ export default function WorkspaceBusinessSetupPage() {
               onChange={handleIndustryChange}
               sx={selectBaseSx}
               error={Boolean(fieldErrors.industryOption)}
-              renderValue={(selected) => (selected ? selected : "Select")}
+              renderValue={(selected) =>
+                selected
+                  ? getOptionLabel(selected, industryOptionLabels)
+                  : copy.select
+              }
             >
               <MenuItem disabled value="">
-                <Typography color="text.secondary">Select</Typography>
+                <Typography color="text.secondary">{copy.select}</Typography>
               </MenuItem>
               {INDUSTRY_OPTIONS.map((option) => (
                 <MenuItem key={option} value={option}>
-                  {option}
+                  {getOptionLabel(option, industryOptionLabels)}
                 </MenuItem>
               ))}
-              <MenuItem value="Other">Other</MenuItem>
+              <MenuItem value="Other">{copy.other}</MenuItem>
             </Select>
             {renderFieldError("industryOption")}
           </Box>
@@ -882,11 +1256,11 @@ export default function WorkspaceBusinessSetupPage() {
           {data.industryOption === "Other" ? (
             <Box>
               <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
-                Custom industry
+                {copy.customIndustry}
               </Typography>
               <TextField
                 fullWidth
-                placeholder="Type your industry"
+                placeholder={copy.customIndustryPlaceholder}
                 value={data.industryCustom}
                 onChange={(e) => updateField("industryCustom", e.target.value)}
                 error={Boolean(fieldErrors.industryCustom)}
@@ -904,7 +1278,7 @@ export default function WorkspaceBusinessSetupPage() {
         <Stack spacing={3}>
           <Box>
             <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
-              Company stage
+              {copy.companyStage}
             </Typography>
             <Select
               fullWidth
@@ -913,17 +1287,21 @@ export default function WorkspaceBusinessSetupPage() {
               onChange={handleCompanyStageChange}
               sx={selectBaseSx}
               error={Boolean(fieldErrors.companyStageOption)}
-              renderValue={(selected) => (selected ? selected : "Select")}
+              renderValue={(selected) =>
+                selected
+                  ? getOptionLabel(selected, companyStageOptionLabels)
+                  : copy.select
+              }
             >
               <MenuItem disabled value="">
-                <Typography color="text.secondary">Select</Typography>
+                <Typography color="text.secondary">{copy.select}</Typography>
               </MenuItem>
               {COMPANY_STAGE_OPTIONS.map((option) => (
                 <MenuItem key={option} value={option}>
-                  {option}
+                  {getOptionLabel(option, companyStageOptionLabels)}
                 </MenuItem>
               ))}
-              <MenuItem value="Other">Other</MenuItem>
+              <MenuItem value="Other">{copy.other}</MenuItem>
             </Select>
             {renderFieldError("companyStageOption")}
           </Box>
@@ -931,11 +1309,11 @@ export default function WorkspaceBusinessSetupPage() {
           {data.companyStageOption === "Other" ? (
             <Box>
               <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
-                Custom company stage
+                {copy.customCompanyStage}
               </Typography>
               <TextField
                 fullWidth
-                placeholder="Type your company stage"
+                placeholder={copy.customCompanyStagePlaceholder}
                 value={data.companyStageCustom}
                 onChange={(e) => updateField("companyStageCustom", e.target.value)}
                 error={Boolean(fieldErrors.companyStageCustom)}
@@ -947,10 +1325,10 @@ export default function WorkspaceBusinessSetupPage() {
 
           <Box>
             <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
-              ATECO code (optional but recommended)
+              {copy.atecoCode}
             </Typography>
             <Typography sx={{ fontSize: 12, color: "text.secondary", mb: 1 }}>
-              Search by code or category name. This helps us provide accurate industry benchmarks and valuation multiples.
+              {copy.atecoHelp}
             </Typography>
             <AtecoSearchField
               value={data.atecoCode}
@@ -973,7 +1351,7 @@ export default function WorkspaceBusinessSetupPage() {
                 }}
               >
                 <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#0369A1", mb: 0.5 }}>
-                  Selected ATECO:
+                  {copy.selectedAteco}
                 </Typography>
                 <Typography sx={{ fontSize: 13, color: "#075985" }}>
                   {data.atecoDescription}
@@ -990,7 +1368,7 @@ export default function WorkspaceBusinessSetupPage() {
         <Stack spacing={3}>
           <Box>
             <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
-              What problem do you solve, and for whom?
+              {copy.problemShort}
             </Typography>
             <Select
               fullWidth
@@ -999,17 +1377,21 @@ export default function WorkspaceBusinessSetupPage() {
               onChange={handleProblemShortChange}
               sx={selectBaseSx}
               error={Boolean(fieldErrors.problemShortOption)}
-              renderValue={(selected) => (selected ? selected : "Select")}
+              renderValue={(selected) =>
+                selected
+                  ? getOptionLabel(selected, problemShortOptionLabels)
+                  : copy.select
+              }
             >
               <MenuItem disabled value="">
-                <Typography color="text.secondary">Select</Typography>
+                <Typography color="text.secondary">{copy.select}</Typography>
               </MenuItem>
               {PROBLEM_SHORT_OPTIONS.map((option) => (
                 <MenuItem key={option} value={option}>
-                  {option}
+                  {getOptionLabel(option, problemShortOptionLabels)}
                 </MenuItem>
               ))}
-              <MenuItem value="Other">Other</MenuItem>
+              <MenuItem value="Other">{copy.other}</MenuItem>
             </Select>
             {renderFieldError("problemShortOption")}
           </Box>
@@ -1017,11 +1399,11 @@ export default function WorkspaceBusinessSetupPage() {
           {data.problemShortOption === "Other" ? (
             <Box>
               <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
-                Custom problem target
+                {copy.customProblemTarget}
               </Typography>
               <TextField
                 fullWidth
-                placeholder="Type the problem and target segment"
+                placeholder={copy.customProblemTargetPlaceholder}
                 value={data.problemShortCustom}
                 onChange={(e) => updateField("problemShortCustom", e.target.value)}
                 error={Boolean(fieldErrors.problemShortCustom)}
@@ -1038,13 +1420,13 @@ export default function WorkspaceBusinessSetupPage() {
       return (
         <Box>
           <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
-            Problem details
+            {copy.problemDetails}
           </Typography>
           <TextField
             fullWidth
             multiline
             minRows={4}
-            placeholder="Describe the core pain points and current alternatives"
+            placeholder={copy.problemDetailsPlaceholder}
             value={data.problemLong}
             onChange={(e) => updateField("problemLong", e.target.value)}
             error={Boolean(fieldErrors.problemLong)}
@@ -1065,13 +1447,13 @@ export default function WorkspaceBusinessSetupPage() {
       return (
         <Box>
           <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
-            Solution and uniqueness
+            {copy.solutionUniqueness}
           </Typography>
           <TextField
             fullWidth
             multiline
             minRows={4}
-            placeholder="Describe your solution and why it is differentiated"
+            placeholder={copy.solutionUniquenessPlaceholder}
             value={data.solutionAndUniqueness}
             onChange={(e) => updateField("solutionAndUniqueness", e.target.value)}
             error={Boolean(fieldErrors.solutionAndUniqueness)}
@@ -1093,13 +1475,13 @@ export default function WorkspaceBusinessSetupPage() {
         <Stack spacing={3}>
           <Box>
             <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
-              Product or service
+              {copy.productService}
             </Typography>
             <TextField
               fullWidth
               multiline
               minRows={3}
-              placeholder="Describe what you sell"
+              placeholder={copy.productServicePlaceholder}
               value={data.productOrService}
               onChange={(e) => updateField("productOrService", e.target.value)}
               error={Boolean(fieldErrors.productOrService)}
@@ -1109,12 +1491,18 @@ export default function WorkspaceBusinessSetupPage() {
           </Box>
           <Box>
             <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
-              Sales channel
+              {copy.salesChannel}
             </Typography>
             <Select
               fullWidth
               displayEmpty
-              value={SALES_CHANNEL_OPTIONS.includes(data.salesChannel as never) ? data.salesChannel : data.salesChannel ? "Other" : ""}
+              value={
+                SALES_CHANNEL_OPTIONS.includes(data.salesChannel as never)
+                  ? data.salesChannel
+                  : data.salesChannel
+                    ? "Other"
+                    : ""
+              }
               onChange={(event) => {
                 const next = event.target.value;
                 if (next === "Other") {
@@ -1124,22 +1512,26 @@ export default function WorkspaceBusinessSetupPage() {
                 }
               }}
               sx={selectBaseSx}
-              renderValue={(selected) => (selected ? selected : "Select")}
+              renderValue={(selected) =>
+                selected
+                  ? getOptionLabel(selected, salesChannelOptionLabels)
+                  : copy.select
+              }
             >
               <MenuItem disabled value="">
-                <Typography color="text.secondary">Select</Typography>
+                <Typography color="text.secondary">{copy.select}</Typography>
               </MenuItem>
               {SALES_CHANNEL_OPTIONS.map((option) => (
                 <MenuItem key={option} value={option}>
-                  {option}
+                  {getOptionLabel(option, salesChannelOptionLabels)}
                 </MenuItem>
               ))}
-              <MenuItem value="Other">Other</MenuItem>
+              <MenuItem value="Other">{copy.other}</MenuItem>
             </Select>
             <TextField
               fullWidth
               sx={{ mt: 1.5 }}
-              placeholder="Custom sales channel (optional if selected option fits)"
+              placeholder={copy.salesChannelPlaceholder}
               value={data.salesChannel}
               onChange={(e) => updateField("salesChannel", e.target.value)}
               error={Boolean(fieldErrors.salesChannel)}
@@ -1156,13 +1548,13 @@ export default function WorkspaceBusinessSetupPage() {
         <Stack spacing={3}>
           <Box>
             <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
-              Target market
+              {copy.targetMarket}
             </Typography>
             <TextField
               fullWidth
               multiline
               minRows={3}
-              placeholder="Describe your target customers and geography"
+              placeholder={copy.targetMarketPlaceholder}
               value={data.targetMarket}
               onChange={(e) => updateField("targetMarket", e.target.value)}
               error={Boolean(fieldErrors.targetMarket)}
@@ -1172,12 +1564,18 @@ export default function WorkspaceBusinessSetupPage() {
           </Box>
           <Box>
             <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
-              Team size
+              {copy.teamSize}
             </Typography>
             <Select
               fullWidth
               displayEmpty
-              value={TEAM_SIZE_OPTIONS.includes(data.teamSize as never) ? data.teamSize : data.teamSize ? "Other" : ""}
+              value={
+                TEAM_SIZE_OPTIONS.includes(data.teamSize as never)
+                  ? data.teamSize
+                  : data.teamSize
+                    ? "Other"
+                    : ""
+              }
               onChange={(event) => {
                 const next = event.target.value;
                 if (next === "Other") {
@@ -1187,22 +1585,26 @@ export default function WorkspaceBusinessSetupPage() {
                 }
               }}
               sx={selectBaseSx}
-              renderValue={(selected) => (selected ? selected : "Select")}
+              renderValue={(selected) =>
+                selected
+                  ? getOptionLabel(selected, teamSizeOptionLabels)
+                  : copy.select
+              }
             >
               <MenuItem disabled value="">
-                <Typography color="text.secondary">Select</Typography>
+                <Typography color="text.secondary">{copy.select}</Typography>
               </MenuItem>
               {TEAM_SIZE_OPTIONS.map((option) => (
                 <MenuItem key={option} value={option}>
-                  {option}
+                  {getOptionLabel(option, teamSizeOptionLabels)}
                 </MenuItem>
               ))}
-              <MenuItem value="Other">Other</MenuItem>
+              <MenuItem value="Other">{copy.other}</MenuItem>
             </Select>
             <TextField
               fullWidth
               sx={{ mt: 1.5 }}
-              placeholder="Custom team size (optional if selected option fits)"
+              placeholder={copy.teamSizePlaceholder}
               value={data.teamSize}
               onChange={(e) => updateField("teamSize", e.target.value)}
               error={Boolean(fieldErrors.teamSize)}
@@ -1218,13 +1620,13 @@ export default function WorkspaceBusinessSetupPage() {
       return (
         <Box>
           <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
-            Team roles and responsibilities
+            {copy.teamRoles}
           </Typography>
           <TextField
             fullWidth
             multiline
             minRows={4}
-            placeholder="Describe core team members and their roles"
+            placeholder={copy.teamRolesPlaceholder}
             value={data.teamAndRoles}
             onChange={(e) => updateField("teamAndRoles", e.target.value)}
             error={Boolean(fieldErrors.teamAndRoles)}
@@ -1245,13 +1647,13 @@ export default function WorkspaceBusinessSetupPage() {
       <Stack spacing={3}>
         <Box>
           <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
-            Financial projections
+            {copy.financialProjections}
           </Typography>
           <TextField
             fullWidth
             multiline
             minRows={3}
-            placeholder="Describe 3-5 year outlook"
+            placeholder={copy.financialProjectionsPlaceholder}
             value={data.financialProjections}
             onChange={(e) => updateField("financialProjections", e.target.value)}
             error={Boolean(fieldErrors.financialProjections)}
@@ -1267,13 +1669,13 @@ export default function WorkspaceBusinessSetupPage() {
         </Box>
         <Box>
           <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
-            Risks and mitigation
+            {copy.risksMitigation}
           </Typography>
           <TextField
             fullWidth
             multiline
             minRows={3}
-            placeholder="Describe key risks and mitigation actions"
+            placeholder={copy.risksMitigationPlaceholder}
             value={data.risksAndMitigation}
             onChange={(e) => updateField("risksAndMitigation", e.target.value)}
             error={Boolean(fieldErrors.risksAndMitigation)}
@@ -1289,13 +1691,13 @@ export default function WorkspaceBusinessSetupPage() {
         </Box>
         <Box>
           <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
-            Success metrics
+            {copy.successMetrics}
           </Typography>
           <TextField
             fullWidth
             multiline
             minRows={3}
-            placeholder="Describe KPIs and goals"
+            placeholder={copy.successMetricsPlaceholder}
             value={data.successMetrics}
             onChange={(e) => updateField("successMetrics", e.target.value)}
             error={Boolean(fieldErrors.successMetrics)}
@@ -1311,13 +1713,13 @@ export default function WorkspaceBusinessSetupPage() {
         </Box>
         <Box>
           <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
-            Growth partnerships
+            {copy.growthPartnerships}
           </Typography>
           <TextField
             fullWidth
             multiline
             minRows={3}
-            placeholder="Describe strategic partnerships"
+            placeholder={copy.growthPartnershipsPlaceholder}
             value={data.growthPartnerships}
             onChange={(e) => updateField("growthPartnerships", e.target.value)}
             error={Boolean(fieldErrors.growthPartnerships)}
@@ -1384,11 +1786,10 @@ export default function WorkspaceBusinessSetupPage() {
             }}
           >
             <Typography sx={{ fontSize: 24, fontWeight: 700, mb: 1.2 }}>
-              Setup Business
+              {copy.setupBusiness}
             </Typography>
             <Typography sx={{ fontSize: 14.5, color: "text.secondary", mb: 2.5 }}>
-              12-step onboarding to structure your workspace context for planning
-              and AI generation.
+              {copy.wizardDescription}
             </Typography>
             <Box
               sx={{
@@ -1399,7 +1800,11 @@ export default function WorkspaceBusinessSetupPage() {
                 color: "#1E3A8A",
               }}
             >
-              Step {currentStep + 1} of {totalSteps}: {stepMeta?.title}
+              {withVars(copy.stepOf, {
+                step: currentStep + 1,
+                total: totalSteps,
+                title: stepMeta?.title ?? "",
+              })}
               <br />
               {stepMeta?.subtitle}
             </Box>
@@ -1420,7 +1825,7 @@ export default function WorkspaceBusinessSetupPage() {
               />
             </Box>
             <Typography sx={{ mt: 2, fontSize: 12.5, color: "text.secondary" }}>
-              Workspace: {workspaceName || "Not set yet"}
+              {copy.workspaceLabel}: {workspaceName || copy.workspaceNotSet}
             </Typography>
           </Box>
 
@@ -1447,7 +1852,10 @@ export default function WorkspaceBusinessSetupPage() {
               }}
             >
               <Typography sx={{ fontSize: 12, fontWeight: 700, color: "#4C6AD2" }}>
-                STEP {currentStep + 1} / {totalSteps}
+                {withVars(copy.stepLabel, {
+                  step: currentStep + 1,
+                  total: totalSteps,
+                })}
               </Typography>
               <Typography sx={{ fontSize: 20, fontWeight: 700 }}>
                 {stepMeta?.title}
@@ -1456,7 +1864,7 @@ export default function WorkspaceBusinessSetupPage() {
                 {stepMeta?.subtitle}
               </Typography>
               <Stack direction="row" spacing={1} sx={{ mt: 1.5, flexWrap: "wrap", rowGap: 1 }}>
-                {ONBOARDING_STEP_DEFINITIONS.map((step, index) => (
+                {localizedStepDefinitions.map((step, index) => (
                   <Box
                     key={step.id}
                     sx={{
@@ -1499,13 +1907,16 @@ export default function WorkspaceBusinessSetupPage() {
                   severity="info"
                   sx={{ mb: 2, borderRadius: 2, bgcolor: "#EEF4FF", color: "#1E3A8A" }}
                 >
-                  Restored your latest local draft for this workspace.
+                  {copy.draftRestored}
                 </Alert>
               ) : null}
 
               {lastDraftSavedAt ? (
                 <Typography sx={{ mb: 2, fontSize: 12, color: "text.secondary" }}>
-                  Draft auto-saved: {new Date(lastDraftSavedAt).toLocaleString()}
+                  {copy.draftSaved}:{" "}
+                  {new Date(lastDraftSavedAt).toLocaleString(
+                    locale === "it" ? "it-IT" : "en-GB",
+                  )}
                 </Typography>
               ) : null}
 
@@ -1536,7 +1947,7 @@ export default function WorkspaceBusinessSetupPage() {
                   color: "#334155",
                 }}
               >
-                Back
+                {copy.back}
               </Button>
               {isFinalStep ? (
                 <Button
@@ -1557,7 +1968,7 @@ export default function WorkspaceBusinessSetupPage() {
                     },
                   }}
                 >
-                  {saving ? "Saving..." : "Create Workspace"}
+                  {saving ? copy.saving : copy.createWorkspace}
                 </Button>
               ) : (
                 <Button
@@ -1579,7 +1990,7 @@ export default function WorkspaceBusinessSetupPage() {
                     },
                   }}
                 >
-                  Next Step
+                  {copy.nextStep}
                 </Button>
               )}
             </Box>

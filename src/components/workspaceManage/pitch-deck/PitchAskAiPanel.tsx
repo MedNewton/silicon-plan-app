@@ -25,21 +25,21 @@ import TranslateRoundedIcon from "@mui/icons-material/TranslateRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import { toast } from "react-toastify";
 import type { PitchDeckSlide, PitchDeckSlideContent } from "@/types/workspaces";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 type AiAction = "summarize" | "rephrase" | "simplify" | "detail" | "grammar" | "translate";
 
 const ACTIONS: Array<{
   id: AiAction;
-  label: string;
   icon: typeof SummarizeRoundedIcon;
   hasMenu?: boolean;
 }> = [
-  { id: "summarize", label: "Summarize", icon: SummarizeRoundedIcon },
-  { id: "rephrase", label: "Rephrase", icon: FormatQuoteRoundedIcon },
-  { id: "simplify", label: "Simplify", icon: TextFieldsRoundedIcon },
-  { id: "detail", label: "Detail", icon: NotesRoundedIcon },
-  { id: "grammar", label: "Grammar", icon: SpellcheckRoundedIcon },
-  { id: "translate", label: "Translate", icon: TranslateRoundedIcon, hasMenu: true },
+  { id: "summarize", icon: SummarizeRoundedIcon },
+  { id: "rephrase", icon: FormatQuoteRoundedIcon },
+  { id: "simplify", icon: TextFieldsRoundedIcon },
+  { id: "detail", icon: NotesRoundedIcon },
+  { id: "grammar", icon: SpellcheckRoundedIcon },
+  { id: "translate", icon: TranslateRoundedIcon, hasMenu: true },
 ];
 
 const TRANSLATE_LANGUAGES = [
@@ -307,10 +307,118 @@ const PitchAskAiPanel: FC<PitchAskAiPanelProps> = ({
   onApply,
   onClose,
 }) => {
+  const { locale } = useLanguage();
   const [draftText, setDraftText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [translateAnchor, setTranslateAnchor] = useState<null | HTMLElement>(null);
   const [targetLanguage, setTargetLanguage] = useState("English");
+
+  const copy =
+    locale === "it"
+      ? {
+          actionSummarize: "Riassumi",
+          actionRephrase: "Parafrasa",
+          actionSimplify: "Semplifica",
+          actionDetail: "Dettaglia",
+          actionGrammar: "Grammatica",
+          actionTranslate: "Traduci",
+          toastGenerated: "Suggerimento AI generato",
+          toastGenerateFailed: "Impossibile generare suggerimento AI",
+          toastSlideUpdated: "Contenuto slide aggiornato",
+          askAi: "Chiedi all'AI",
+          editSlideContent: "Modifica contenuto slide",
+          transformText: "Trasforma il testo della slide con l'AI",
+          selectedSlide: "Slide selezionata",
+          noSlideSelected: "Nessuna slide selezionata",
+          editPlaceholder: "Modifica contenuto slide...",
+          selectSlidePlaceholder: "Seleziona una slide da modificare",
+          aiActions: "Azioni AI",
+          cancel: "Annulla",
+          apply: "Applica",
+          draft: "BOZZA",
+        }
+      : {
+          actionSummarize: "Summarize",
+          actionRephrase: "Rephrase",
+          actionSimplify: "Simplify",
+          actionDetail: "Detail",
+          actionGrammar: "Grammar",
+          actionTranslate: "Translate",
+          toastGenerated: "AI suggestion generated",
+          toastGenerateFailed: "Failed to generate AI suggestion",
+          toastSlideUpdated: "Slide content updated",
+          askAi: "Ask AI",
+          editSlideContent: "Edit Slide Content",
+          transformText: "Transform your slide text with AI",
+          selectedSlide: "Selected Slide",
+          noSlideSelected: "No slide selected",
+          editPlaceholder: "Edit slide content...",
+          selectSlidePlaceholder: "Select a slide to edit",
+          aiActions: "AI Actions",
+          cancel: "Cancel",
+          apply: "Apply",
+          draft: "Draft",
+        };
+
+  const actionLabels: Record<AiAction, string> = useMemo(
+    () => ({
+      summarize: copy.actionSummarize,
+      rephrase: copy.actionRephrase,
+      simplify: copy.actionSimplify,
+      detail: copy.actionDetail,
+      grammar: copy.actionGrammar,
+      translate: copy.actionTranslate,
+    }),
+    [
+      copy.actionSummarize,
+      copy.actionRephrase,
+      copy.actionSimplify,
+      copy.actionDetail,
+      copy.actionGrammar,
+      copy.actionTranslate,
+    ]
+  );
+
+  const translateLanguages =
+    locale === "it"
+      ? [
+          { value: "English", label: "Inglese" },
+          { value: "French", label: "Francese" },
+          { value: "Spanish", label: "Spagnolo" },
+          { value: "Arabic", label: "Arabo" },
+          { value: "German", label: "Tedesco" },
+          { value: "Italian", label: "Italiano" },
+        ]
+      : TRANSLATE_LANGUAGES.map((lang) => ({ value: lang, label: lang }));
+
+  const contentTypeLabels: Record<string, string> =
+    locale === "it"
+      ? {
+          title_only: "Solo titolo",
+          title_bullets: "Titolo + elenco",
+          title_text: "Titolo + testo",
+          title_image: "Titolo + immagine",
+          two_columns: "Due colonne",
+          comparison: "Tabella confronto",
+          timeline: "Timeline",
+          team_grid: "Griglia team",
+          metrics: "Metriche",
+          quote: "Citazione",
+          blank: "Vuota",
+        }
+      : {
+          title_only: "Title only",
+          title_bullets: "Title + bullets",
+          title_text: "Title + text",
+          title_image: "Title + image",
+          two_columns: "Two columns",
+          comparison: "Comparison",
+          timeline: "Timeline",
+          team_grid: "Team grid",
+          metrics: "Metrics",
+          quote: "Quote",
+          blank: "Blank",
+        };
 
   // Update draft text when selected slide changes
   useEffect(() => {
@@ -347,15 +455,15 @@ const PitchAskAiPanel: FC<PitchAskAiPanelProps> = ({
 
         const data = (await response.json()) as { text: string };
         setDraftText(data.text ?? "");
-        toast.success("AI suggestion generated");
+        toast.success(copy.toastGenerated);
       } catch (err) {
         console.error("AI suggestion error:", err);
-        toast.error("Failed to generate AI suggestion");
+        toast.error(copy.toastGenerateFailed);
       } finally {
         setIsLoading(false);
       }
     },
-    [workspaceId, selectedSlide, draftText]
+    [workspaceId, selectedSlide, draftText, copy.toastGenerateFailed, copy.toastGenerated]
   );
 
   const handleApply = async () => {
@@ -366,7 +474,7 @@ const PitchAskAiPanel: FC<PitchAskAiPanelProps> = ({
       ai_generated_at: new Date().toISOString(),
     };
     await onApply(selectedSlide.id, newContent);
-    toast.success("Slide content updated");
+    toast.success(copy.toastSlideUpdated);
   };
 
   const actionButtons = useMemo(
@@ -406,10 +514,10 @@ const PitchAskAiPanel: FC<PitchAskAiPanelProps> = ({
             },
           }}
         >
-          {action.label}
+          {actionLabels[action.id]}
         </Button>
       )),
-    [handleAction, isLoading, selectedSlide]
+    [handleAction, isLoading, selectedSlide, actionLabels]
   );
 
   return (
@@ -438,7 +546,7 @@ const PitchAskAiPanel: FC<PitchAskAiPanelProps> = ({
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <AutoFixHighRoundedIcon sx={{ color: "#4C6AD2", fontSize: 20 }} />
           <Typography sx={{ fontSize: 14, fontWeight: 700, color: "#1E3A8A" }}>
-            Ask AI
+            {copy.askAi}
           </Typography>
         </Box>
         <IconButton onClick={onClose} size="small" sx={{ color: "#6B7280" }}>
@@ -449,10 +557,10 @@ const PitchAskAiPanel: FC<PitchAskAiPanelProps> = ({
       {/* Subtitle */}
       <Box sx={{ px: 2, py: 1.25, borderBottom: "1px solid #EEF2F7", bgcolor: "#FFFFFF" }}>
         <Typography sx={{ fontSize: 12.5, fontWeight: 600, color: "#1E293B" }}>
-          Edit Slide Content
+          {copy.editSlideContent}
         </Typography>
         <Typography sx={{ fontSize: 11.5, color: "#64748B" }}>
-          Transform your slide text with AI
+          {copy.transformText}
         </Typography>
       </Box>
 
@@ -479,14 +587,15 @@ const PitchAskAiPanel: FC<PitchAskAiPanelProps> = ({
           }}
         >
           <Typography sx={{ fontSize: 11, color: "#6B7280", mb: 0.5 }}>
-            Selected Slide
+            {copy.selectedSlide}
           </Typography>
           <Typography sx={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>
-            {selectedSlide?.title ?? "No slide selected"}
+            {selectedSlide?.title ?? copy.noSlideSelected}
           </Typography>
           {selectedSlide && (
             <Typography sx={{ fontSize: 11, color: "#9CA3AF", textTransform: "capitalize" }}>
-              {selectedSlide.content.type.replace(/_/g, " ")}
+              {contentTypeLabels[selectedSlide.content.type] ??
+                selectedSlide.content.type.replace(/_/g, " ")}
             </Typography>
           )}
         </Box>
@@ -499,7 +608,7 @@ const PitchAskAiPanel: FC<PitchAskAiPanelProps> = ({
           minRows={6}
           maxRows={12}
           fullWidth
-          placeholder={selectedSlide ? "Edit slide content..." : "Select a slide to edit"}
+          placeholder={selectedSlide ? copy.editPlaceholder : copy.selectSlidePlaceholder}
           disabled={!selectedSlide}
           sx={{
             bgcolor: "#FFFFFF",
@@ -514,7 +623,7 @@ const PitchAskAiPanel: FC<PitchAskAiPanelProps> = ({
         {/* AI Actions */}
         <Box>
           <Typography sx={{ fontSize: 11, fontWeight: 600, color: "#6B7280", mb: 1 }}>
-            AI Actions
+            {copy.aiActions}
           </Typography>
           <Stack spacing={0.75}>
             {actionButtons}
@@ -550,7 +659,7 @@ const PitchAskAiPanel: FC<PitchAskAiPanelProps> = ({
             },
           }}
         >
-          Cancel
+          {copy.cancel}
         </Button>
         <Button
           onClick={handleApply}
@@ -573,7 +682,7 @@ const PitchAskAiPanel: FC<PitchAskAiPanelProps> = ({
             },
           }}
         >
-          {isLoading ? <CircularProgress size={16} sx={{ color: "#FFFFFF" }} /> : "Apply"}
+          {isLoading ? <CircularProgress size={16} sx={{ color: "#FFFFFF" }} /> : copy.apply}
         </Button>
       </Box>
 
@@ -585,18 +694,18 @@ const PitchAskAiPanel: FC<PitchAskAiPanelProps> = ({
         anchorOrigin={{ vertical: "top", horizontal: "right" }}
         transformOrigin={{ vertical: "top", horizontal: "left" }}
       >
-        {TRANSLATE_LANGUAGES.map((lang) => (
+        {translateLanguages.map((lang) => (
           <MenuItem
-            key={lang}
-            selected={lang === targetLanguage}
+            key={lang.value}
+            selected={lang.value === targetLanguage}
             onClick={() => {
               setTranslateAnchor(null);
-              setTargetLanguage(lang);
-              void handleAction("translate", lang);
+              setTargetLanguage(lang.value);
+              void handleAction("translate", lang.value);
             }}
             sx={{ fontSize: 13 }}
           >
-            {lang}
+            {lang.label}
           </MenuItem>
         ))}
       </Menu>

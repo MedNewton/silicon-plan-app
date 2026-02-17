@@ -18,6 +18,7 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import ManageSidebar from "@/components/workspaceManage/business-plan/ManageSidebar";
 import ConfirmDeleteModal from "@/components/workspaceManage/business-plan/ConfirmDeleteModal";
 import type { WorkspaceCanvasModel, WorkspaceCanvasTemplateType } from "@/types/workspaces";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 export type MyCanvasModelsPageProps = Readonly<{
   workspaceId: string;
@@ -43,15 +44,16 @@ const TEMPLATE_NAMES: Record<WorkspaceCanvasTemplateType, string> = {
   "lean": "Lean Canvas",
 };
 
-const formatDate = (dateString: string) => {
+const formatDate = (dateString: string, locale: "en" | "it") => {
   const date = new Date(dateString);
   const now = new Date();
+  const isItalian = locale === "it";
 
   // Format time as HH:MM
-  const timeStr = date.toLocaleTimeString("en-US", {
-    hour: "numeric",
+  const timeStr = date.toLocaleTimeString(isItalian ? "it-IT" : "en-US", {
+    hour: isItalian ? "2-digit" : "numeric",
     minute: "2-digit",
-    hour12: true,
+    hour12: !isItalian,
   });
 
   // Check if same day
@@ -69,27 +71,66 @@ const formatDate = (dateString: string) => {
     date.getFullYear() === yesterday.getFullYear();
 
   if (isToday) {
-    return `Today at ${timeStr}`;
+    return isItalian ? `Oggi alle ${timeStr}` : `Today at ${timeStr}`;
   } else if (isYesterday) {
-    return `Yesterday at ${timeStr}`;
+    return isItalian ? `Ieri alle ${timeStr}` : `Yesterday at ${timeStr}`;
   } else {
-    const dateStr = date.toLocaleDateString("en-US", {
+    const dateStr = date.toLocaleDateString(isItalian ? "it-IT" : "en-US", {
       month: "short",
       day: "numeric",
       year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
     });
-    return `${dateStr} at ${timeStr}`;
+    return isItalian ? `${dateStr} alle ${timeStr}` : `${dateStr} at ${timeStr}`;
   }
 };
 
 const MyCanvasModelsPage: FC<MyCanvasModelsPageProps> = ({ workspaceId }) => {
   const router = useRouter();
+  const { locale } = useLanguage();
   const [canvasModels, setCanvasModels] = useState<WorkspaceCanvasModel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [modelToDelete, setModelToDelete] = useState<{ id: string; title: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const copy =
+    locale === "it"
+      ? {
+          allModels: "TUTTI I MODELLI",
+          myModels: "I MIEI MODELLI",
+          retry: "Riprova",
+          templateUpdated: "Aggiornato",
+          noCanvasModels: "Nessun modello canvas ancora",
+          emptyDescription:
+            "Crea il tuo primo modello canvas partendo da uno dei template per iniziare a pianificare la strategia.",
+          createFromTemplate: "Crea da template",
+          deleteCanvasModel: "Elimina modello canvas",
+          deleteConfirm:
+            "Sei sicuro di voler eliminare questo modello canvas? Questa azione non puo essere annullata.",
+          templateNames: {
+            "business-model": "Business Model Canvas",
+            "four-quarters": "Canvas 4 Trimestri",
+            "value-proposition": "Value Proposition Canvas",
+            pitch: "Pitch Canvas",
+            startup: "Startup Canvas",
+            lean: "Lean Canvas",
+          } as Record<WorkspaceCanvasTemplateType, string>,
+        }
+      : {
+          allModels: "ALL MODELS",
+          myModels: "MY MODELS",
+          retry: "Retry",
+          templateUpdated: "Updated",
+          noCanvasModels: "No canvas models yet",
+          emptyDescription:
+            "Create your first canvas model from one of our templates to start planning your business strategy.",
+          createFromTemplate: "Create from Template",
+          deleteCanvasModel: "Delete Canvas Model",
+          deleteConfirm:
+            "Are you sure you want to delete this canvas model? This action cannot be undone.",
+          templateNames: TEMPLATE_NAMES,
+        };
 
   useEffect(() => {
     const loadCanvasModels = async () => {
@@ -217,7 +258,7 @@ const MyCanvasModelsPage: FC<MyCanvasModelsPageProps> = ({ workspaceId }) => {
                 letterSpacing: 1,
               }}
             >
-              ALL MODELS
+              {copy.allModels}
             </Typography>
           </Box>
 
@@ -241,7 +282,7 @@ const MyCanvasModelsPage: FC<MyCanvasModelsPageProps> = ({ workspaceId }) => {
                 letterSpacing: 1,
               }}
             >
-              MY MODELS
+              {copy.myModels}
             </Typography>
           </Box>
         </Box>
@@ -296,7 +337,7 @@ const MyCanvasModelsPage: FC<MyCanvasModelsPageProps> = ({ workspaceId }) => {
                   onClick={() => window.location.reload()}
                   sx={{ borderColor: "#4C6AD2", color: "#4C6AD2" }}
                 >
-                  Retry
+                  {copy.retry}
                 </Button>
               </Box>
             ) : canvasModels.length > 0 ? (
@@ -307,7 +348,7 @@ const MyCanvasModelsPage: FC<MyCanvasModelsPageProps> = ({ workspaceId }) => {
                     bg: "#F3F4F6",
                     accent: "#E5E7EB",
                   };
-                  const templateName = TEMPLATE_NAMES[model.template_type] || model.template_type;
+                  const templateName = copy.templateNames[model.template_type] || model.template_type;
 
                   return (
                     <Grid key={model.id} size={{ xs: 12, sm: 6, lg: 4 }}>
@@ -407,7 +448,8 @@ const MyCanvasModelsPage: FC<MyCanvasModelsPageProps> = ({ workspaceId }) => {
                                 color: "#9CA3AF",
                               }}
                             >
-                              {templateName} • Updated {formatDate(model.updated_at)}
+                              {templateName} • {copy.templateUpdated}{" "}
+                              {formatDate(model.updated_at, locale)}
                             </Typography>
                           </Box>
                           {/* Delete button */}
@@ -466,7 +508,7 @@ const MyCanvasModelsPage: FC<MyCanvasModelsPageProps> = ({ workspaceId }) => {
                     mb: 1,
                   }}
                 >
-                  No canvas models yet
+                  {copy.noCanvasModels}
                 </Typography>
                 <Typography
                   sx={{
@@ -477,7 +519,7 @@ const MyCanvasModelsPage: FC<MyCanvasModelsPageProps> = ({ workspaceId }) => {
                     maxWidth: 400,
                   }}
                 >
-                  Create your first canvas model from one of our templates to start planning your business strategy.
+                  {copy.emptyDescription}
                 </Typography>
                 <Button
                   variant="contained"
@@ -497,7 +539,7 @@ const MyCanvasModelsPage: FC<MyCanvasModelsPageProps> = ({ workspaceId }) => {
                     },
                   }}
                 >
-                  Create from Template
+                  {copy.createFromTemplate}
                 </Button>
               </Box>
             )}
@@ -507,8 +549,8 @@ const MyCanvasModelsPage: FC<MyCanvasModelsPageProps> = ({ workspaceId }) => {
 
       <ConfirmDeleteModal
         open={deleteDialogOpen}
-        title="Delete Canvas Model"
-        message="Are you sure you want to delete this canvas model? This action cannot be undone."
+        title={copy.deleteCanvasModel}
+        message={copy.deleteConfirm}
         itemName={modelToDelete?.title}
         isDeleting={isDeleting}
         onConfirm={handleDeleteConfirm}

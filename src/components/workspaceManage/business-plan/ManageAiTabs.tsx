@@ -32,6 +32,7 @@ import { useParams } from "next/navigation";
 import { useBusinessPlan } from "./BusinessPlanContext";
 import ConfirmDeleteModal from "./ConfirmDeleteModal";
 import ChatContainer from "./chat/ChatContainer";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 import type {
   BusinessPlanChapterWithSections,
   BusinessPlanTaskStatus,
@@ -44,6 +45,88 @@ export type ManageAiTabsProps = Readonly<{
   activeTab: ManageAiTab;
   onTabChange: (tab: ManageAiTab) => void;
 }>;
+
+function useManageAiTabsCopy() {
+  const { locale } = useLanguage();
+
+  if (locale === "it") {
+    return {
+      workspaceAssistant: "Assistente workspace",
+      tabAiChat: "Chat AI",
+      tabAiChatSubtitle: "Discuti e approva modifiche AI",
+      tabChapters: "Capitoli",
+      tabChaptersSubtitle: "Gestisci la struttura dei capitoli",
+      tabTasks: "Task piano",
+      tabTasksSubtitle: "Monitora task di scrittura H1/H2",
+      statusTodo: "Da fare",
+      statusInProgress: "In corso",
+      statusDone: "Completato",
+      noChaptersYet: "Nessun capitolo ancora. Aggiungi il primo qui sotto.",
+      newChapterPlaceholder: "Nuovo titolo capitolo...",
+      deleteChapterTitle: "Elimina capitolo",
+      deleteChapterMessage:
+        "Sei sicuro di voler eliminare questo capitolo? Tutto il contenuto annidato verra eliminato.",
+      chapter: "Capitolo",
+      subchapter: "Sottocapitolo",
+      sectionsLabel: "sezioni",
+      sectionLabel: "sezione",
+      noSectionsInChapter: "Nessuna sezione in questo capitolo.",
+      noTasksYet: "Nessun task ancora. Aggiungi il primo task H1 qui sotto.",
+      autoContextEnabled: "Contesto automatico attivo",
+      autoContextDescription:
+        "Valori predefiniti task e bozze AI riutilizzano automaticamente il contesto di setup workspace e libreria AI.",
+      newH1Placeholder: "Nuovo titolo task H1...",
+      deleteTaskTitle: "Elimina task",
+      deleteTaskMessage:
+        "Sei sicuro di voler eliminare questo task? Anche i sotto-task verranno eliminati.",
+      taskStatus: "Stato task",
+      noH2SubtasksYet: "Nessun sotto-task H2 ancora.",
+      newH2Placeholder: "Nuovo titolo sotto-task H2...",
+      askAiToDraft: "Chiedi all'AI di creare una bozza",
+      aiDraft: "Bozza AI",
+      toastGenerateDraftFailed: "Impossibile generare bozza AI",
+      draftError: "Impossibile generare la bozza. Riprova.",
+    };
+  }
+
+  return {
+    workspaceAssistant: "Workspace Assistant",
+    tabAiChat: "AI Chat",
+    tabAiChatSubtitle: "Discuss and approve AI changes",
+    tabChapters: "Chapters",
+    tabChaptersSubtitle: "Manage chapter structure",
+    tabTasks: "Plan Tasks",
+    tabTasksSubtitle: "Track H1/H2 writing tasks",
+    statusTodo: "To do",
+    statusInProgress: "In progress",
+    statusDone: "Done",
+    noChaptersYet: "No chapters yet. Add your first chapter below.",
+    newChapterPlaceholder: "New chapter title...",
+    deleteChapterTitle: "Delete Chapter",
+    deleteChapterMessage:
+      "Are you sure you want to delete this chapter? All nested content will be deleted.",
+    chapter: "Chapter",
+    subchapter: "Subchapter",
+    sectionsLabel: "sections",
+    sectionLabel: "section",
+    noSectionsInChapter: "No sections in this chapter.",
+    noTasksYet: "No tasks yet. Add your first H1 task below.",
+    autoContextEnabled: "Auto Context Enabled",
+    autoContextDescription:
+      "Task defaults and AI Draft automatically reuse workspace setup and AI library context.",
+    newH1Placeholder: "New H1 task title...",
+    deleteTaskTitle: "Delete Task",
+    deleteTaskMessage:
+      "Are you sure you want to delete this task? Its subtasks will also be deleted.",
+    taskStatus: "Task status",
+    noH2SubtasksYet: "No H2 subtasks yet.",
+    newH2Placeholder: "New H2 subtask title...",
+    askAiToDraft: "Ask AI to Draft",
+    aiDraft: "AI Draft",
+    toastGenerateDraftFailed: "Failed to generate AI draft",
+    draftError: "Failed to generate draft. Try again.",
+  };
+}
 
 const TAB_META: Record<
   ManageAiTab,
@@ -66,11 +149,13 @@ const TAB_META: Record<
   },
 };
 
-const statusOptions: Array<{ value: BusinessPlanTaskStatus; label: string }> = [
-  { value: "todo", label: "To do" },
-  { value: "in_progress", label: "In progress" },
-  { value: "done", label: "Done" },
-];
+function buildStatusOptions(copy: ReturnType<typeof useManageAiTabsCopy>) {
+  return [
+    { value: "todo", label: copy.statusTodo },
+    { value: "in_progress", label: copy.statusInProgress },
+    { value: "done", label: copy.statusDone },
+  ] as Array<{ value: BusinessPlanTaskStatus; label: string }>;
+}
 
 const statusPillColor = (status: BusinessPlanTaskStatus): string => {
   switch (status) {
@@ -95,6 +180,18 @@ const statusDotColor = (status: BusinessPlanTaskStatus): string => {
 };
 
 const ManageAiTabs: FC<ManageAiTabsProps> = ({ activeTab, onTabChange }) => {
+  const copy = useManageAiTabsCopy();
+  const tabLabels: Record<ManageAiTab, string> = {
+    aiChat: copy.tabAiChat,
+    planChapters: copy.tabChapters,
+    planTasks: copy.tabTasks,
+  };
+  const tabSubtitles: Record<ManageAiTab, string> = {
+    aiChat: copy.tabAiChatSubtitle,
+    planChapters: copy.tabChaptersSubtitle,
+    planTasks: copy.tabTasksSubtitle,
+  };
+
   return (
     <Box
       sx={{
@@ -116,7 +213,7 @@ const ManageAiTabs: FC<ManageAiTabsProps> = ({ activeTab, onTabChange }) => {
         }}
       >
         <Typography sx={{ fontSize: 12, fontWeight: 700, color: "#334155", mb: 1 }}>
-          Workspace Assistant
+          {copy.workspaceAssistant}
         </Typography>
         <Stack direction="row" spacing={0.75}>
           {(Object.keys(TAB_META) as ManageAiTab[]).map((tabKey) => {
@@ -146,14 +243,14 @@ const ManageAiTabs: FC<ManageAiTabsProps> = ({ activeTab, onTabChange }) => {
                   },
                 }}
               >
-                {tab.label}
+                {tabLabels[tabKey]}
               </Button>
             );
           })}
         </Stack>
       </Box>
 
-      <PaneIntro activeTab={activeTab} />
+      <PaneIntro label={tabLabels[activeTab]} subtitle={tabSubtitles[activeTab]} />
 
       {activeTab === "aiChat" ? <AiChatPane /> : null}
       {activeTab === "planChapters" ? <PlanChaptersPane /> : null}
@@ -164,14 +261,16 @@ const ManageAiTabs: FC<ManageAiTabsProps> = ({ activeTab, onTabChange }) => {
 
 export default ManageAiTabs;
 
-const PaneIntro: FC<{ activeTab: ManageAiTab }> = ({ activeTab }) => {
-  const meta = TAB_META[activeTab];
+const PaneIntro: FC<{ label: string; subtitle: string }> = ({
+  label,
+  subtitle,
+}) => {
   return (
     <Box sx={{ px: 2, py: 1.25, borderBottom: "1px solid #EEF2F7", bgcolor: "#FFFFFF" }}>
       <Typography sx={{ fontSize: 12.5, fontWeight: 700, color: "#1E293B" }}>
-        {meta.label}
+        {label}
       </Typography>
-      <Typography sx={{ fontSize: 11.5, color: "#64748B" }}>{meta.subtitle}</Typography>
+      <Typography sx={{ fontSize: 11.5, color: "#64748B" }}>{subtitle}</Typography>
     </Box>
   );
 };
@@ -226,6 +325,7 @@ const AiChatPane: FC = () => {
 };
 
 const PlanChaptersPane: FC = () => {
+  const copy = useManageAiTabsCopy();
   const { chapters, isLoading, addChapter, updateChapter, deleteChapter } = useBusinessPlan();
   const [newChapterTitle, setNewChapterTitle] = useState("");
   const [isAddingChapter, setIsAddingChapter] = useState(false);
@@ -289,7 +389,7 @@ const PlanChaptersPane: FC = () => {
     <PaneBody>
       {chapters.length === 0 ? (
         <Typography sx={{ fontSize: 13, color: "#64748B", textAlign: "center", py: 2 }}>
-          No chapters yet. Add your first chapter below.
+          {copy.noChaptersYet}
         </Typography>
       ) : (
         chapters.map((chapter) => (
@@ -309,7 +409,7 @@ const PlanChaptersPane: FC = () => {
       )}
 
       <CreateCard
-        placeholder="New chapter title..."
+        placeholder={copy.newChapterPlaceholder}
         value={newChapterTitle}
         onChange={setNewChapterTitle}
         onSubmit={() => void handleAddChapter()}
@@ -342,6 +442,7 @@ const ChapterCard: FC<ChapterCardProps> = ({
   onUpdateChild,
   onDeleteChild,
 }) => {
+  const copy = useManageAiTabsCopy();
   const isOpen = openChapterIds.includes(chapter.id);
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(chapter.title);
@@ -389,8 +490,8 @@ const ChapterCard: FC<ChapterCardProps> = ({
     <Box sx={{ pl: depth > 0 ? 1.5 : 0 }}>
       <ConfirmDeleteModal
         open={showDeleteModal}
-        title="Delete Chapter"
-        message="Are you sure you want to delete this chapter? All nested content will be deleted."
+        title={copy.deleteChapterTitle}
+        message={copy.deleteChapterMessage}
         itemName={chapter.title}
         isDeleting={isDeleting}
         onConfirm={() => void handleDelete()}
@@ -424,7 +525,7 @@ const ChapterCard: FC<ChapterCardProps> = ({
 
           <Chip
             size="small"
-            label={depth === 0 ? "Chapter" : "Subchapter"}
+            label={depth === 0 ? copy.chapter : copy.subchapter}
             sx={{ fontSize: 10, bgcolor: "#EEF2FF", color: "#3730A3" }}
           />
 
@@ -449,7 +550,10 @@ const ChapterCard: FC<ChapterCardProps> = ({
                   {chapter.title}
                 </Typography>
                 <Typography sx={{ fontSize: 11.5, color: "#64748B" }}>
-                  {chapter.sections.length} section{chapter.sections.length === 1 ? "" : "s"}
+                  {chapter.sections.length}{" "}
+                  {chapter.sections.length === 1
+                    ? copy.sectionLabel
+                    : copy.sectionsLabel}
                 </Typography>
               </>
             )}
@@ -480,7 +584,7 @@ const ChapterCard: FC<ChapterCardProps> = ({
           <Box sx={{ px: 2, pb: 1.5, pt: 0.2, borderTop: "1px solid #F1F5F9" }}>
             {sectionPreview.length === 0 ? (
               <Typography sx={{ fontSize: 12, color: "#94A3B8", fontStyle: "italic", py: 1 }}>
-                No sections in this chapter.
+                {copy.noSectionsInChapter}
               </Typography>
             ) : (
               <Stack spacing={0.6} sx={{ py: 1 }}>
@@ -521,6 +625,7 @@ const ChapterCard: FC<ChapterCardProps> = ({
 };
 
 const PlanTasksPane: FC = () => {
+  const copy = useManageAiTabsCopy();
   const {
     tasks,
     isTasksLoading,
@@ -611,16 +716,16 @@ const PlanTasksPane: FC = () => {
         }}
       >
         <Typography sx={{ fontSize: 11.5, color: "#1E40AF", fontWeight: 700 }}>
-          Auto Context Enabled
+          {copy.autoContextEnabled}
         </Typography>
         <Typography sx={{ fontSize: 11.5, color: "#334155", mt: 0.2 }}>
-          Task defaults and AI Draft automatically reuse workspace setup and AI library context.
+          {copy.autoContextDescription}
         </Typography>
       </Box>
 
       {tasks.length === 0 ? (
         <Typography sx={{ fontSize: 13, color: "#64748B", textAlign: "center", py: 2 }}>
-          No tasks yet. Add your first H1 task below.
+          {copy.noTasksYet}
         </Typography>
       ) : (
         tasks.map((task) => (
@@ -646,7 +751,7 @@ const PlanTasksPane: FC = () => {
       )}
 
       <CreateCard
-        placeholder="New H1 task title..."
+        placeholder={copy.newH1Placeholder}
         value={newTaskTitle}
         onChange={setNewTaskTitle}
         onSubmit={() => void handleAddH1()}
@@ -687,6 +792,8 @@ const TaskCard: FC<TaskCardProps> = ({
   onUpdateSubTaskStatus,
   onDeleteSubTask,
 }) => {
+  const copy = useManageAiTabsCopy();
+  const statusOptions = buildStatusOptions(copy);
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(task.title);
   const [isSaving, setIsSaving] = useState(false);
@@ -738,8 +845,8 @@ const TaskCard: FC<TaskCardProps> = ({
     <>
       <ConfirmDeleteModal
         open={showDeleteModal}
-        title="Delete Task"
-        message="Are you sure you want to delete this task? Its subtasks will also be deleted."
+        title={copy.deleteTaskTitle}
+        message={copy.deleteTaskMessage}
         itemName={task.title}
         isDeleting={isDeleting}
         onConfirm={() => void handleDelete()}
@@ -843,7 +950,7 @@ const TaskCard: FC<TaskCardProps> = ({
           }}
         >
           <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: "#475569" }}>
-            Task status
+            {copy.taskStatus}
           </Typography>
           <Select
             size="small"
@@ -883,9 +990,9 @@ const TaskCard: FC<TaskCardProps> = ({
           <Box sx={{ px: 2, pb: 1.5, pt: 0.4, borderTop: "1px solid #F1F5F9" }}>
             <Stack spacing={0.9}>
               {(task.children ?? []).length === 0 ? (
-                <Typography sx={{ fontSize: 12, color: "#94A3B8", fontStyle: "italic", py: 0.6 }}>
-                  No H2 subtasks yet.
-                </Typography>
+              <Typography sx={{ fontSize: 12, color: "#94A3B8", fontStyle: "italic", py: 0.6 }}>
+                  {copy.noH2SubtasksYet}
+              </Typography>
               ) : (
                 (task.children ?? []).map((subTask) => (
                   <SubTaskRow
@@ -901,7 +1008,7 @@ const TaskCard: FC<TaskCardProps> = ({
               )}
 
               <CreateCard
-                placeholder="New H2 subtask title..."
+                placeholder={copy.newH2Placeholder}
                 value={newSubTaskTitle}
                 onChange={setNewSubTaskTitle}
                 onSubmit={() => void handleAddSubTask()}
@@ -932,6 +1039,8 @@ const SubTaskRow: FC<SubTaskRowProps> = ({
   onUpdateStatus,
   onDelete,
 }) => {
+  const copy = useManageAiTabsCopy();
+  const statusOptions = buildStatusOptions(copy);
   const params = useParams<{ workspaceId: string }>();
   const workspaceId = params.workspaceId;
 
@@ -983,14 +1092,14 @@ const SubTaskRow: FC<SubTaskRowProps> = ({
       );
 
       if (!response.ok) {
-        throw new Error("Failed to generate AI draft");
+        throw new Error(copy.toastGenerateDraftFailed);
       }
 
       const data = (await response.json()) as { draft?: string };
       setGeneratedDraft(data.draft?.trim() ?? null);
     } catch (error) {
       console.error("Error generating task draft:", error);
-      setDraftError("Failed to generate draft. Try again.");
+      setDraftError(copy.draftError);
     } finally {
       setIsGenerating(false);
     }
@@ -1066,7 +1175,7 @@ const SubTaskRow: FC<SubTaskRowProps> = ({
           size="small"
           onClick={() => void handleGenerateDraft()}
           disabled={isGenerating}
-          title="Ask AI to Draft"
+          title={copy.askAiToDraft}
         >
           {isGenerating ? (
             <CircularProgress size={14} />
@@ -1116,7 +1225,7 @@ const SubTaskRow: FC<SubTaskRowProps> = ({
           }}
         >
           <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: "#1E40AF", mb: 0.4 }}>
-            AI Draft
+            {copy.aiDraft}
           </Typography>
           <Typography
             sx={{

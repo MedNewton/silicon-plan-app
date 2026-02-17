@@ -4,6 +4,7 @@ import type { FC } from "react";
 import { Box, Typography } from "@mui/material";
 import CanvasSection, { type CanvasSectionItem, type AiSuggestion } from "../CanvasSection";
 import type { CanvasSectionsData } from "@/types/workspaces";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 export type StartupCanvasLayoutProps = Readonly<{
   sectionsData?: CanvasSectionsData;
@@ -26,6 +27,17 @@ const StartupCanvasLayout: FC<StartupCanvasLayoutProps> = ({
   loadingAISections = [],
   onDismissAISuggestions,
 }) => {
+  const { locale } = useLanguage();
+  const copy =
+    locale === "it"
+      ? {
+          header: "Startup Canvas",
+          subtitle: "Valida e comunica la tua iniziativa nelle prime fasi",
+        }
+      : {
+          header: "Startup Canvas",
+          subtitle: "Validate and communicate your early-stage venture",
+        };
   const getItems = (sectionId: string): CanvasSectionItem[] => {
     return sectionsData[sectionId] ?? [];
   };
@@ -83,7 +95,7 @@ const StartupCanvasLayout: FC<StartupCanvasLayoutProps> = ({
             color: "#111827",
           }}
         >
-          Startup Canvas
+          {copy.header}
         </Typography>
         <Typography
           sx={{
@@ -92,7 +104,7 @@ const StartupCanvasLayout: FC<StartupCanvasLayoutProps> = ({
             mt: 0.5,
           }}
         >
-          Validate and communicate your early-stage venture
+          {copy.subtitle}
         </Typography>
       </Box>
 

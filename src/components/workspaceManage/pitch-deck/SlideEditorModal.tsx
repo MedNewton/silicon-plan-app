@@ -24,6 +24,7 @@ import type {
   PitchDeckSlideContentType,
   PitchDeckTitleImageContent,
 } from "@/types/workspaces";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 export type SlideEditorModalProps = {
   open: boolean;
@@ -56,18 +57,18 @@ type DraftFields = {
   authorTitle: string;
 };
 
-const CONTENT_TYPES: Array<{ value: PitchDeckSlideContentType; label: string }> = [
-  { value: "title_only", label: "Title Only" },
-  { value: "title_bullets", label: "Title + Bullets" },
-  { value: "title_text", label: "Title + Text" },
-  { value: "title_image", label: "Title + Image" },
-  { value: "two_columns", label: "Two Columns" },
-  { value: "comparison", label: "Comparison Table" },
-  { value: "timeline", label: "Timeline" },
-  { value: "team_grid", label: "Team Grid" },
-  { value: "metrics", label: "Metrics" },
-  { value: "quote", label: "Quote" },
-  { value: "blank", label: "Blank" },
+const CONTENT_TYPES: PitchDeckSlideContentType[] = [
+  "title_only",
+  "title_bullets",
+  "title_text",
+  "title_image",
+  "two_columns",
+  "comparison",
+  "timeline",
+  "team_grid",
+  "metrics",
+  "quote",
+  "blank",
 ];
 
 const emptyDraft = (title: string): DraftFields => ({
@@ -328,10 +329,130 @@ const buildContentFromDraft = (
 };
 
 const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onSave }) => {
+  const { locale } = useLanguage();
   const [contentType, setContentType] = useState<PitchDeckSlideContentType>("title_text");
   const [slideTitle, setSlideTitle] = useState("");
   const [draft, setDraft] = useState<DraftFields>(emptyDraft(""));
   const [isSaving, setIsSaving] = useState(false);
+
+  const copy =
+    locale === "it"
+      ? {
+          editSlide: "Modifica slide",
+          selectSlideToEdit: "Seleziona una slide da modificare.",
+          slideTitle: "Titolo slide",
+          contentType: "Tipo contenuto",
+          contentTitle: "Titolo contenuto",
+          subtitle: "Sottotitolo",
+          bullets: "Punti elenco (uno per riga)",
+          bodyText: "Testo",
+          imageUrl: "URL immagine",
+          imageAltText: "Testo alternativo immagine",
+          imagePosition: "Posizione immagine",
+          left: "Sinistra",
+          right: "Destra",
+          top: "Alto",
+          bottom: "Basso",
+          leftColumn: "Colonna sinistra",
+          rightColumn: "Colonna destra",
+          leftTitle: "Titolo sinistra",
+          leftText: "Testo sinistra",
+          leftBullets: "Punti sinistra (uno per riga)",
+          rightTitle: "Titolo destra",
+          rightText: "Testo destra",
+          rightBullets: "Punti destra (uno per riga)",
+          headers: "Intestazioni (separa con | o ,)",
+          rows: "Righe (una per riga)",
+          timelineEntries: "Voci timeline",
+          teamMembers: "Membri del team",
+          metrics: "Metriche",
+          quote: "Citazione",
+          author: "Autore",
+          authorTitle: "Ruolo autore",
+          cancel: "Annulla",
+          save: "Salva",
+          saving: "Salvataggio...",
+          helpComparison: "Usa | per separare le colonne. Una riga per linea.",
+          helpTimeline: "Una voce per riga: data | titolo | descrizione",
+          helpTeam: "Un membro per riga: nome | ruolo | bio",
+          helpMetrics: "Una metrica per riga: valore | etichetta | descrizione",
+          typeTitleOnly: "Solo titolo",
+          typeTitleBullets: "Titolo + Elenco",
+          typeTitleText: "Titolo + Testo",
+          typeTitleImage: "Titolo + Immagine",
+          typeTwoColumns: "Due colonne",
+          typeComparison: "Tabella confronto",
+          typeTimeline: "Timeline",
+          typeTeamGrid: "Griglia team",
+          typeMetrics: "Metriche",
+          typeQuote: "Citazione",
+          typeBlank: "Vuota",
+        }
+      : {
+          editSlide: "Edit Slide",
+          selectSlideToEdit: "Select a slide to edit.",
+          slideTitle: "Slide Title",
+          contentType: "Content Type",
+          contentTitle: "Content Title",
+          subtitle: "Subtitle",
+          bullets: "Bullets (one per line)",
+          bodyText: "Body Text",
+          imageUrl: "Image URL",
+          imageAltText: "Image Alt Text",
+          imagePosition: "Image Position",
+          left: "Left",
+          right: "Right",
+          top: "Top",
+          bottom: "Bottom",
+          leftColumn: "Left Column",
+          rightColumn: "Right Column",
+          leftTitle: "Left Title",
+          leftText: "Left Text",
+          leftBullets: "Left Bullets (one per line)",
+          rightTitle: "Right Title",
+          rightText: "Right Text",
+          rightBullets: "Right Bullets (one per line)",
+          headers: "Headers (separate with | or ,)",
+          rows: "Rows (one per line)",
+          timelineEntries: "Timeline Entries",
+          teamMembers: "Team Members",
+          metrics: "Metrics",
+          quote: "Quote",
+          author: "Author",
+          authorTitle: "Author Title",
+          cancel: "Cancel",
+          save: "Save",
+          saving: "Saving...",
+          helpComparison: "Use | to separate columns. One row per line.",
+          helpTimeline: "One entry per line: date | title | description",
+          helpTeam: "One member per line: name | role | bio",
+          helpMetrics: "One metric per line: value | label | description",
+          typeTitleOnly: "Title Only",
+          typeTitleBullets: "Title + Bullets",
+          typeTitleText: "Title + Text",
+          typeTitleImage: "Title + Image",
+          typeTwoColumns: "Two Columns",
+          typeComparison: "Comparison Table",
+          typeTimeline: "Timeline",
+          typeTeamGrid: "Team Grid",
+          typeMetrics: "Metrics",
+          typeQuote: "Quote",
+          typeBlank: "Blank",
+        };
+
+  const contentTypeLabels: Record<PitchDeckSlideContentType, string> = {
+    title_only: copy.typeTitleOnly,
+    title_bullets: copy.typeTitleBullets,
+    title_text: copy.typeTitleText,
+    title_image: copy.typeTitleImage,
+    two_columns: copy.typeTwoColumns,
+    comparison: copy.typeComparison,
+    timeline: copy.typeTimeline,
+    team_grid: copy.typeTeamGrid,
+    metrics: copy.typeMetrics,
+    quote: copy.typeQuote,
+    blank: copy.typeBlank,
+  };
 
   useEffect(() => {
     if (!slide) return;
@@ -366,43 +487,43 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
   const helpText = useMemo(() => {
     switch (contentType) {
       case "comparison":
-        return "Use | to separate columns. One row per line.";
+        return copy.helpComparison;
       case "timeline":
-        return "One entry per line: date | title | description";
+        return copy.helpTimeline;
       case "team_grid":
-        return "One member per line: name | role | bio";
+        return copy.helpTeam;
       case "metrics":
-        return "One metric per line: value | label | description";
+        return copy.helpMetrics;
       default:
         return "";
     }
-  }, [contentType]);
+  }, [contentType, copy.helpComparison, copy.helpMetrics, copy.helpTeam, copy.helpTimeline]);
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle sx={{ fontWeight: 600 }}>Edit Slide</DialogTitle>
+      <DialogTitle sx={{ fontWeight: 600 }}>{copy.editSlide}</DialogTitle>
       <DialogContent sx={{ pt: 2, display: "flex", flexDirection: "column", gap: 2 }}>
         {!slide ? (
-          <Typography sx={{ color: "#6B7280" }}>Select a slide to edit.</Typography>
+          <Typography sx={{ color: "#6B7280" }}>{copy.selectSlideToEdit}</Typography>
         ) : (
           <>
             <TextField
-              label="Slide Title"
+              label={copy.slideTitle}
               value={slideTitle}
               onChange={(e) => setSlideTitle(e.target.value)}
               fullWidth
             />
 
             <FormControl fullWidth>
-              <InputLabel>Content Type</InputLabel>
+              <InputLabel>{copy.contentType}</InputLabel>
               <Select
                 value={contentType}
-                label="Content Type"
+                label={copy.contentType}
                 onChange={(e) => handleContentTypeChange(e.target.value as PitchDeckSlideContentType)}
               >
                 {CONTENT_TYPES.map((type) => (
-                  <MenuItem key={type.value} value={type.value}>
-                    {type.label}
+                  <MenuItem key={type} value={type}>
+                    {contentTypeLabels[type]}
                   </MenuItem>
                 ))}
               </Select>
@@ -410,7 +531,7 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
 
             {contentType !== "quote" && contentType !== "blank" ? (
               <TextField
-                label="Content Title"
+                label={copy.contentTitle}
                 value={draft.contentTitle}
                 onChange={(e) => setDraft({ ...draft, contentTitle: e.target.value })}
                 fullWidth
@@ -419,7 +540,7 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
 
             {contentType === "title_only" ? (
               <TextField
-                label="Subtitle"
+                label={copy.subtitle}
                 value={draft.subtitle}
                 onChange={(e) => setDraft({ ...draft, subtitle: e.target.value })}
                 fullWidth
@@ -428,7 +549,7 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
 
             {contentType === "title_bullets" ? (
               <TextField
-                label="Bullets (one per line)"
+                label={copy.bullets}
                 value={draft.bullets}
                 onChange={(e) => setDraft({ ...draft, bullets: e.target.value })}
                 fullWidth
@@ -439,7 +560,7 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
 
             {contentType === "title_text" ? (
               <TextField
-                label="Body Text"
+                label={copy.bodyText}
                 value={draft.text}
                 onChange={(e) => setDraft({ ...draft, text: e.target.value })}
                 fullWidth
@@ -451,22 +572,22 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
             {contentType === "title_image" ? (
               <Stack spacing={2}>
                 <TextField
-                  label="Image URL"
+                  label={copy.imageUrl}
                   value={draft.imageUrl}
                   onChange={(e) => setDraft({ ...draft, imageUrl: e.target.value })}
                   fullWidth
                 />
                 <TextField
-                  label="Image Alt Text"
+                  label={copy.imageAltText}
                   value={draft.imageAlt}
                   onChange={(e) => setDraft({ ...draft, imageAlt: e.target.value })}
                   fullWidth
                 />
                 <FormControl fullWidth>
-                  <InputLabel>Image Position</InputLabel>
+                  <InputLabel>{copy.imagePosition}</InputLabel>
                   <Select
                     value={draft.imagePosition}
-                    label="Image Position"
+                    label={copy.imagePosition}
                     onChange={(e) => {
                       const value = e.target.value;
                       if (value === "left" || value === "right" || value === "top" || value === "bottom") {
@@ -477,10 +598,10 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
                       }
                     }}
                   >
-                    <MenuItem value="left">Left</MenuItem>
-                    <MenuItem value="right">Right</MenuItem>
-                    <MenuItem value="top">Top</MenuItem>
-                    <MenuItem value="bottom">Bottom</MenuItem>
+                    <MenuItem value="left">{copy.left}</MenuItem>
+                    <MenuItem value="right">{copy.right}</MenuItem>
+                    <MenuItem value="top">{copy.top}</MenuItem>
+                    <MenuItem value="bottom">{copy.bottom}</MenuItem>
                   </Select>
                 </FormControl>
               </Stack>
@@ -490,16 +611,16 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
               <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
                 <Stack spacing={1.5}>
                   <Typography sx={{ fontSize: 13, fontWeight: 600, color: "#4B5563" }}>
-                    Left Column
+                    {copy.leftColumn}
                   </Typography>
                   <TextField
-                    label="Left Title"
+                    label={copy.leftTitle}
                     value={draft.leftTitle}
                     onChange={(e) => setDraft({ ...draft, leftTitle: e.target.value })}
                     fullWidth
                   />
                   <TextField
-                    label="Left Text"
+                    label={copy.leftText}
                     value={draft.leftText}
                     onChange={(e) => setDraft({ ...draft, leftText: e.target.value })}
                     fullWidth
@@ -507,7 +628,7 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
                     minRows={3}
                   />
                   <TextField
-                    label="Left Bullets (one per line)"
+                    label={copy.leftBullets}
                     value={draft.leftBullets}
                     onChange={(e) => setDraft({ ...draft, leftBullets: e.target.value })}
                     fullWidth
@@ -517,16 +638,16 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
                 </Stack>
                 <Stack spacing={1.5}>
                   <Typography sx={{ fontSize: 13, fontWeight: 600, color: "#4B5563" }}>
-                    Right Column
+                    {copy.rightColumn}
                   </Typography>
                   <TextField
-                    label="Right Title"
+                    label={copy.rightTitle}
                     value={draft.rightTitle}
                     onChange={(e) => setDraft({ ...draft, rightTitle: e.target.value })}
                     fullWidth
                   />
                   <TextField
-                    label="Right Text"
+                    label={copy.rightText}
                     value={draft.rightText}
                     onChange={(e) => setDraft({ ...draft, rightText: e.target.value })}
                     fullWidth
@@ -534,7 +655,7 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
                     minRows={3}
                   />
                   <TextField
-                    label="Right Bullets (one per line)"
+                    label={copy.rightBullets}
                     value={draft.rightBullets}
                     onChange={(e) => setDraft({ ...draft, rightBullets: e.target.value })}
                     fullWidth
@@ -548,13 +669,13 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
             {contentType === "comparison" ? (
               <Stack spacing={1.5}>
                 <TextField
-                  label="Headers (separate with | or ,)"
+                  label={copy.headers}
                   value={draft.headers}
                   onChange={(e) => setDraft({ ...draft, headers: e.target.value })}
                   fullWidth
                 />
                 <TextField
-                  label="Rows (one per line)"
+                  label={copy.rows}
                   helperText={helpText}
                   value={draft.rows}
                   onChange={(e) => setDraft({ ...draft, rows: e.target.value })}
@@ -567,7 +688,7 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
 
             {contentType === "timeline" ? (
               <TextField
-                label="Timeline Entries"
+                label={copy.timelineEntries}
                 helperText={helpText}
                 value={draft.timeline}
                 onChange={(e) => setDraft({ ...draft, timeline: e.target.value })}
@@ -579,7 +700,7 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
 
             {contentType === "team_grid" ? (
               <TextField
-                label="Team Members"
+                label={copy.teamMembers}
                 helperText={helpText}
                 value={draft.team}
                 onChange={(e) => setDraft({ ...draft, team: e.target.value })}
@@ -591,7 +712,7 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
 
             {contentType === "metrics" ? (
               <TextField
-                label="Metrics"
+                label={copy.metrics}
                 helperText={helpText}
                 value={draft.metrics}
                 onChange={(e) => setDraft({ ...draft, metrics: e.target.value })}
@@ -604,7 +725,7 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
             {contentType === "quote" ? (
               <Stack spacing={1.5}>
                 <TextField
-                  label="Quote"
+                  label={copy.quote}
                   value={draft.quote}
                   onChange={(e) => setDraft({ ...draft, quote: e.target.value })}
                   fullWidth
@@ -612,13 +733,13 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
                   minRows={3}
                 />
                 <TextField
-                  label="Author"
+                  label={copy.author}
                   value={draft.author}
                   onChange={(e) => setDraft({ ...draft, author: e.target.value })}
                   fullWidth
                 />
                 <TextField
-                  label="Author Title"
+                  label={copy.authorTitle}
                   value={draft.authorTitle}
                   onChange={(e) => setDraft({ ...draft, authorTitle: e.target.value })}
                   fullWidth
@@ -630,7 +751,7 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
         <Button onClick={onClose} disabled={isSaving}>
-          Cancel
+          {copy.cancel}
         </Button>
         <Button
           variant="contained"
@@ -638,7 +759,7 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
           disabled={!slide || isSaving}
           sx={{ bgcolor: "#4C6AD2", "&:hover": { bgcolor: "#3D5ABF" } }}
         >
-          {isSaving ? "Saving..." : "Save"}
+          {isSaving ? copy.saving : copy.save}
         </Button>
       </DialogActions>
     </Dialog>

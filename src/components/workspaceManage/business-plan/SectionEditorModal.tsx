@@ -38,6 +38,7 @@ import type {
   EmbedSectionContent,
   EmptySpaceContent,
 } from "@/types/workspaces";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 export type SectionEditorModalProps = {
   open: boolean;
@@ -47,6 +48,143 @@ export type SectionEditorModalProps = {
   onCancel: () => void;
 };
 
+const getSectionEditorCopy = (locale: "en" | "it") =>
+  locale === "it"
+    ? {
+        editSectionTitle: "Modifica titolo sezione",
+        editSubsection: "Modifica sottosezione",
+        editText: "Modifica testo",
+        editList: "Modifica elenco",
+        editTable: "Modifica tabella",
+        editComparisonTable: "Modifica tabella confronto",
+        editImage: "Modifica immagine",
+        editTimeline: "Modifica timeline",
+        editEmbed: "Modifica embed",
+        editEmptySpace: "Modifica spazio vuoto",
+        pageBreak: "Interruzione pagina",
+        editSection: "Modifica sezione",
+        sectionTitle: "Titolo sezione",
+        subsectionTitle: "Titolo sottosezione",
+        textContent: "Contenuto testo",
+        pageBreakMessage:
+          "Le interruzioni pagina non hanno contenuto modificabile. Indicano solo l'inizio di una nuova pagina in esportazione.",
+        cancel: "Annulla",
+        saving: "Salvataggio...",
+        saveChanges: "Salva modifiche",
+        numberedList: "Elenco numerato",
+        listItems: "Elementi elenco",
+        itemLabel: "Elemento",
+        addItem: "Aggiungi elemento",
+        columnLabel: "Colonna",
+        addRow: "Aggiungi riga",
+        addColumn: "Aggiungi colonna",
+        comparisonHint:
+          "La prima colonna e in genere usata per le caratteristiche, le altre per confrontare opzioni.",
+        feature: "Caratteristica",
+        featureName: "Nome caratteristica",
+        value: "Valore",
+        optionLabel: "Opzione",
+        addFeature: "Aggiungi caratteristica",
+        addOption: "Aggiungi opzione",
+        imageUrl: "URL immagine",
+        imageUrlHelp: "Inserisci l'URL dell'immagine da mostrare",
+        altText: "Testo alternativo",
+        altTextPlaceholder: "Descrivi l'immagine per l'accessibilita",
+        altTextHelp: "Testo alternativo per screen reader",
+        captionOptional: "Didascalia (opzionale)",
+        captionPlaceholder: "Didascalia immagine",
+        imagePreview: "Anteprima:",
+        previewAlt: "Anteprima",
+        timelineHint: "Aggiungi voci timeline con date, titoli e descrizioni.",
+        entry: "Voce",
+        date: "Data",
+        dateExample: "es. Q1 2024, Gennaio 2024, 2024",
+        title: "Titolo",
+        description: "Descrizione",
+        milestoneTitle: "Titolo milestone",
+        briefDescription: "Breve descrizione",
+        addTimelineEntry: "Aggiungi voce timeline",
+        embedType: "Tipo embed",
+        html: "HTML",
+        iframe: "iFrame",
+        video: "Video",
+        videoUrl: "URL video",
+        embedCode: "Codice embed",
+        videoUrlHelp: "Inserisci un URL YouTube o Vimeo",
+        iframeHelp: "Inserisci il codice iframe completo",
+        htmlHelp: "Inserisci codice HTML personalizzato",
+        emptySpaceHeight: "Altezza (pixel)",
+        emptySpaceHelp: "Imposta l'altezza dello spazio vuoto (10-500 pixel)",
+        emptySpacePreview: "spazio vuoto",
+      }
+    : {
+        editSectionTitle: "Edit Section Title",
+        editSubsection: "Edit Subsection",
+        editText: "Edit Text",
+        editList: "Edit List",
+        editTable: "Edit Table",
+        editComparisonTable: "Edit Comparison Table",
+        editImage: "Edit Image",
+        editTimeline: "Edit Timeline",
+        editEmbed: "Edit Embed",
+        editEmptySpace: "Edit Empty Space",
+        pageBreak: "Page Break",
+        editSection: "Edit Section",
+        sectionTitle: "Section Title",
+        subsectionTitle: "Subsection Title",
+        textContent: "Text Content",
+        pageBreakMessage:
+          "Page breaks have no editable content. They simply indicate where a new page should start when exporting.",
+        cancel: "Cancel",
+        saving: "Saving...",
+        saveChanges: "Save Changes",
+        numberedList: "Numbered list",
+        listItems: "List Items",
+        itemLabel: "Item",
+        addItem: "Add Item",
+        columnLabel: "Column",
+        addRow: "Add Row",
+        addColumn: "Add Column",
+        comparisonHint:
+          "First column is typically used for feature names, other columns for comparing options.",
+        feature: "Feature",
+        featureName: "Feature name",
+        value: "Value",
+        optionLabel: "Option",
+        addFeature: "Add Feature",
+        addOption: "Add Option",
+        imageUrl: "Image URL",
+        imageUrlHelp: "Enter the URL of the image you want to display",
+        altText: "Alt Text",
+        altTextPlaceholder: "Describe the image for accessibility",
+        altTextHelp: "Alternative text for screen readers",
+        captionOptional: "Caption (optional)",
+        captionPlaceholder: "Image caption",
+        imagePreview: "Preview:",
+        previewAlt: "Preview",
+        timelineHint: "Add timeline entries with dates, titles, and descriptions.",
+        entry: "Entry",
+        date: "Date",
+        dateExample: "e.g., Q1 2024, January 2024, 2024",
+        title: "Title",
+        description: "Description",
+        milestoneTitle: "Milestone title",
+        briefDescription: "Brief description",
+        addTimelineEntry: "Add Timeline Entry",
+        embedType: "Embed Type",
+        html: "HTML",
+        iframe: "iFrame",
+        video: "Video",
+        videoUrl: "Video URL",
+        embedCode: "Embed Code",
+        videoUrlHelp: "Enter a YouTube or Vimeo URL",
+        iframeHelp: "Enter the full iframe code",
+        htmlHelp: "Enter custom HTML code",
+        emptySpaceHeight: "Height (pixels)",
+        emptySpaceHelp: "Set the height of the empty space (10-500 pixels)",
+        emptySpacePreview: "empty space",
+      };
+
 const SectionEditorModal: FC<SectionEditorModalProps> = ({
   open,
   section,
@@ -54,6 +192,8 @@ const SectionEditorModal: FC<SectionEditorModalProps> = ({
   onSave,
   onCancel,
 }) => {
+  const { locale } = useLanguage();
+  const copy = getSectionEditorCopy(locale);
   const [content, setContent] = useState<BusinessPlanSectionContent | null>(null);
 
   useEffect(() => {
@@ -74,29 +214,29 @@ const SectionEditorModal: FC<SectionEditorModalProps> = ({
   const getTitle = () => {
     switch (content.type) {
       case "section_title":
-        return "Edit Section Title";
+        return copy.editSectionTitle;
       case "subsection":
-        return "Edit Subsection";
+        return copy.editSubsection;
       case "text":
-        return "Edit Text";
+        return copy.editText;
       case "list":
-        return "Edit List";
+        return copy.editList;
       case "table":
-        return "Edit Table";
+        return copy.editTable;
       case "comparison_table":
-        return "Edit Comparison Table";
+        return copy.editComparisonTable;
       case "image":
-        return "Edit Image";
+        return copy.editImage;
       case "timeline":
-        return "Edit Timeline";
+        return copy.editTimeline;
       case "embed":
-        return "Edit Embed";
+        return copy.editEmbed;
       case "empty_space":
-        return "Edit Empty Space";
+        return copy.editEmptySpace;
       case "page_break":
-        return "Page Break";
+        return copy.pageBreak;
       default:
-        return "Edit Section";
+        return copy.editSection;
     }
   };
 
@@ -124,7 +264,7 @@ const SectionEditorModal: FC<SectionEditorModalProps> = ({
           <TextBasedEditor
             content={content}
             onChange={(c) => setContent(c)}
-            label="Section Title"
+            label={copy.sectionTitle}
             multiline={false}
           />
         )}
@@ -133,7 +273,7 @@ const SectionEditorModal: FC<SectionEditorModalProps> = ({
           <TextBasedEditor
             content={content}
             onChange={(c) => setContent(c)}
-            label="Subsection Title"
+            label={copy.subsectionTitle}
             multiline={false}
           />
         )}
@@ -142,7 +282,7 @@ const SectionEditorModal: FC<SectionEditorModalProps> = ({
           <TextBasedEditor
             content={content}
             onChange={(c) => setContent(c)}
-            label="Text Content"
+            label={copy.textContent}
             multiline={true}
           />
         )}
@@ -151,6 +291,7 @@ const SectionEditorModal: FC<SectionEditorModalProps> = ({
           <ListEditor
             content={content}
             onChange={(c) => setContent(c)}
+            copy={copy}
           />
         )}
 
@@ -158,6 +299,7 @@ const SectionEditorModal: FC<SectionEditorModalProps> = ({
           <TableEditor
             content={content}
             onChange={(c) => setContent(c)}
+            copy={copy}
           />
         )}
 
@@ -165,6 +307,7 @@ const SectionEditorModal: FC<SectionEditorModalProps> = ({
           <ComparisonTableEditor
             content={content}
             onChange={(c) => setContent(c)}
+            copy={copy}
           />
         )}
 
@@ -172,6 +315,7 @@ const SectionEditorModal: FC<SectionEditorModalProps> = ({
           <ImageEditor
             content={content}
             onChange={(c) => setContent(c)}
+            copy={copy}
           />
         )}
 
@@ -179,6 +323,7 @@ const SectionEditorModal: FC<SectionEditorModalProps> = ({
           <TimelineEditor
             content={content}
             onChange={(c) => setContent(c)}
+            copy={copy}
           />
         )}
 
@@ -186,6 +331,7 @@ const SectionEditorModal: FC<SectionEditorModalProps> = ({
           <EmbedEditor
             content={content}
             onChange={(c) => setContent(c)}
+            copy={copy}
           />
         )}
 
@@ -193,12 +339,13 @@ const SectionEditorModal: FC<SectionEditorModalProps> = ({
           <EmptySpaceEditor
             content={content}
             onChange={(c) => setContent(c)}
+            copy={copy}
           />
         )}
 
         {content.type === "page_break" && (
           <Typography sx={{ color: "#6B7280", textAlign: "center", py: 4 }}>
-            Page breaks have no editable content. They simply indicate where a new page should start when exporting.
+            {copy.pageBreakMessage}
           </Typography>
         )}
       </DialogContent>
@@ -219,7 +366,7 @@ const SectionEditorModal: FC<SectionEditorModalProps> = ({
             "&:hover": { bgcolor: "#E5E7EB" },
           }}
         >
-          Cancel
+          {copy.cancel}
         </Button>
         <Button
           onClick={handleSave}
@@ -237,7 +384,7 @@ const SectionEditorModal: FC<SectionEditorModalProps> = ({
             "&:disabled": { bgcolor: "#A5B4FC", color: "#FFFFFF" },
           }}
         >
-          {isSaving ? "Saving..." : "Save Changes"}
+          {isSaving ? copy.saving : copy.saveChanges}
         </Button>
       </DialogActions>
     </Dialog>
@@ -278,9 +425,10 @@ const TextBasedEditor: FC<TextBasedEditorProps> = ({ content, onChange, label, m
 type ListEditorProps = {
   content: ListSectionContent;
   onChange: (content: ListSectionContent) => void;
+  copy: ReturnType<typeof getSectionEditorCopy>;
 };
 
-const ListEditor: FC<ListEditorProps> = ({ content, onChange }) => {
+const ListEditor: FC<ListEditorProps> = ({ content, onChange, copy }) => {
   const handleItemChange = (index: number, value: string) => {
     const newItems = [...content.items];
     newItems[index] = value;
@@ -305,11 +453,11 @@ const ListEditor: FC<ListEditorProps> = ({ content, onChange }) => {
             onChange={(e) => onChange({ ...content, ordered: e.target.checked })}
           />
         }
-        label="Numbered list"
+        label={copy.numberedList}
       />
 
       <Typography sx={{ fontSize: 14, fontWeight: 600, color: "#374151" }}>
-        List Items
+        {copy.listItems}
       </Typography>
 
       <Stack spacing={1.5}>
@@ -324,7 +472,7 @@ const ListEditor: FC<ListEditorProps> = ({ content, onChange }) => {
               size="small"
               value={item}
               onChange={(e) => handleItemChange(index, e.target.value)}
-              placeholder={`Item ${index + 1}`}
+              placeholder={`${copy.itemLabel} ${index + 1}`}
             />
             <IconButton
               size="small"
@@ -348,7 +496,7 @@ const ListEditor: FC<ListEditorProps> = ({ content, onChange }) => {
           color: "#4C6AD2",
         }}
       >
-        Add Item
+        {copy.addItem}
       </Button>
     </Stack>
   );
@@ -359,9 +507,10 @@ const ListEditor: FC<ListEditorProps> = ({ content, onChange }) => {
 type TableEditorProps = {
   content: TableSectionContent;
   onChange: (content: TableSectionContent) => void;
+  copy: ReturnType<typeof getSectionEditorCopy>;
 };
 
-const TableEditor: FC<TableEditorProps> = ({ content, onChange }) => {
+const TableEditor: FC<TableEditorProps> = ({ content, onChange, copy }) => {
   const handleHeaderChange = (index: number, value: string) => {
     const newHeaders = [...content.headers];
     newHeaders[index] = value;
@@ -376,7 +525,7 @@ const TableEditor: FC<TableEditorProps> = ({ content, onChange }) => {
   };
 
   const handleAddColumn = () => {
-    const newHeaders = [...content.headers, `Column ${content.headers.length + 1}`];
+    const newHeaders = [...content.headers, `${copy.columnLabel} ${content.headers.length + 1}`];
     const newRows = content.rows.map((row) => [...row, ""]);
     onChange({ ...content, headers: newHeaders, rows: newRows });
   };
@@ -472,14 +621,14 @@ const TableEditor: FC<TableEditorProps> = ({ content, onChange }) => {
           onClick={handleAddRow}
           sx={{ textTransform: "none", fontSize: 14, color: "#4C6AD2" }}
         >
-          Add Row
+          {copy.addRow}
         </Button>
         <Button
           startIcon={<AddIcon />}
           onClick={handleAddColumn}
           sx={{ textTransform: "none", fontSize: 14, color: "#4C6AD2" }}
         >
-          Add Column
+          {copy.addColumn}
         </Button>
       </Stack>
     </Stack>
@@ -491,9 +640,10 @@ const TableEditor: FC<TableEditorProps> = ({ content, onChange }) => {
 type ComparisonTableEditorProps = {
   content: ComparisonTableContent;
   onChange: (content: ComparisonTableContent) => void;
+  copy: ReturnType<typeof getSectionEditorCopy>;
 };
 
-const ComparisonTableEditor: FC<ComparisonTableEditorProps> = ({ content, onChange }) => {
+const ComparisonTableEditor: FC<ComparisonTableEditorProps> = ({ content, onChange, copy }) => {
   // Reuse TableEditor logic - it's the same structure
   const handleHeaderChange = (index: number, value: string) => {
     const newHeaders = [...content.headers];
@@ -509,7 +659,7 @@ const ComparisonTableEditor: FC<ComparisonTableEditorProps> = ({ content, onChan
   };
 
   const handleAddColumn = () => {
-    const newHeaders = [...content.headers, `Option ${content.headers.length}`];
+    const newHeaders = [...content.headers, `${copy.optionLabel} ${content.headers.length}`];
     const newRows = content.rows.map((row) => [...row, ""]);
     onChange({ ...content, headers: newHeaders, rows: newRows });
   };
@@ -535,7 +685,7 @@ const ComparisonTableEditor: FC<ComparisonTableEditorProps> = ({ content, onChan
   return (
     <Stack spacing={2}>
       <Typography sx={{ fontSize: 13, color: "#6B7280" }}>
-        First column is typically used for feature names, other columns for comparing options.
+        {copy.comparisonHint}
       </Typography>
 
       <Box sx={{ overflowX: "auto" }}>
@@ -551,7 +701,7 @@ const ComparisonTableEditor: FC<ComparisonTableEditorProps> = ({ content, onChan
                     size="small"
                     value={header}
                     onChange={(e) => handleHeaderChange(index, e.target.value)}
-                    placeholder={index === 0 ? "Feature" : `Option ${index}`}
+                    placeholder={index === 0 ? copy.feature : `${copy.optionLabel} ${index}`}
                     sx={{
                       "& .MuiOutlinedInput-root": {
                         bgcolor: "#F3F4F6",
@@ -588,7 +738,7 @@ const ComparisonTableEditor: FC<ComparisonTableEditorProps> = ({ content, onChan
                     size="small"
                     value={cell}
                     onChange={(e) => handleCellChange(rowIndex, colIndex, e.target.value)}
-                    placeholder={colIndex === 0 ? "Feature name" : "Value"}
+                    placeholder={colIndex === 0 ? copy.featureName : copy.value}
                   />
                 </Box>
               ))}
@@ -613,14 +763,14 @@ const ComparisonTableEditor: FC<ComparisonTableEditorProps> = ({ content, onChan
           onClick={handleAddRow}
           sx={{ textTransform: "none", fontSize: 14, color: "#4C6AD2" }}
         >
-          Add Feature
+          {copy.addFeature}
         </Button>
         <Button
           startIcon={<AddIcon />}
           onClick={handleAddColumn}
           sx={{ textTransform: "none", fontSize: 14, color: "#4C6AD2" }}
         >
-          Add Option
+          {copy.addOption}
         </Button>
       </Stack>
     </Stack>
@@ -632,44 +782,45 @@ const ComparisonTableEditor: FC<ComparisonTableEditorProps> = ({ content, onChan
 type ImageEditorProps = {
   content: ImageSectionContent;
   onChange: (content: ImageSectionContent) => void;
+  copy: ReturnType<typeof getSectionEditorCopy>;
 };
 
-const ImageEditor: FC<ImageEditorProps> = ({ content, onChange }) => {
+const ImageEditor: FC<ImageEditorProps> = ({ content, onChange, copy }) => {
   return (
     <Stack spacing={3}>
       <TextField
         fullWidth
-        label="Image URL"
+        label={copy.imageUrl}
         value={content.url}
         onChange={(e) => onChange({ ...content, url: e.target.value })}
         placeholder="https://example.com/image.jpg"
-        helperText="Enter the URL of the image you want to display"
+        helperText={copy.imageUrlHelp}
       />
 
       <TextField
         fullWidth
-        label="Alt Text"
+        label={copy.altText}
         value={content.alt_text ?? ""}
         onChange={(e) => onChange({ ...content, alt_text: e.target.value })}
-        placeholder="Describe the image for accessibility"
-        helperText="Alternative text for screen readers"
+        placeholder={copy.altTextPlaceholder}
+        helperText={copy.altTextHelp}
       />
 
       <TextField
         fullWidth
-        label="Caption (optional)"
+        label={copy.captionOptional}
         value={content.caption ?? ""}
         onChange={(e) => onChange({ ...content, caption: e.target.value })}
-        placeholder="Image caption"
+        placeholder={copy.captionPlaceholder}
       />
 
       {content.url && (
         <Box sx={{ mt: 2 }}>
-          <Typography sx={{ fontSize: 13, color: "#6B7280", mb: 1 }}>Preview:</Typography>
+          <Typography sx={{ fontSize: 13, color: "#6B7280", mb: 1 }}>{copy.imagePreview}</Typography>
           <Box
             component="img"
             src={content.url}
-            alt={content.alt_text ?? "Preview"}
+            alt={content.alt_text ?? copy.previewAlt}
             sx={{
               maxWidth: "100%",
               maxHeight: 300,
@@ -691,9 +842,10 @@ const ImageEditor: FC<ImageEditorProps> = ({ content, onChange }) => {
 type TimelineEditorProps = {
   content: TimelineSectionContent;
   onChange: (content: TimelineSectionContent) => void;
+  copy: ReturnType<typeof getSectionEditorCopy>;
 };
 
-const TimelineEditor: FC<TimelineEditorProps> = ({ content, onChange }) => {
+const TimelineEditor: FC<TimelineEditorProps> = ({ content, onChange, copy }) => {
   const handleEntryChange = (index: number, field: "date" | "title" | "description", value: string) => {
     const newEntries = content.entries.map((entry, i) =>
       i === index ? { ...entry, [field]: value } : entry
@@ -717,7 +869,7 @@ const TimelineEditor: FC<TimelineEditorProps> = ({ content, onChange }) => {
   return (
     <Stack spacing={3}>
       <Typography sx={{ fontSize: 13, color: "#6B7280" }}>
-        Add timeline entries with dates, titles, and descriptions.
+        {copy.timelineHint}
       </Typography>
 
       {content.entries.map((entry, index) => (
@@ -732,7 +884,7 @@ const TimelineEditor: FC<TimelineEditorProps> = ({ content, onChange }) => {
         >
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
             <Typography sx={{ fontSize: 14, fontWeight: 600, color: "#374151" }}>
-              Entry {index + 1}
+              {copy.entry} {index + 1}
             </Typography>
             <IconButton
               size="small"
@@ -748,26 +900,26 @@ const TimelineEditor: FC<TimelineEditorProps> = ({ content, onChange }) => {
             <TextField
               fullWidth
               size="small"
-              label="Date"
+              label={copy.date}
               value={entry.date}
               onChange={(e) => handleEntryChange(index, "date", e.target.value)}
-              placeholder="e.g., Q1 2024, January 2024, 2024"
+              placeholder={copy.dateExample}
             />
             <TextField
               fullWidth
               size="small"
-              label="Title"
+              label={copy.title}
               value={entry.title}
               onChange={(e) => handleEntryChange(index, "title", e.target.value)}
-              placeholder="Milestone title"
+              placeholder={copy.milestoneTitle}
             />
             <TextField
               fullWidth
               size="small"
-              label="Description"
+              label={copy.description}
               value={entry.description}
               onChange={(e) => handleEntryChange(index, "description", e.target.value)}
-              placeholder="Brief description"
+              placeholder={copy.briefDescription}
               multiline
               minRows={2}
             />
@@ -785,7 +937,7 @@ const TimelineEditor: FC<TimelineEditorProps> = ({ content, onChange }) => {
           color: "#4C6AD2",
         }}
       >
-        Add Timeline Entry
+        {copy.addTimelineEntry}
       </Button>
     </Stack>
   );
@@ -796,27 +948,28 @@ const TimelineEditor: FC<TimelineEditorProps> = ({ content, onChange }) => {
 type EmbedEditorProps = {
   content: EmbedSectionContent;
   onChange: (content: EmbedSectionContent) => void;
+  copy: ReturnType<typeof getSectionEditorCopy>;
 };
 
-const EmbedEditor: FC<EmbedEditorProps> = ({ content, onChange }) => {
+const EmbedEditor: FC<EmbedEditorProps> = ({ content, onChange, copy }) => {
   return (
     <Stack spacing={3}>
       <FormControl fullWidth size="small">
-        <InputLabel>Embed Type</InputLabel>
+        <InputLabel>{copy.embedType}</InputLabel>
         <Select
           value={content.embed_type}
-          label="Embed Type"
+          label={copy.embedType}
           onChange={(e) => onChange({ ...content, embed_type: e.target.value })}
         >
-          <MenuItem value="html">HTML</MenuItem>
-          <MenuItem value="iframe">iFrame</MenuItem>
-          <MenuItem value="video">Video</MenuItem>
+          <MenuItem value="html">{copy.html}</MenuItem>
+          <MenuItem value="iframe">{copy.iframe}</MenuItem>
+          <MenuItem value="video">{copy.video}</MenuItem>
         </Select>
       </FormControl>
 
       <TextField
         fullWidth
-        label={content.embed_type === "video" ? "Video URL" : "Embed Code"}
+        label={content.embed_type === "video" ? copy.videoUrl : copy.embedCode}
         value={content.code}
         onChange={(e) => onChange({ ...content, code: e.target.value })}
         multiline
@@ -830,10 +983,10 @@ const EmbedEditor: FC<EmbedEditorProps> = ({ content, onChange }) => {
         }
         helperText={
           content.embed_type === "video"
-            ? "Enter a YouTube or Vimeo URL"
+            ? copy.videoUrlHelp
             : content.embed_type === "iframe"
-            ? "Enter the full iframe code"
-            : "Enter custom HTML code"
+            ? copy.iframeHelp
+            : copy.htmlHelp
         }
       />
     </Stack>
@@ -845,19 +998,20 @@ const EmbedEditor: FC<EmbedEditorProps> = ({ content, onChange }) => {
 type EmptySpaceEditorProps = {
   content: EmptySpaceContent;
   onChange: (content: EmptySpaceContent) => void;
+  copy: ReturnType<typeof getSectionEditorCopy>;
 };
 
-const EmptySpaceEditor: FC<EmptySpaceEditorProps> = ({ content, onChange }) => {
+const EmptySpaceEditor: FC<EmptySpaceEditorProps> = ({ content, onChange, copy }) => {
   return (
     <Stack spacing={2}>
       <TextField
         fullWidth
-        label="Height (pixels)"
+        label={copy.emptySpaceHeight}
         type="number"
         value={content.height}
         onChange={(e) => onChange({ ...content, height: parseInt(e.target.value) || 0 })}
         inputProps={{ min: 10, max: 500 }}
-        helperText="Set the height of the empty space (10-500 pixels)"
+        helperText={copy.emptySpaceHelp}
       />
 
       <Box
@@ -873,7 +1027,7 @@ const EmptySpaceEditor: FC<EmptySpaceEditorProps> = ({ content, onChange }) => {
         }}
       >
         <Typography sx={{ fontSize: 12, color: "#9CA3AF" }}>
-          {content.height}px empty space
+          {content.height}px {copy.emptySpacePreview}
         </Typography>
       </Box>
     </Stack>

@@ -57,6 +57,7 @@ import PitchAskAiPanel from "./PitchAskAiPanel";
 import { sanitizeFileName, downloadBlob } from "@/lib/pitchDeckExport";
 import type { PitchDeckSlide, PitchDeckSettings, PitchDeckSlideContent } from "@/types/workspaces";
 import { fetchWorkspaceBranding, fetchImageAsDataUrl } from "@/lib/workspaceBranding";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 type PitchDeckEditorProps = {
   workspaceId: string;
@@ -69,7 +70,17 @@ const SortableSlideItem: FC<{
   onSelect: () => void;
   onDelete: () => void;
   onDuplicate: () => void;
-}> = ({ slide, isSelected, onSelect, onDelete, onDuplicate }) => {
+  generationDraftLabel: string;
+  generationFinalLabel: string;
+}> = ({
+  slide,
+  isSelected,
+  onSelect,
+  onDelete,
+  onDuplicate,
+  generationDraftLabel,
+  generationFinalLabel,
+}) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: slide.id,
   });
@@ -136,7 +147,7 @@ const SortableSlideItem: FC<{
               color: generationStatus === "draft" ? "#92400E" : "#166534",
             }}
           >
-            {generationStatus}
+            {generationStatus === "draft" ? generationDraftLabel : generationFinalLabel}
           </Typography>
         </Stack>
       </Box>
@@ -173,6 +184,7 @@ const SortableSlideItem: FC<{
 
 const PitchDeckEditor: FC<PitchDeckEditorProps> = ({ workspaceId }) => {
   const router = useRouter();
+  const { locale } = useLanguage();
   const {
     pitchDeck,
     slides,
@@ -206,6 +218,77 @@ const PitchDeckEditor: FC<PitchDeckEditorProps> = ({ workspaceId }) => {
     workspaceName: null,
     workspaceLogoDataUrl: null,
   });
+
+  const copy =
+    locale === "it"
+      ? {
+          slidePrefix: "Slide",
+          newSlideTitle: "Nuova slide",
+          pointPrefix: "Punto",
+          toastExportPptxSuccess: "Esportato in PPTX con successo",
+          toastExportFailed: "Esportazione non riuscita. Riprova.",
+          toastExportPdfSuccess: "Esportato in PDF con successo",
+          toastExportPdfFailed: "Esportazione PDF non riuscita. Riprova.",
+          toastSlideMarkedFinal: "Slide impostata come finale",
+          toastSlideMarkedDraft: "Slide impostata come bozza",
+          pitchDeckNotFound: "Pitch deck non trovato",
+          goBack: "Indietro",
+          askAi: "Chiedi all'AI",
+          preparing: "Preparazione...",
+          download: "Scarica",
+          downloadAsPptx: "Scarica come PPTX",
+          downloadAsPdf: "Scarica come PDF",
+          slides: "Slide",
+          markFinal: "Segna come finale",
+          markDraft: "Segna come bozza",
+          editSlide: "Modifica slide",
+          selectSlideToPreview: "Seleziona una slide da visualizzare",
+          exportSettings: "Impostazioni export",
+          paperSize: "Formato pagina",
+          paperSizeWide: "16:9 (Schermo largo)",
+          paperSizeStandard: "4:3 (Standard)",
+          fontFamily: "Famiglia font",
+          fontSize: "Dimensione font",
+          includeBranding: "Includi branding",
+          downloadPptx: "Scarica PPTX",
+          downloadPdf: "Scarica PDF",
+          generationDraft: "BOZZA",
+          generationFinal: "FINALE",
+        }
+      : {
+          slidePrefix: "Slide",
+          newSlideTitle: "New Slide",
+          pointPrefix: "Point",
+          toastExportPptxSuccess: "Exported as PPTX successfully",
+          toastExportFailed: "Failed to export. Please try again.",
+          toastExportPdfSuccess: "Exported as PDF successfully",
+          toastExportPdfFailed: "Failed to export PDF. Please try again.",
+          toastSlideMarkedFinal: "Slide marked as final",
+          toastSlideMarkedDraft: "Slide marked as draft",
+          pitchDeckNotFound: "Pitch deck not found",
+          goBack: "Go Back",
+          askAi: "Ask AI",
+          preparing: "Preparing...",
+          download: "Download",
+          downloadAsPptx: "Download as PPTX",
+          downloadAsPdf: "Download as PDF",
+          slides: "Slides",
+          markFinal: "Mark Final",
+          markDraft: "Mark Draft",
+          editSlide: "Edit Slide",
+          selectSlideToPreview: "Select a slide to preview",
+          exportSettings: "Export Settings",
+          paperSize: "Paper Size",
+          paperSizeWide: "16:9 (Widescreen)",
+          paperSizeStandard: "4:3 (Standard)",
+          fontFamily: "Font Family",
+          fontSize: "Font Size",
+          includeBranding: "Include Branding",
+          downloadPptx: "Download PPTX",
+          downloadPdf: "Download PDF",
+          generationDraft: "DRAFT",
+          generationFinal: "FINAL",
+        };
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -265,15 +348,19 @@ const PitchDeckEditor: FC<PitchDeckEditorProps> = ({ workspaceId }) => {
   // Handle add new slide
   const handleAddSlide = useCallback(async () => {
     await addSlide({
-      title: `Slide ${slides.length + 1}`,
+      title: `${copy.slidePrefix} ${slides.length + 1}`,
       slideType: "content",
       content: {
         type: "title_bullets",
-        title: "New Slide",
-        bullets: ["Point 1", "Point 2", "Point 3"],
+        title: copy.newSlideTitle,
+        bullets: [
+          `${copy.pointPrefix} 1`,
+          `${copy.pointPrefix} 2`,
+          `${copy.pointPrefix} 3`,
+        ],
       },
     });
-  }, [addSlide, slides.length]);
+  }, [addSlide, copy.newSlideTitle, copy.pointPrefix, copy.slidePrefix, slides.length]);
 
   // Handle title edit
   const handleStartEditTitle = () => {
@@ -311,14 +398,14 @@ const PitchDeckEditor: FC<PitchDeckEditorProps> = ({ workspaceId }) => {
       const blob = await res.blob();
       const safeName = sanitizeFileName(pitchDeck.title || "pitch-deck");
       downloadBlob(blob, `${safeName}.pptx`);
-      toast.success("Exported as PPTX successfully");
+      toast.success(copy.toastExportPptxSuccess);
     } catch (err) {
       console.error("Failed to download pitch deck:", err);
-      toast.error("Failed to export. Please try again.");
+      toast.error(copy.toastExportFailed);
     } finally {
       setIsDownloading(false);
     }
-  }, [pitchDeck, workspaceId, includeBrandingExport]);
+  }, [pitchDeck, workspaceId, includeBrandingExport, copy.toastExportFailed, copy.toastExportPptxSuccess]);
 
   const handleDownloadPdf = useCallback(async () => {
     if (!pitchDeck) return;
@@ -352,14 +439,14 @@ const PitchDeckEditor: FC<PitchDeckEditorProps> = ({ workspaceId }) => {
 
       const safeName = sanitizeFileName(pitchDeck.title || "pitch-deck");
       downloadBlob(blob, `${safeName}.pdf`);
-      toast.success("Exported as PDF successfully");
+      toast.success(copy.toastExportPdfSuccess);
     } catch (err) {
       console.error("Failed to export PDF:", err);
-      toast.error("Failed to export PDF. Please try again.");
+      toast.error(copy.toastExportPdfFailed);
     } finally {
       setIsDownloading(false);
     }
-  }, [pitchDeck]);
+  }, [pitchDeck, copy.toastExportPdfFailed, copy.toastExportPdfSuccess]);
 
   const handleDownload = useCallback(
     async (format: "pptx" | "pdf") => {
@@ -406,9 +493,9 @@ const PitchDeckEditor: FC<PitchDeckEditorProps> = ({ workspaceId }) => {
       },
     });
     toast.success(
-      nextStatus === "final" ? "Slide marked as final" : "Slide marked as draft"
+      nextStatus === "final" ? copy.toastSlideMarkedFinal : copy.toastSlideMarkedDraft
     );
-  }, [selectedSlide, selectedSlideStatus, updateSlide]);
+  }, [selectedSlide, selectedSlideStatus, updateSlide, copy.toastSlideMarkedDraft, copy.toastSlideMarkedFinal]);
 
   if (isLoading) {
     return (
@@ -437,12 +524,12 @@ const PitchDeckEditor: FC<PitchDeckEditorProps> = ({ workspaceId }) => {
           gap: 2,
         }}
       >
-        <Typography sx={{ color: "#EF4444" }}>{error ?? "Pitch deck not found"}</Typography>
+        <Typography sx={{ color: "#EF4444" }}>{error ?? copy.pitchDeckNotFound}</Typography>
         <Button
           variant="outlined"
           onClick={() => router.push(`/workspaces/${workspaceId}/manage/pitch-deck`)}
         >
-          Go Back
+          {copy.goBack}
         </Button>
       </Box>
     );
@@ -511,7 +598,7 @@ const PitchDeckEditor: FC<PitchDeckEditorProps> = ({ workspaceId }) => {
               color: showAiPanel ? "#4C6AD2" : "#6B7280",
               bgcolor: showAiPanel ? "#F0F4FF" : "transparent",
             }}
-            title="Ask AI"
+            title={copy.askAi}
           >
             <AutoFixHighRoundedIcon />
           </IconButton>
@@ -539,7 +626,7 @@ const PitchDeckEditor: FC<PitchDeckEditorProps> = ({ workspaceId }) => {
               textTransform: "none",
             }}
           >
-            {isDownloading ? "Preparing..." : "Download"}
+            {isDownloading ? copy.preparing : copy.download}
           </Button>
           <Menu
             anchorEl={exportMenuAnchor}
@@ -563,14 +650,14 @@ const PitchDeckEditor: FC<PitchDeckEditorProps> = ({ workspaceId }) => {
               sx={{ fontSize: 14, gap: 1.5, py: 1.2 }}
             >
               <SlideshowOutlinedIcon sx={{ fontSize: 18, color: "#4C6AD2" }} />
-              Download as PPTX
+              {copy.downloadAsPptx}
             </MenuItem>
             <MenuItem
               onClick={() => void handleDownload("pdf")}
               sx={{ fontSize: 14, gap: 1.5, py: 1.2 }}
             >
               <PictureAsPdfOutlinedIcon sx={{ fontSize: 18, color: "#EF4444" }} />
-              Download as PDF
+              {copy.downloadAsPdf}
             </MenuItem>
           </Menu>
         </Stack>
@@ -608,7 +695,7 @@ const PitchDeckEditor: FC<PitchDeckEditorProps> = ({ workspaceId }) => {
             }}
           >
             <Typography sx={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>
-              Slides
+              {copy.slides}
             </Typography>
             <IconButton size="small" onClick={handleAddSlide} sx={{ color: "#4C6AD2" }}>
               <AddIcon sx={{ fontSize: 20 }} />
@@ -641,6 +728,8 @@ const PitchDeckEditor: FC<PitchDeckEditorProps> = ({ workspaceId }) => {
                     onSelect={() => setSelectedSlideId(slide.id)}
                     onDelete={() => deleteSlide(slide.id)}
                     onDuplicate={() => duplicateSlide(slide.id)}
+                    generationDraftLabel={copy.generationDraft}
+                    generationFinalLabel={copy.generationFinal}
                   />
                 ))}
               </SortableContext>
@@ -686,8 +775,9 @@ const PitchDeckEditor: FC<PitchDeckEditorProps> = ({ workspaceId }) => {
                 spacing={1}
                 sx={{
                   position: "absolute",
-                  top: 16,
+                  bottom: 16,
                   right: 16,
+                  zIndex: 6,
                 }}
               >
                 <Button
@@ -708,7 +798,7 @@ const PitchDeckEditor: FC<PitchDeckEditorProps> = ({ workspaceId }) => {
                     },
                   }}
                 >
-                  {selectedSlideStatus === "draft" ? "Mark Final" : "Mark Draft"}
+                  {selectedSlideStatus === "draft" ? copy.markFinal : copy.markDraft}
                 </Button>
                 <Button
                   variant="contained"
@@ -721,12 +811,12 @@ const PitchDeckEditor: FC<PitchDeckEditorProps> = ({ workspaceId }) => {
                     textTransform: "none",
                   }}
                 >
-                  Edit Slide
+                  {copy.editSlide}
                 </Button>
               </Stack>
             </Box>
           ) : (
-            <Typography sx={{ color: "#9CA3AF" }}>Select a slide to preview</Typography>
+            <Typography sx={{ color: "#9CA3AF" }}>{copy.selectSlideToPreview}</Typography>
           )}
         </Box>
 
@@ -752,7 +842,7 @@ const PitchDeckEditor: FC<PitchDeckEditorProps> = ({ workspaceId }) => {
               }}
             >
               <Typography sx={{ fontSize: 16, fontWeight: 600, letterSpacing: 0.2 }}>
-                Export Settings
+                {copy.exportSettings}
               </Typography>
             </Box>
 
@@ -779,7 +869,7 @@ const PitchDeckEditor: FC<PitchDeckEditorProps> = ({ workspaceId }) => {
                       mb: 0.7,
                     }}
                   >
-                    Paper Size
+                    {copy.paperSize}
                   </Typography>
                   <FormControl fullWidth size="small">
                     <Select
@@ -787,8 +877,8 @@ const PitchDeckEditor: FC<PitchDeckEditorProps> = ({ workspaceId }) => {
                       onChange={(e) => handleSettingsChange("paperSize", e.target.value)}
                       sx={{ borderRadius: 2, bgcolor: "#FFFFFF" }}
                     >
-                      <MenuItem value="16:9">16:9 (Widescreen)</MenuItem>
-                      <MenuItem value="4:3">4:3 (Standard)</MenuItem>
+                      <MenuItem value="16:9">{copy.paperSizeWide}</MenuItem>
+                      <MenuItem value="4:3">{copy.paperSizeStandard}</MenuItem>
                       <MenuItem value="A4">A4</MenuItem>
                     </Select>
                   </FormControl>
@@ -803,7 +893,7 @@ const PitchDeckEditor: FC<PitchDeckEditorProps> = ({ workspaceId }) => {
                       mb: 0.7,
                     }}
                   >
-                    Font Family
+                    {copy.fontFamily}
                   </Typography>
                   <FormControl fullWidth size="small">
                     <Select
@@ -829,7 +919,7 @@ const PitchDeckEditor: FC<PitchDeckEditorProps> = ({ workspaceId }) => {
                       mb: 0.7,
                     }}
                   >
-                    Font Size
+                    {copy.fontSize}
                   </Typography>
                   <FormControl fullWidth size="small">
                     <Select
@@ -862,7 +952,7 @@ const PitchDeckEditor: FC<PitchDeckEditorProps> = ({ workspaceId }) => {
                         }}
                       />
                     }
-                    label="Include Branding"
+                    label={copy.includeBranding}
                     sx={{
                       m: 0,
                       "& .MuiFormControlLabel-label": {
@@ -899,7 +989,7 @@ const PitchDeckEditor: FC<PitchDeckEditorProps> = ({ workspaceId }) => {
                     },
                   }}
                 >
-                  {isDownloading ? "Preparing..." : "Download PPTX"}
+                  {isDownloading ? copy.preparing : copy.downloadPptx}
                 </Button>
                 <Button
                   fullWidth
@@ -921,7 +1011,7 @@ const PitchDeckEditor: FC<PitchDeckEditorProps> = ({ workspaceId }) => {
                     },
                   }}
                 >
-                  Download PDF
+                  {copy.downloadPdf}
                 </Button>
               </Stack>
             </Box>

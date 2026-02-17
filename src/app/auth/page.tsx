@@ -6,6 +6,7 @@ import { useUser } from "@clerk/nextjs";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Box } from "@mui/material";
 import AuthCard from "@/components/auth/AuthCard";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 function AuthPageContent() {
   const { user, isLoaded } = useUser();
@@ -40,6 +41,9 @@ function AuthPageContent() {
 }
 
 export default function AuthPage() {
+  const { locale } = useLanguage();
+  const loadingLabel = locale === "it" ? "Caricamento..." : "Loading...";
+
   return (
     <Suspense
       fallback={
@@ -54,7 +58,7 @@ export default function AuthPage() {
             py: 4,
           }}
         >
-          Loading...
+          {loadingLabel}
         </Box>
       }
     >
