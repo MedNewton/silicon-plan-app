@@ -4,6 +4,7 @@ import { Sora } from "next/font/google";
 import ThemeRegistry from "@/components/layout/ThemeRegistry";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ToastProvider } from "@/components/layout/ToastProvider";
+import LanguageProvider from "@/components/i18n/LanguageProvider";
 
 
 export const metadata: Metadata = {
@@ -31,10 +32,12 @@ export default function RootLayout({
           signInUrl="/auth"
           signUpUrl="/auth"
         >
-          <ThemeRegistry>
-            <ToastProvider />
-            {children}
-          </ThemeRegistry>
+          <LanguageProvider>
+            <ThemeRegistry>
+              <ToastProvider />
+              {children}
+            </ThemeRegistry>
+          </LanguageProvider>
         </ClerkProvider>
       </body>
     </html>

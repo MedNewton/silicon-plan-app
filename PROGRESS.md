@@ -4,10 +4,10 @@ Source of truth for tasks: `TASKS.md`
 
 ## Summary
 - Total scoped tasks: 68
-- `done`: 64
+- `done`: 65
 - `in_progress`: 0
 - `pending_qa`: 0
-- `todo`: 4
+- `todo`: 3
 - `blocked`: 0
 - **Note:** Counts now reflect all rows in `TASKS.md` as of 2026-02-17.
 
@@ -60,15 +60,15 @@ Source of truth for tasks: `TASKS.md`
 46. `AF-008` - Make financial plan editable and multi-currency
 47. `AF-009` - Make generated pitch and SWOT outputs editable
 48. `AF-010` - Resolve DOCX/PPTX formatting regressions
+49. `WS-005` - Implement EN/IT language toggle
 
 ## Reopened / Not Fully Done
 1. None (WS-016 and BPTS-006 passed manual QA on 2026-02-17)
 
 ## Todo (Immediate Next)
-1. `WS-005` - Implement EN/IT language toggle
-2. `WS-006` - Localize key workspace pages and exports
-3. `WS-018` - Add workspace usability QA suite
-4. `CORE-020` - Add core missing features QA suite
+1. `WS-006` - Localize key workspace pages and exports
+2. `WS-018` - Add workspace usability QA suite
+3. `CORE-020` - Add core missing features QA suite
 
 ## Recent Validation
 - `npm run typecheck`: pass
@@ -77,6 +77,25 @@ Source of truth for tasks: `TASKS.md`
 - WS-016 / BPTS-006 manual QA: pass
 
 ## Change Log
+- 2026-02-17: **WS-005 Complete** - Implemented EN/IT language toggle with persisted choice in app chrome (no DB migration required).
+  - Added lightweight i18n layer:
+    - `src/lib/i18n/locales.ts`
+    - `src/lib/i18n/messages.ts`
+    - `src/components/i18n/LanguageProvider.tsx`
+    - `src/components/i18n/LanguageToggle.tsx`
+  - Wired language provider in `src/app/layout.tsx` and persisted locale through Clerk `unsafeMetadata.uiLanguage` with localStorage fallback (`silicon-plan.uiLanguage`); app now updates `document.documentElement.lang` dynamically.
+  - Added language toggle on main shells:
+    - `src/components/ai-documents/AIDocumentsSidebar.tsx`
+    - `src/components/workspaceSettings/SettingsSidebar.tsx`
+    - `src/components/workspaceManage/business-plan/ManageSidebar.tsx`
+  - Localized primary shell labels/tabs/cards:
+    - `src/components/ai-documents/AIDocumentsTopTabs.tsx`
+    - `src/components/workspaceSettings/SettingsTopTabs.tsx`
+    - `src/components/workspaceManage/business-plan/ManageTopTabs.tsx`
+    - `src/components/workspaceSettings/SettingsSecondarySidebar.tsx`
+    - `src/components/ai-documents/AIDocumentsMyWorkspacesTabContent.tsx`
+    - `src/app/workspaces/[workspaceId]/settings/page.tsx`
+  - Validation: `npm run check` pass.
 - 2026-02-17: **AF-009 / AF-010 Complete** - Shipped pitch/SWOT editability hardening and DOCX/PPTX formatting stability improvements without DB migrations.
   - Pitch generated content editability (`AF-009`):
     - Added persisted generated-content status metadata (`generation_status`, `ai_generated_at`) to pitch slide content models in `src/types/workspaces.ts`.

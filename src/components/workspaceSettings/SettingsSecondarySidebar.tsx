@@ -3,6 +3,7 @@
 
 import { Box, Stack, Typography, useTheme } from "@mui/material";
 import type { ReactElement } from "react";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 export type SettingsTab = "general" | "business" | "members" | "library";
 
@@ -18,6 +19,7 @@ export default function SettingsSecondarySidebar({
   onTabChange,
 }: SettingsSecondarySidebarProps): ReactElement {
   const theme = useTheme();
+  const { t } = useLanguage();
 
   const itemStyles = {
     borderRadius: 2.5,
@@ -72,7 +74,7 @@ export default function SettingsSecondarySidebar({
           mb: 2.5,
         }}
       >
-        Setup Business
+        {t("settings.setupBusiness")}
       </Typography>
 
       <Typography
@@ -82,14 +84,14 @@ export default function SettingsSecondarySidebar({
           mb: 1.5,
         }}
       >
-        {workspaceName || "Workspace"}
+        {workspaceName || t("settings.workspaceFallback")}
       </Typography>
 
       <Stack direction="column" gap={1.5}>
-        {makeItem("general", "General")}
-        {makeItem("business", "Business activities")}
-        {makeItem("members", "Members")}
-        {makeItem("library", "AI Library")}
+        {makeItem("general", t("settings.general"))}
+        {makeItem("business", t("settings.businessActivities"))}
+        {makeItem("members", t("settings.members"))}
+        {makeItem("library", t("settings.aiLibrary"))}
       </Stack>
     </Box>
   );

@@ -15,6 +15,8 @@ import BookmarkBorderOutlinedIcon from "@mui/icons-material/BookmarkBorderOutlin
 import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
 import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
+import LanguageToggle from "@/components/i18n/LanguageToggle";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 export type NavKey =
   | "ai-documents"
@@ -35,6 +37,7 @@ export default function SettingsSidebar({
 }: SettingsSidebarProps): ReactElement {
   const theme = useTheme();
   const router = useRouter();
+  const { t } = useLanguage();
 
   const itemBaseStyles = {
     height: 64,
@@ -130,27 +133,27 @@ export default function SettingsSidebar({
       <Box sx={{ flex: 1, pt: 2 }}>
         {makeItem(
           "ai-documents",
-          "AI Documents",
+          t("sidebar.aiDocuments"),
           <DescriptionOutlinedIcon sx={{ fontSize: 22 }} />,
         )}
         {makeItem(
           "consultants",
-          "Consultants",
+          t("sidebar.consultants"),
           <PersonOutlineOutlinedIcon sx={{ fontSize: 22 }} />,
         )}
         {makeItem(
           "bookings",
-          "My Bookings",
+          t("sidebar.myBookings"),
           <BookmarkBorderOutlinedIcon sx={{ fontSize: 22 }} />,
         )}
         {makeItem(
           "session-history",
-          "Session History",
+          t("sidebar.sessionHistory"),
           <HistoryOutlinedIcon sx={{ fontSize: 22 }} />,
         )}
         {makeItem(
           "learning",
-          "Learning",
+          t("sidebar.learning"),
           <MenuBookOutlinedIcon sx={{ fontSize: 22 }} />,
         )}
       </Box>
@@ -158,17 +161,21 @@ export default function SettingsSidebar({
       <Box
         sx={{
           borderTop: "1px solid rgba(226,232,240,1)",
-          py: 1.5,
+          px: 3,
+          py: 1.8,
           mb: 1,
+          display: "flex",
+          flexDirection: "column",
+          gap: 1.6,
         }}
       >
+        <LanguageToggle />
         <Box
           onClick={() => handleNavClick("settings")}
           sx={{
             display: "flex",
             alignItems: "center",
             gap: 1.5,
-            px: 3,
             cursor: "pointer",
             color:
               activeNav === "settings"
@@ -178,7 +185,7 @@ export default function SettingsSidebar({
         >
           <SettingsOutlinedIcon sx={{ fontSize: 22 }} />
           <Typography sx={{ fontSize: 15, fontWeight: 500 }}>
-            Settings
+            {t("sidebar.settings")}
           </Typography>
         </Box>
       </Box>

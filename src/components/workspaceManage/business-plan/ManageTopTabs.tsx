@@ -5,6 +5,7 @@ import type { FC } from "react";
 import { Box, Button, Stack } from "@mui/material";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 export type ManageTopTab = "plan" | "download";
 
@@ -19,6 +20,7 @@ const INACTIVE_COLOR = "#6B7280"; // muted grey-blue
 const ManageTopTabs: FC<ManageTopTabsProps> = ({ activeTab, onTabChange }) => {
   const isPlanActive = activeTab === "plan";
   const isDownloadActive = activeTab === "download";
+  const { t } = useLanguage();
 
   return (
     <Box
@@ -68,7 +70,7 @@ const ManageTopTabs: FC<ManageTopTabsProps> = ({ activeTab, onTabChange }) => {
               },
             }}
           >
-            PLAN
+            {t("topTabs.plan")}
           </Button>
         </Box>
 
@@ -107,7 +109,7 @@ const ManageTopTabs: FC<ManageTopTabsProps> = ({ activeTab, onTabChange }) => {
               },
             }}
           >
-            DOWNLOAD
+            {t("topTabs.download")}
           </Button>
         </Box>
       </Stack>

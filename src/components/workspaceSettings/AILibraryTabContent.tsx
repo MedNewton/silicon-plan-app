@@ -35,6 +35,7 @@ import type {
   WorkspaceAiDocumentStatus,
   WorkspaceAiKnowledge,
 } from "@/types/workspaces";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 type AILibrarySubTab = "documents" | "knowledge";
 
@@ -59,11 +60,11 @@ export type AILibraryTabContentProps = Readonly<{
   workspaceName?: string;
 }>;
 
-const formatUploadedDate = (iso: string | null): string => {
+const formatUploadedDate = (iso: string | null, locale: "en" | "it"): string => {
   if (!iso) return "";
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleDateString("en-GB", {
+  return date.toLocaleDateString(locale === "it" ? "it-IT" : "en-GB", {
     day: "numeric",
     month: "long",
     year: "numeric",
@@ -88,6 +89,132 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
   workspaceId,
   workspaceName,
 }) => {
+  const { locale } = useLanguage();
+
+  const copy =
+    locale === "it"
+      ? {
+          title: "Libreria AI",
+          subtitle:
+            "Gestisci documenti e conoscenza usati dall'assistente AI per questo workspace",
+          documentsTab: "Libreria documenti",
+          knowledgeTab: "Conoscenza AI sul tuo business",
+          documentsTitle: "Libreria documenti",
+          documentsDescription:
+            "Tutti i documenti caricati nella tua base di conoscenza AI",
+          addDocument: "Aggiungi documento",
+          tableDocumentName: "Nome documento",
+          tableType: "Tipo",
+          tableUploaded: "Caricato",
+          tableStatus: "Stato",
+          tableActions: "Azioni",
+          loadingDocuments: "Caricamento documenti...",
+          noDocuments:
+            "Nessun documento nella libreria AI. Carica il primo documento per iniziare.",
+          delete: "Elimina",
+          rowsPerPage: "Righe per pagina:",
+          pageRange: "{start}-{end} di {total}",
+          pageZero: "0 di 0",
+          statusProcessing: "Elaborazione",
+          statusUploaded: "Caricato",
+          statusUploading: "Caricamento",
+          statusFailed: "Errore",
+          statusDefault: "Sconosciuto",
+          knowledgeTitle: "Conoscenza AI",
+          knowledgeDescription:
+            "Gestisci e rivedi le informazioni strutturate che l'assistente AI usa per comprendere questo business.",
+          addKnowledge: "Aggiungi conoscenza",
+          loadingKnowledge: "Caricamento conoscenza AI...",
+          noKnowledge:
+            "Nessuna voce di conoscenza AI. Aggiungi note per dare contesto strutturato al business.",
+          save: "Salva",
+          titleField: "Titolo",
+          descriptionField: "Descrizione",
+          cancelChanges: "Annulla modifiche",
+          saveButton: "Salva",
+          toastLoadDocumentsFailed: "Impossibile caricare i documenti.",
+          toastLoadDocumentsError:
+            "Si e verificato un errore durante il caricamento dei documenti.",
+          toastLoadKnowledgeFailed: "Impossibile caricare la conoscenza AI.",
+          toastLoadKnowledgeError:
+            "Si e verificato un errore durante il caricamento della conoscenza AI.",
+          toastDeleteDocumentFailed: "Impossibile eliminare il documento.",
+          toastDeleteDocumentSuccess: "Documento eliminato.",
+          toastDeleteDocumentError:
+            "Si e verificato un errore durante l'eliminazione del documento.",
+          toastDeleteKnowledgeFailed:
+            "Impossibile eliminare la voce di conoscenza.",
+          toastDeleteKnowledgeSuccess: "Voce di conoscenza eliminata.",
+          toastDeleteKnowledgeError:
+            "Si e verificato un errore durante l'eliminazione della voce di conoscenza.",
+          toastUpdateKnowledgeRequired:
+            "Titolo e descrizione sono obbligatori.",
+          toastUpdateKnowledgeFailed:
+            "Impossibile aggiornare la voce di conoscenza.",
+          toastUpdateKnowledgeSuccess: "Voce di conoscenza aggiornata.",
+          toastUpdateKnowledgeError:
+            "Si e verificato un errore durante l'aggiornamento della voce di conoscenza.",
+        }
+      : {
+          title: "AI Library",
+          subtitle:
+            "Manage documents and knowledge that your AI assistant uses for this workspace",
+          documentsTab: "Documents Library",
+          knowledgeTab: "AI Knowledge About Your Business",
+          documentsTitle: "Documents library",
+          documentsDescription:
+            "All documents uploaded to your AI knowledge base",
+          addDocument: "Add Document",
+          tableDocumentName: "Document name",
+          tableType: "Type",
+          tableUploaded: "Uploaded",
+          tableStatus: "Status",
+          tableActions: "Actions",
+          loadingDocuments: "Loading documents...",
+          noDocuments:
+            "No documents in your AI library yet. Upload your first document to get started.",
+          delete: "Delete",
+          rowsPerPage: "Rows per page:",
+          pageRange: "{start}-{end} of {total}",
+          pageZero: "0 of 0",
+          statusProcessing: "Processing",
+          statusUploaded: "Uploaded",
+          statusUploading: "Uploading",
+          statusFailed: "Failed",
+          statusDefault: "Unknown",
+          knowledgeTitle: "AI Knowledge",
+          knowledgeDescription:
+            "Manage and review structured information that your AI assistant uses to understand this business.",
+          addKnowledge: "Add Knowledge",
+          loadingKnowledge: "Loading AI knowledge...",
+          noKnowledge:
+            "No AI knowledge entries yet. Add notes to give your assistant structured context about this business.",
+          save: "Save",
+          titleField: "Title",
+          descriptionField: "Description",
+          cancelChanges: "Cancel Changes",
+          saveButton: "Save",
+          toastLoadDocumentsFailed: "Failed to load documents.",
+          toastLoadDocumentsError:
+            "Something went wrong while loading documents.",
+          toastLoadKnowledgeFailed: "Failed to load AI knowledge.",
+          toastLoadKnowledgeError:
+            "Something went wrong while loading AI knowledge.",
+          toastDeleteDocumentFailed: "Failed to delete document.",
+          toastDeleteDocumentSuccess: "Document deleted.",
+          toastDeleteDocumentError:
+            "Something went wrong while deleting the document.",
+          toastDeleteKnowledgeFailed: "Failed to delete knowledge item.",
+          toastDeleteKnowledgeSuccess: "Knowledge item deleted.",
+          toastDeleteKnowledgeError:
+            "Something went wrong while deleting the knowledge item.",
+          toastUpdateKnowledgeRequired:
+            "Both title and description are required.",
+          toastUpdateKnowledgeFailed: "Failed to update knowledge item.",
+          toastUpdateKnowledgeSuccess: "Knowledge item updated.",
+          toastUpdateKnowledgeError:
+            "Something went wrong while updating the knowledge item.",
+        };
   const params = useParams<{ workspaceId?: string }>();
 
   const routeWorkspaceIdRaw = params?.workspaceId;
@@ -139,7 +266,7 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
       );
 
       if (!res.ok) {
-        toast.error("Failed to load documents.");
+        toast.error(copy.toastLoadDocumentsFailed);
         return;
       }
 
@@ -149,7 +276,7 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
         id: doc.id,
         name: doc.name,
         type: deriveDocumentType(doc),
-        uploadedAt: formatUploadedDate(doc.created_at ?? null),
+        uploadedAt: formatUploadedDate(doc.created_at ?? null, locale),
         status: doc.status,
       }));
 
@@ -157,11 +284,11 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
       setCurrentPage(0);
     } catch (error) {
       console.error("Error loading documents", error);
-      toast.error("Something went wrong while loading documents.");
+      toast.error(copy.toastLoadDocumentsError);
     } finally {
       setDocumentsLoading(false);
     }
-  }, [effectiveWorkspaceId]);
+  }, [copy.toastLoadDocumentsError, copy.toastLoadDocumentsFailed, effectiveWorkspaceId, locale]);
 
   const fetchKnowledge = useCallback(async (): Promise<void> => {
     if (!effectiveWorkspaceId) return;
@@ -174,7 +301,7 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
       );
 
       if (!res.ok) {
-        toast.error("Failed to load AI knowledge.");
+        toast.error(copy.toastLoadKnowledgeFailed);
         return;
       }
 
@@ -191,11 +318,11 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
       setKnowledgeEntries(mapped);
     } catch (error) {
       console.error("Error loading AI knowledge", error);
-      toast.error("Something went wrong while loading AI knowledge.");
+      toast.error(copy.toastLoadKnowledgeError);
     } finally {
       setKnowledgeLoading(false);
     }
-  }, [effectiveWorkspaceId]);
+  }, [copy.toastLoadKnowledgeError, copy.toastLoadKnowledgeFailed, effectiveWorkspaceId]);
 
   useEffect(() => {
     if (!effectiveWorkspaceId) {
@@ -228,15 +355,15 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
       );
 
       if (!res.ok && res.status !== 204) {
-        toast.error("Failed to delete document.");
+        toast.error(copy.toastDeleteDocumentFailed);
         return;
       }
 
       setDocuments((prev) => prev.filter((doc) => doc.id !== id));
-      toast.success("Document deleted.");
+      toast.success(copy.toastDeleteDocumentSuccess);
     } catch (error) {
       console.error("Error deleting document", error);
-      toast.error("Something went wrong while deleting the document.");
+      toast.error(copy.toastDeleteDocumentError);
     }
   };
 
@@ -252,7 +379,7 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
       );
 
       if (!res.ok && res.status !== 204) {
-        toast.error("Failed to delete knowledge item.");
+        toast.error(copy.toastDeleteKnowledgeFailed);
         return;
       }
 
@@ -262,10 +389,10 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
         setEditingKnowledgeLabel("");
         setEditingKnowledgeValue("");
       }
-      toast.success("Knowledge item deleted.");
+      toast.success(copy.toastDeleteKnowledgeSuccess);
     } catch (error) {
       console.error("Error deleting knowledge item", error);
-      toast.error("Something went wrong while deleting the knowledge item.");
+      toast.error(copy.toastDeleteKnowledgeError);
     }
   };
 
@@ -288,7 +415,7 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
     const value = editingKnowledgeValue.trim();
 
     if (!label || !value) {
-      toast.error("Both title and description are required.");
+      toast.error(copy.toastUpdateKnowledgeRequired);
       return;
     }
 
@@ -309,7 +436,7 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
         | null;
 
       if (!res.ok || !payload?.knowledge) {
-        toast.error(payload?.error ?? "Failed to update knowledge item.");
+        toast.error(payload?.error ?? copy.toastUpdateKnowledgeFailed);
         return;
       }
 
@@ -321,11 +448,11 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
             : entry,
         ),
       );
-      toast.success("Knowledge item updated.");
+      toast.success(copy.toastUpdateKnowledgeSuccess);
       cancelEditingKnowledge();
     } catch (error) {
       console.error("Error updating knowledge item", error);
-      toast.error("Something went wrong while updating the knowledge item.");
+      toast.error(copy.toastUpdateKnowledgeError);
     } finally {
       setKnowledgeSavingId(null);
     }
@@ -360,7 +487,7 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
       return (
         <Chip
           icon={<AutorenewOutlinedIcon sx={{ fontSize: 16 }} />}
-          label="Processing"
+          label={copy.statusProcessing}
           size="small"
           sx={{
             borderRadius: 999,
@@ -378,7 +505,7 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
       return (
         <Chip
           icon={<CheckCircleOutlineOutlinedIcon sx={{ fontSize: 16 }} />}
-          label="Uploaded"
+          label={copy.statusUploaded}
           size="small"
           sx={{
             borderRadius: 999,
@@ -392,9 +519,16 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
       );
     }
 
+    const fallbackLabel =
+      status === "uploading"
+        ? copy.statusUploading
+        : status === "failed"
+          ? copy.statusFailed
+          : copy.statusDefault;
+
     return (
       <Chip
-        label={status}
+        label={fallbackLabel}
         size="small"
         sx={{
           borderRadius: 999,
@@ -480,10 +614,10 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
         >
           <Box>
             <Typography sx={{ fontSize: 20, fontWeight: 600, mb: 0.5 }}>
-              Documents library
+              {copy.documentsTitle}
             </Typography>
             <Typography sx={{ fontSize: 13, color: "text.secondary" }}>
-              All documents uploaded to your AI knowledge base
+              {copy.documentsDescription}
             </Typography>
           </Box>
 
@@ -510,7 +644,7 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
               },
             }}
           >
-            Add Document
+            {copy.addDocument}
           </Button>
         </Box>
 
@@ -536,8 +670,8 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
               color: "#6B7280",
             }}
           >
-            <Box>Document name</Box>
-            <Box>Type</Box>
+            <Box>{copy.tableDocumentName}</Box>
+            <Box>{copy.tableType}</Box>
             <Box
               sx={{
                 display: "flex",
@@ -545,11 +679,11 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
                 gap: 0.5,
               }}
             >
-              Uploaded
+              {copy.tableUploaded}
               <ArrowDropDownIcon sx={{ fontSize: 18 }} />
             </Box>
-            <Box>Status</Box>
-            <Box textAlign="right">Actions</Box>
+            <Box>{copy.tableStatus}</Box>
+            <Box textAlign="right">{copy.tableActions}</Box>
           </Box>
 
           {documentsLoading && (
@@ -562,7 +696,7 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
               <Typography
                 sx={{ fontSize: 13.5, color: "text.secondary" }}
               >
-                Loading documents...
+                {copy.loadingDocuments}
               </Typography>
             </Box>
           )}
@@ -577,8 +711,7 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
               <Typography
                 sx={{ fontSize: 13.5, color: "text.secondary" }}
               >
-                No documents in your AI library yet. Upload your first
-                document to get started.
+                {copy.noDocuments}
               </Typography>
             </Box>
           )}
@@ -652,7 +785,7 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
                       },
                     }}
                   >
-                    Delete
+                    {copy.delete}
                   </Button>
                 </Box>
               </Box>
@@ -671,7 +804,7 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
           >
             <Stack direction="row" spacing={1} alignItems="center">
               <Typography variant="body2" sx={{ color: "text.secondary" }}>
-                Rows per page:
+                {copy.rowsPerPage}
               </Typography>
               <Select<number>
                 value={rowsPerPage}
@@ -705,8 +838,11 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
             >
               <Typography variant="body2">
                 {totalDocuments === 0
-                  ? "0 of 0"
-                  : `${startIndex + 1}–${endIndex} of ${totalDocuments}`}
+                  ? copy.pageZero
+                  : copy.pageRange
+                      .replace("{start}", String(startIndex + 1))
+                      .replace("{end}", String(endIndex))
+                      .replace("{total}", String(totalDocuments))}
               </Typography>
               <IconButton
                 size="small"
@@ -778,7 +914,7 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
               size="small"
               value={editingKnowledgeLabel}
               onChange={(event) => setEditingKnowledgeLabel(event.target.value)}
-              placeholder="Title"
+              placeholder={copy.titleField}
               sx={{
                 minWidth: 240,
                 "& .MuiOutlinedInput-root": {
@@ -836,7 +972,7 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
                   color: "#1D4ED8",
                 }}
               >
-                {isSaving ? <CircularProgress size={14} /> : "Save"}
+                {isSaving ? <CircularProgress size={14} /> : copy.save}
               </Button>
             )}
 
@@ -870,7 +1006,7 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
             minRows={3}
             value={editingKnowledgeValue}
             onChange={(event) => setEditingKnowledgeValue(event.target.value)}
-            placeholder="Description"
+            placeholder={copy.descriptionField}
             sx={{
               "& .MuiOutlinedInput-root": {
                 borderRadius: 2,
@@ -917,11 +1053,10 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
       >
         <Box>
           <Typography sx={{ fontSize: 20, fontWeight: 600, mb: 0.5 }}>
-            AI Knowledge
+            {copy.knowledgeTitle}
           </Typography>
           <Typography sx={{ fontSize: 13, color: "text.secondary" }}>
-            Manage and review structured information that your AI assistant uses
-            to understand this business.
+            {copy.knowledgeDescription}
           </Typography>
         </Box>
 
@@ -949,20 +1084,19 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
             },
           }}
         >
-          Add Knowledge
+          {copy.addKnowledge}
         </Button>
       </Box>
 
       {knowledgeLoading && (
         <Typography sx={{ fontSize: 13.5, color: "text.secondary" }}>
-          Loading AI knowledge...
+          {copy.loadingKnowledge}
         </Typography>
       )}
 
       {!knowledgeLoading && knowledgeEntries.length === 0 && (
         <Typography sx={{ fontSize: 13.5, color: "text.secondary" }}>
-          No AI knowledge entries yet. Add notes to give your assistant
-          structured context about this business.
+          {copy.noKnowledge}
         </Typography>
       )}
 
@@ -996,11 +1130,11 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
           }}
         >
           <Typography sx={{ fontSize: 22, fontWeight: 600, mb: 0.5 }}>
-            AI Library
+            {copy.title}
           </Typography>
           <Typography sx={{ fontSize: 13, color: "text.secondary" }}>
-            Manage documents and knowledge that your AI assistant uses for this
-            workspace{workspaceName ? ` (${workspaceName})` : ""}.
+            {copy.subtitle}
+            {workspaceName ? ` (${workspaceName})` : ""}.
           </Typography>
         </Box>
 
@@ -1044,7 +1178,7 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
                 },
               }}
             >
-              Documents Library
+              {copy.documentsTab}
             </Button>
 
             <Button
@@ -1071,7 +1205,7 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
                 },
               }}
             >
-              AI Knowledge About Your Business
+              {copy.knowledgeTab}
             </Button>
           </Box>
         </Box>
@@ -1112,7 +1246,7 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
               },
             }}
           >
-            Cancel Changes
+            {copy.cancelChanges}
           </Button>
 
           <Button
@@ -1143,7 +1277,7 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
               },
             }}
           >
-            Save
+            {copy.saveButton}
           </Button>
         </Box>
       </Box>

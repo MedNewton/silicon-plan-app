@@ -26,6 +26,7 @@ import {
   readAiToneFromRawFormData,
   type AiToneOfVoice,
 } from "@/lib/aiTone";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 type BusinessProfileResponse = {
   businessProfile: WorkspaceBusinessProfile | null;
@@ -141,6 +142,198 @@ type AiAssistFieldKey =
 const BusinessActivitiesTabContent = ({
   workspaceId,
 }: BusinessActivitiesTabContentProps) => {
+  const { locale } = useLanguage();
+
+  const copy =
+    locale === "it"
+      ? {
+          title: "Attivita aziendali",
+          aiTone: "Tono di voce AI",
+          aiToneHelp:
+            "Applicato ai flussi Ask AI nella configurazione business, piano, pitch e canvas.",
+          isOperating: "Questa azienda e attualmente operativa?",
+          yes: "Si",
+          no: "No",
+          selectIndustry:
+            "Seleziona il settore in cui opera la tua azienda",
+          select: "Seleziona",
+          other: "Altro",
+          customIndustry: "Settore personalizzato",
+          customIndustryPlaceholder: "Inserisci il tuo settore",
+          companyStage: "Stadio aziendale",
+          customCompanyStage: "Stadio aziendale personalizzato",
+          customCompanyStagePlaceholder: "Inserisci lo stadio aziendale",
+          problemShort: "Quale problema risolvi e per chi",
+          customProblemSolved: "Problema personalizzato",
+          customProblemSolvedPlaceholder:
+            "Descrivi il problema e il target",
+          describe: "Descrivi",
+          solutionUniqueness:
+            "Qual e la tua soluzione e cosa la rende unica?",
+          teamRoles: "Chi fa parte del tuo team e quali sono i ruoli?",
+          financialProjections:
+            "Quali sono le tue proiezioni finanziarie a 3-5 anni?",
+          risksMitigation:
+            "Quali rischi affronti e come intendi gestirli?",
+          successMetrics: "Come misurerai il successo?",
+          growthPartnerships:
+            "Quali partnership aiuteranno la crescita del business?",
+          cancelChanges: "Annulla modifiche",
+          save: "Salva",
+          toastSaveFailed:
+            "Impossibile salvare le attivita aziendali.",
+          toastSaveSuccess: "Attivita aziendali salvate.",
+          toastSaveError:
+            "Si e verificato un errore durante il salvataggio delle attivita aziendali.",
+          toastAiFailed: "Impossibile eseguire l'azione AI.",
+          toastAiSuccess: "Campo aggiornato con AI.",
+          toastAiError:
+            "Si e verificato un errore durante l'azione AI.",
+          toneLabelProfessional: "Professionale",
+          toneDescProfessional:
+            "Tono business chiaro, credibile e orientato agli investitori.",
+          toneLabelAcademic: "Accademico",
+          toneDescAcademic:
+            "Tono formale, analitico e orientato alle evidenze.",
+          toneLabelConversational: "Conversazionale",
+          toneDescConversational:
+            "Tono naturale, chiaro e vicino al lettore.",
+          toneLabelTechnical: "Tecnico",
+          toneDescTechnical:
+            "Tono preciso, con terminologia specialistica e dettagli concreti.",
+        }
+      : {
+          title: "Business activities",
+          aiTone: "AI tone of voice",
+          aiToneHelp:
+            "Applied across Ask AI flows in business setup, plan, pitch, and canvas.",
+          isOperating: "Is this company currently in operation?",
+          yes: "Yes",
+          no: "No",
+          selectIndustry:
+            "Select an industry in which your company is operated",
+          select: "Select",
+          other: "Other",
+          customIndustry: "Custom industry",
+          customIndustryPlaceholder: "Type your industry",
+          companyStage: "Company stage",
+          customCompanyStage: "Custom company stage",
+          customCompanyStagePlaceholder: "Type your company stage",
+          problemShort: "What problem do you solve, and for whom",
+          customProblemSolved: "Custom problem solved",
+          customProblemSolvedPlaceholder: "Type the problem and target",
+          describe: "Describe",
+          solutionUniqueness:
+            "What's your solution, and what makes it unique?",
+          teamRoles: "Who's on your team, and what are their roles?",
+          financialProjections:
+            "What are your 3-5 year financial projections?",
+          risksMitigation:
+            "What risks do you face, and how will you manage them?",
+          successMetrics: "How will you measure success?",
+          growthPartnerships:
+            "What partnerships will help your business grow?",
+          cancelChanges: "Cancel Changes",
+          save: "Save",
+          toastSaveFailed: "Failed to save business activities.",
+          toastSaveSuccess: "Business activities saved.",
+          toastSaveError:
+            "Something went wrong while saving business activities.",
+          toastAiFailed: "Failed to run AI action.",
+          toastAiSuccess: "Field updated with AI.",
+          toastAiError:
+            "Something went wrong while running AI action.",
+          toneLabelProfessional: "Professional",
+          toneDescProfessional:
+            "Clear business tone focused on credibility and investors.",
+          toneLabelAcademic: "Academic",
+          toneDescAcademic:
+            "Formal, analytical tone with evidence-oriented language.",
+          toneLabelConversational: "Conversational",
+          toneDescConversational:
+            "Natural, easy-to-read tone for broad audiences.",
+          toneLabelTechnical: "Technical",
+          toneDescTechnical:
+            "Precise technical language with implementation detail.",
+        };
+
+  const industryOptionLabels: Record<(typeof INDUSTRY_OPTIONS)[number], string> =
+    locale === "it"
+      ? {
+          "Business Software / SaaS": "Software aziendale / SaaS",
+          "E-commerce": "E-commerce",
+          "FinTech": "FinTech",
+          "Health & Wellness": "Salute e benessere",
+        }
+      : {
+          "Business Software / SaaS": "Business Software / SaaS",
+          "E-commerce": "E-commerce",
+          "FinTech": "FinTech",
+          "Health & Wellness": "Health & Wellness",
+        };
+
+  const companyStageOptionLabels: Record<
+    (typeof COMPANY_STAGE_OPTIONS)[number],
+    string
+  > =
+    locale === "it"
+      ? {
+          "Idea / Pre-seed": "Idea / Pre-seed",
+          "Early Growth (Seed to Series A)": "Crescita iniziale (Seed- Serie A)",
+          "Scale-up": "Scale-up",
+          "Established": "Consolidata",
+        }
+      : {
+          "Idea / Pre-seed": "Idea / Pre-seed",
+          "Early Growth (Seed to Series A)": "Early Growth (Seed to Series A)",
+          "Scale-up": "Scale-up",
+          "Established": "Established",
+        };
+
+  const problemShortOptionLabels: Record<
+    (typeof PROBLEM_SHORT_OPTIONS)[number],
+    string
+  > =
+    locale === "it"
+      ? {
+          "Founders who need structured business plans":
+            "Founder che hanno bisogno di business plan strutturati",
+          "Small businesses needing funding-ready docs":
+            "Piccole imprese che necessitano documenti pronti per investitori",
+          "Consultants serving SME clients":
+            "Consulenti che supportano clienti PMI",
+        }
+      : {
+          "Founders who need structured business plans":
+            "Founders who need structured business plans",
+          "Small businesses needing funding-ready docs":
+            "Small businesses needing funding-ready docs",
+          "Consultants serving SME clients":
+            "Consultants serving SME clients",
+        };
+
+  const aiToneLabels: Record<
+    AiToneOfVoice,
+    { label: string; description: string }
+  > = {
+    professional: {
+      label: copy.toneLabelProfessional,
+      description: copy.toneDescProfessional,
+    },
+    academic: {
+      label: copy.toneLabelAcademic,
+      description: copy.toneDescAcademic,
+    },
+    conversational: {
+      label: copy.toneLabelConversational,
+      description: copy.toneDescConversational,
+    },
+    technical: {
+      label: copy.toneLabelTechnical,
+      description: copy.toneDescTechnical,
+    },
+  };
+
   const [bizLoading, setBizLoading] = useState<boolean>(true);
   const [bizSaving, setBizSaving] = useState<boolean>(false);
   const [biz, setBiz] = useState<BizFormState>(emptyBizForm);
@@ -340,7 +533,7 @@ const BusinessActivitiesTabContent = ({
 
       if (!res.ok) {
         console.error("Failed to save business profile");
-        toast.error("Failed to save business activities");
+        toast.error(copy.toastSaveFailed);
         return;
       }
 
@@ -397,10 +590,10 @@ const BusinessActivitiesTabContent = ({
         setBizInitial(biz);
       }
 
-      toast.success("Business activities saved");
+      toast.success(copy.toastSaveSuccess);
     } catch (error) {
       console.error("Error while saving business profile", error);
-      toast.error("Something went wrong while saving business activities");
+      toast.error(copy.toastSaveError);
     } finally {
       setBizSaving(false);
     }
@@ -469,15 +662,15 @@ const BusinessActivitiesTabContent = ({
         | null;
 
       if (!res.ok || !data?.text) {
-        toast.error(data?.error ?? "Failed to run AI action.");
+        toast.error(data?.error ?? copy.toastAiFailed);
         return;
       }
 
       updateBizField(field, data.text);
-      toast.success("Field updated with AI.");
+      toast.success(copy.toastAiSuccess);
     } catch (error) {
       console.error("Failed to run AI business action", error);
-      toast.error("Something went wrong while running AI action.");
+      toast.error(copy.toastAiError);
     } finally {
       setAiBusyField(null);
     }
@@ -531,12 +724,12 @@ const BusinessActivitiesTabContent = ({
             mb: 3,
           }}
         >
-          Business activities
+          {copy.title}
         </Typography>
 
         <Box mb={3}>
           <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
-            AI tone of voice
+            {copy.aiTone}
           </Typography>
           <Select
             fullWidth
@@ -546,18 +739,19 @@ const BusinessActivitiesTabContent = ({
           >
             {AI_TONE_OPTIONS.map((option) => (
               <MenuItem key={option.value} value={option.value}>
-                {option.label} - {option.description}
+                {aiToneLabels[option.value].label} -{" "}
+                {aiToneLabels[option.value].description}
               </MenuItem>
             ))}
           </Select>
           <Typography sx={{ fontSize: 12, color: "#6B7280", mt: 1 }}>
-            Applied across Ask AI flows in business setup, plan, pitch, and canvas.
+            {copy.aiToneHelp}
           </Typography>
         </Box>
 
         <Box mb={3}>
           <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
-            Is this company currently in operation?
+            {copy.isOperating}
           </Typography>
           <RadioGroup
             row
@@ -567,19 +761,19 @@ const BusinessActivitiesTabContent = ({
             <FormControlLabel
               value="yes"
               control={<Radio size="small" />}
-              label="Yes"
+              label={copy.yes}
             />
             <FormControlLabel
               value="no"
               control={<Radio size="small" />}
-              label="No"
+              label={copy.no}
             />
           </RadioGroup>
         </Box>
 
         <Box mb={3}>
           <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
-            Select an industry in which your company is operated
+            {copy.selectIndustry}
           </Typography>
           <Select
             fullWidth
@@ -587,27 +781,31 @@ const BusinessActivitiesTabContent = ({
             value={biz.industry}
             onChange={handleIndustryChange}
             sx={selectBaseSx}
-            renderValue={(selected) => (selected ? selected : "Select")}
+            renderValue={(selected) => {
+              if (!selected) return copy.select;
+              if (selected === "Other") return copy.other;
+              return industryOptionLabels[selected as (typeof INDUSTRY_OPTIONS)[number]] ?? selected;
+            }}
           >
             <MenuItem disabled value="">
-              <Typography color="text.secondary">Select</Typography>
+              <Typography color="text.secondary">{copy.select}</Typography>
             </MenuItem>
             {INDUSTRY_OPTIONS.map((option) => (
               <MenuItem key={option} value={option}>
-                {option}
+                {industryOptionLabels[option]}
               </MenuItem>
             ))}
-            <MenuItem value="Other">Other</MenuItem>
+            <MenuItem value="Other">{copy.other}</MenuItem>
           </Select>
         </Box>
         {biz.industry === "Other" && (
           <Box mb={3}>
             <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
-              Custom industry
+              {copy.customIndustry}
             </Typography>
             <TextField
               fullWidth
-              placeholder="Type your industry"
+              placeholder={copy.customIndustryPlaceholder}
               value={biz.industryOther}
               onChange={(e) => updateBizField("industryOther", e.target.value)}
               InputProps={{ sx: inputBaseSx }}
@@ -617,7 +815,7 @@ const BusinessActivitiesTabContent = ({
 
         <Box mb={3}>
           <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
-            Company stage
+            {copy.companyStage}
           </Typography>
           <Select
             fullWidth
@@ -625,27 +823,35 @@ const BusinessActivitiesTabContent = ({
             value={biz.companyStage}
             onChange={handleStageChange}
             sx={selectBaseSx}
-            renderValue={(selected) => (selected ? selected : "Select")}
+            renderValue={(selected) => {
+              if (!selected) return copy.select;
+              if (selected === "Other") return copy.other;
+              return (
+                companyStageOptionLabels[
+                  selected as (typeof COMPANY_STAGE_OPTIONS)[number]
+                ] ?? selected
+              );
+            }}
           >
             <MenuItem disabled value="">
-              <Typography color="text.secondary">Select</Typography>
+              <Typography color="text.secondary">{copy.select}</Typography>
             </MenuItem>
             {COMPANY_STAGE_OPTIONS.map((option) => (
               <MenuItem key={option} value={option}>
-                {option}
+                {companyStageOptionLabels[option]}
               </MenuItem>
             ))}
-            <MenuItem value="Other">Other</MenuItem>
+            <MenuItem value="Other">{copy.other}</MenuItem>
           </Select>
         </Box>
         {biz.companyStage === "Other" && (
           <Box mb={3}>
             <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
-              Custom company stage
+              {copy.customCompanyStage}
             </Typography>
             <TextField
               fullWidth
-              placeholder="Type your company stage"
+              placeholder={copy.customCompanyStagePlaceholder}
               value={biz.companyStageOther}
               onChange={(e) =>
                 updateBizField("companyStageOther", e.target.value)
@@ -657,7 +863,7 @@ const BusinessActivitiesTabContent = ({
 
         <Box mb={3}>
           <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
-            What problem do you solve, and for whom
+            {copy.problemShort}
           </Typography>
           <Select
             fullWidth
@@ -665,27 +871,35 @@ const BusinessActivitiesTabContent = ({
             value={biz.problemShort}
             onChange={handleProblemShortChange}
             sx={selectBaseSx}
-            renderValue={(selected) => (selected ? selected : "Select")}
+            renderValue={(selected) => {
+              if (!selected) return copy.select;
+              if (selected === "Other") return copy.other;
+              return (
+                problemShortOptionLabels[
+                  selected as (typeof PROBLEM_SHORT_OPTIONS)[number]
+                ] ?? selected
+              );
+            }}
           >
             <MenuItem disabled value="">
-              <Typography color="text.secondary">Select</Typography>
+              <Typography color="text.secondary">{copy.select}</Typography>
             </MenuItem>
             {PROBLEM_SHORT_OPTIONS.map((option) => (
               <MenuItem key={option} value={option}>
-                {option}
+                {problemShortOptionLabels[option]}
               </MenuItem>
             ))}
-            <MenuItem value="Other">Other</MenuItem>
+            <MenuItem value="Other">{copy.other}</MenuItem>
           </Select>
         </Box>
         {biz.problemShort === "Other" && (
           <Box mb={3}>
             <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
-              Custom problem solved
+              {copy.customProblemSolved}
             </Typography>
             <TextField
               fullWidth
-              placeholder="Type the problem and target"
+              placeholder={copy.customProblemSolvedPlaceholder}
               value={biz.problemShortOther}
               onChange={(e) =>
                 updateBizField("problemShortOther", e.target.value)
@@ -697,13 +911,13 @@ const BusinessActivitiesTabContent = ({
 
         <Box mb={3}>
           <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
-            What problem do you solve, and for whom
+            {copy.problemShort}
           </Typography>
           <TextField
             fullWidth
             multiline
             minRows={3}
-            placeholder="Describe"
+            placeholder={copy.describe}
             value={biz.problemLong}
             onChange={(e) => updateBizField("problemLong", e.target.value)}
             InputProps={{
@@ -718,13 +932,13 @@ const BusinessActivitiesTabContent = ({
 
         <Box mb={3}>
           <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
-            What&apos;s your solution, and what makes it unique?
+            {copy.solutionUniqueness}
           </Typography>
           <TextField
             fullWidth
             multiline
             minRows={3}
-            placeholder="Describe"
+            placeholder={copy.describe}
             value={biz.solutionAndUniqueness}
             onChange={(e) =>
               updateBizField("solutionAndUniqueness", e.target.value)
@@ -741,13 +955,13 @@ const BusinessActivitiesTabContent = ({
 
         <Box mb={3}>
           <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
-            Who&apos;s on your team, and what are their roles?
+            {copy.teamRoles}
           </Typography>
           <TextField
             fullWidth
             multiline
             minRows={3}
-            placeholder="Describe"
+            placeholder={copy.describe}
             value={biz.teamAndRoles}
             onChange={(e) => updateBizField("teamAndRoles", e.target.value)}
             InputProps={{
@@ -762,13 +976,13 @@ const BusinessActivitiesTabContent = ({
 
         <Box mb={3}>
           <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
-            What are your 3–5 year financial projections?
+            {copy.financialProjections}
           </Typography>
           <TextField
             fullWidth
             multiline
             minRows={3}
-            placeholder="Describe"
+            placeholder={copy.describe}
             value={biz.financialProjections}
             onChange={(e) =>
               updateBizField("financialProjections", e.target.value)
@@ -785,13 +999,13 @@ const BusinessActivitiesTabContent = ({
 
         <Box mb={3}>
           <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
-            What risks do you face, and how will you manage them?
+            {copy.risksMitigation}
           </Typography>
           <TextField
             fullWidth
             multiline
             minRows={3}
-            placeholder="Describe"
+            placeholder={copy.describe}
             value={biz.risksAndMitigation}
             onChange={(e) =>
               updateBizField("risksAndMitigation", e.target.value)
@@ -808,13 +1022,13 @@ const BusinessActivitiesTabContent = ({
 
         <Box mb={3}>
           <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
-            How will you measure success?
+            {copy.successMetrics}
           </Typography>
           <TextField
             fullWidth
             multiline
             minRows={3}
-            placeholder="Describe"
+            placeholder={copy.describe}
             value={biz.successMetrics}
             onChange={(e) =>
               updateBizField("successMetrics", e.target.value)
@@ -831,13 +1045,13 @@ const BusinessActivitiesTabContent = ({
 
         <Box mb={1}>
           <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 1 }}>
-            What partnerships will help your business grow?
+            {copy.growthPartnerships}
           </Typography>
           <TextField
             fullWidth
             multiline
             minRows={3}
-            placeholder="Describe"
+            placeholder={copy.describe}
             value={biz.growthPartnerships}
             onChange={(e) =>
               updateBizField("growthPartnerships", e.target.value)
@@ -884,7 +1098,7 @@ const BusinessActivitiesTabContent = ({
             },
           }}
         >
-          Cancel Changes
+          {copy.cancelChanges}
         </Button>
 
         <Button
@@ -914,7 +1128,7 @@ const BusinessActivitiesTabContent = ({
             },
           }}
         >
-          Save
+          {copy.save}
         </Button>
       </Box>
     </Box>

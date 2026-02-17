@@ -22,6 +22,7 @@ import { toast } from "react-toastify";
 
 import type { WorkspaceRole } from "@/types/workspaces";
 import InviteMembersModal from "@/components/workspaceSettings/modals/inviteMembersModal";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 type MembersApiResponse = {
   currentUserRole: WorkspaceRole | null;
@@ -54,7 +55,7 @@ type MemberRow = {
   userId: string;
   name: string;
   email: string;
-  role: "Owner" | "Admin" | "Editor" | "Viewer";
+  role: WorkspaceRole;
   initials: string;
   isOwner: boolean;
 };
@@ -62,7 +63,7 @@ type MemberRow = {
 type InviteRow = {
   inviteId: string;
   email: string;
-  role: "Admin" | "Editor" | "Viewer";
+  role: WorkspaceRole;
   status: "pending" | "accepted" | "declined" | "expired" | "revoked";
   invitedByLabel: string;
   createdAt: string | null;
@@ -95,6 +96,118 @@ function getInitials(name: string | null, email: string | null): string {
 
 const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
   const theme = useTheme();
+  const { locale } = useLanguage();
+
+  const copy =
+    locale === "it"
+      ? {
+          title: "Membri",
+          addMember: "Aggiungi membro",
+          description: "Gestisci i membri del workspace e i loro permessi",
+          loadingMembers: "Caricamento membri...",
+          noMembers: "Nessun membro trovato per questo workspace.",
+          invitationsTitle: "Inviti",
+          invitationsDescription:
+            "Monitora inviti pendenti e storici del workspace.",
+          loadingInvites: "Caricamento inviti...",
+          noInvites: "Nessun invito trovato per questo workspace.",
+          invitedByPrefix: "Invitato da",
+          sent: "Inviato",
+          expires: "Scade",
+          resent: "Reinviato",
+          resend: "Reinvia",
+          revoke: "Revoca",
+          cancelChanges: "Annulla modifiche",
+          save: "Salva",
+          revokeDialogTitle: "Revoca invito",
+          revokeDialogDescription:
+            "Questo disabilitera immediatamente il link di invito per {email}. Potrai inviare un nuovo invito in seguito.",
+          cancel: "Annulla",
+          revokeConfirm: "Revoca invito",
+          defaultMemberName: "Membro",
+          workspaceTeammate: "Collaboratore workspace",
+          confirmRemoveMember: "Rimuovere {name} da questo workspace?",
+          confirmRemoveFallback: "questo membro",
+          dateUnknown: "--",
+          roleOwner: "Proprietario",
+          roleAdmin: "Admin",
+          roleEditor: "Editor",
+          roleViewer: "Viewer",
+          statusPending: "In attesa",
+          statusAccepted: "Accettato",
+          statusDeclined: "Rifiutato",
+          statusRevoked: "Revocato",
+          statusExpired: "Scaduto",
+          toastRemoveFailed: "Impossibile rimuovere il membro.",
+          toastRemoveSuccess: "Membro rimosso.",
+          toastRemoveError:
+            "Si e verificato un errore durante la rimozione del membro.",
+          toastResendFailed: "Impossibile reinviare l'invito.",
+          toastResendSuccess: "Invito reinviato.",
+          toastResendError:
+            "Si e verificato un errore durante il reinvio dell'invito.",
+          toastRevokeFailed: "Impossibile revocare l'invito.",
+          toastRevokeSuccess: "Invito revocato.",
+          toastRevokeError:
+            "Si e verificato un errore durante la revoca dell'invito.",
+        }
+      : {
+          title: "Members",
+          addMember: "Add Member",
+          description: "Manage workspace members and their permissions",
+          loadingMembers: "Loading members...",
+          noMembers: "No members found for this workspace.",
+          invitationsTitle: "Invitations",
+          invitationsDescription:
+            "Track pending and historical workspace invitations.",
+          loadingInvites: "Loading invitations...",
+          noInvites: "No invitations found for this workspace.",
+          invitedByPrefix: "Invited by",
+          sent: "Sent",
+          expires: "Expires",
+          resent: "Resent",
+          resend: "Resend",
+          revoke: "Revoke",
+          cancelChanges: "Cancel Changes",
+          save: "Save",
+          revokeDialogTitle: "Revoke invitation",
+          revokeDialogDescription:
+            "This will immediately disable the invitation link for {email}. You can still send a new invite later.",
+          cancel: "Cancel",
+          revokeConfirm: "Revoke invitation",
+          defaultMemberName: "Member",
+          workspaceTeammate: "Workspace teammate",
+          confirmRemoveMember: "Remove {name} from this workspace?",
+          confirmRemoveFallback: "this member",
+          dateUnknown: "--",
+          roleOwner: "Owner",
+          roleAdmin: "Admin",
+          roleEditor: "Editor",
+          roleViewer: "Viewer",
+          statusPending: "Pending",
+          statusAccepted: "Accepted",
+          statusDeclined: "Declined",
+          statusRevoked: "Revoked",
+          statusExpired: "Expired",
+          toastRemoveFailed: "Failed to remove member.",
+          toastRemoveSuccess: "Member removed.",
+          toastRemoveError: "Something went wrong while removing member.",
+          toastResendFailed: "Failed to resend invitation.",
+          toastResendSuccess: "Invitation resent.",
+          toastResendError:
+            "Something went wrong while resending invitation.",
+          toastRevokeFailed: "Failed to revoke invitation.",
+          toastRevokeSuccess: "Invitation revoked.",
+          toastRevokeError:
+            "Something went wrong while revoking invitation.",
+        };
+
+  const roleLabel = (role: WorkspaceRole): string => {
+    if (role === "owner") return copy.roleOwner;
+    if (role === "admin") return copy.roleAdmin;
+    if (role === "editor") return copy.roleEditor;
+    return copy.roleViewer;
+  };
 
   const [members, setMembers] = useState<MemberRow[]>([]);
   const [invites, setInvites] = useState<InviteRow[]>([]);
@@ -133,45 +246,33 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
         const rawName = (m.name ?? "").trim();
         const email = (m.email ?? "").trim();
         const displayName =
-          rawName.length > 0 ? rawName : email.length > 0 ? email : "Member";
-
-        const roleLabel: MemberRow["role"] =
-          m.role === "owner"
-            ? "Owner"
-            : m.role === "admin"
-              ? "Admin"
-              : m.role === "editor"
-                ? "Editor"
-                : "Viewer";
+          rawName.length > 0
+            ? rawName
+            : email.length > 0
+              ? email
+              : copy.defaultMemberName;
 
         return {
           userId: m.userId,
           name: displayName,
           email,
-          role: roleLabel,
+          role: m.role,
           initials: getInitials(rawName || null, email || null),
           isOwner: m.isOwner,
         };
       });
 
       const mappedInvites: InviteRow[] = json.invites.map((invite) => {
-        const roleLabel: InviteRow["role"] =
-          invite.role === "admin"
-            ? "Admin"
-            : invite.role === "editor"
-              ? "Editor"
-              : "Viewer";
-
         const inviterName = (invite.invitedByName ?? "").trim();
         const inviterEmail = (invite.invitedByEmail ?? "").trim();
 
         return {
           inviteId: invite.inviteId,
           email: invite.email,
-          role: roleLabel,
+          role: invite.role,
           status: invite.status,
           invitedByLabel:
-            inviterName || inviterEmail || "Workspace teammate",
+            inviterName || inviterEmail || copy.workspaceTeammate,
           createdAt: invite.createdAt,
           expiresAt: invite.expiresAt,
           resendCount: invite.resendCount,
@@ -186,7 +287,7 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
     } finally {
       setMembersLoading(false);
     }
-  }, [workspaceId]);
+  }, [workspaceId, copy.defaultMemberName, copy.workspaceTeammate]);
 
   useEffect(() => {
     void loadMembers();
@@ -201,7 +302,7 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
     }
 
     if (currentUserRole === "admin") {
-      return member.role === "Editor" || member.role === "Viewer";
+      return member.role === "editor" || member.role === "viewer";
     }
 
     return false;
@@ -212,7 +313,10 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
     if (!canCurrentUserDeleteMember(member)) return;
 
     const confirmed = window.confirm(
-      `Remove ${member.name || "this member"} from this workspace?`,
+      copy.confirmRemoveMember.replace(
+        "{name}",
+        member.name || copy.confirmRemoveFallback,
+      ),
     );
     if (!confirmed) return;
 
@@ -226,7 +330,7 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
       });
 
       if (!res.ok) {
-        let message = "Failed to remove member";
+        let message = copy.toastRemoveFailed;
         try {
           const data = (await res.json()) as { error?: string };
           if (data.error) message = data.error;
@@ -240,10 +344,10 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
       setMembers((prev) =>
         prev.filter((existing) => existing.userId !== member.userId),
       );
-      toast.success("Member removed");
+      toast.success(copy.toastRemoveSuccess);
     } catch (error) {
       console.error("Error removing member", error);
-      toast.error("Something went wrong while removing member");
+      toast.error(copy.toastRemoveError);
     } finally {
       setMemberDeleteLoading(null);
     }
@@ -261,10 +365,10 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
     currentUserRole === "owner" || currentUserRole === "admin";
 
   const formatDateLabel = (iso: string | null): string => {
-    if (!iso) return "—";
+    if (!iso) return copy.dateUnknown;
     const date = new Date(iso);
-    if (Number.isNaN(date.getTime())) return "—";
-    return date.toLocaleDateString("en-GB", {
+    if (Number.isNaN(date.getTime())) return copy.dateUnknown;
+    return date.toLocaleDateString(locale === "it" ? "it-IT" : "en-GB", {
       day: "2-digit",
       month: "short",
       year: "numeric",
@@ -289,15 +393,15 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
         const payload = (await res.json().catch(() => null)) as
           | { error?: string }
           | null;
-        toast.error(payload?.error ?? "Failed to resend invitation.");
+        toast.error(payload?.error ?? copy.toastResendFailed);
         return;
       }
 
-      toast.success("Invitation resent.");
+      toast.success(copy.toastResendSuccess);
       await loadMembers();
     } catch (error) {
       console.error("Failed to resend invite", error);
-      toast.error("Something went wrong while resending invitation.");
+      toast.error(copy.toastResendError);
     } finally {
       setInviteActionLoadingId(null);
       setInviteActionType(null);
@@ -322,16 +426,16 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
         const payload = (await res.json().catch(() => null)) as
           | { error?: string }
           | null;
-        toast.error(payload?.error ?? "Failed to revoke invitation.");
+        toast.error(payload?.error ?? copy.toastRevokeFailed);
         return false;
       }
 
-      toast.success("Invitation revoked.");
+      toast.success(copy.toastRevokeSuccess);
       await loadMembers();
       return true;
     } catch (error) {
       console.error("Failed to revoke invite", error);
-      toast.error("Something went wrong while revoking invitation.");
+      toast.error(copy.toastRevokeError);
       return false;
     } finally {
       setInviteActionLoadingId(null);
@@ -377,7 +481,7 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
   } => {
     if (status === "pending") {
       return {
-        label: "Pending",
+        label: copy.statusPending,
         bg: "#FFF7ED",
         color: "#B45309",
         border: "#FDBA74",
@@ -386,7 +490,7 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
     }
     if (status === "accepted") {
       return {
-        label: "Accepted",
+        label: copy.statusAccepted,
         bg: "#ECFDF3",
         color: "#047857",
         border: "#A7F3D0",
@@ -395,7 +499,7 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
     }
     if (status === "declined") {
       return {
-        label: "Declined",
+        label: copy.statusDeclined,
         bg: "#FEF2F2",
         color: "#B91C1C",
         border: "#FECACA",
@@ -404,7 +508,7 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
     }
     if (status === "revoked") {
       return {
-        label: "Revoked",
+        label: copy.statusRevoked,
         bg: "#F1F5F9",
         color: "#334155",
         border: "#CBD5E1",
@@ -412,7 +516,7 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
       };
     }
     return {
-      label: "Expired",
+      label: copy.statusExpired,
       bg: "#F3F4F6",
       color: "#6B7280",
       border: "#D1D5DB",
@@ -458,7 +562,7 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
                 fontWeight: 600,
               }}
             >
-              Members
+              {copy.title}
             </Typography>
 
             <Button
@@ -481,7 +585,7 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
               }}
               onClick={handleOpenInvite}
             >
-              Add Member
+              {copy.addMember}
             </Button>
           </Box>
 
@@ -492,20 +596,20 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
               mb: 3,
             }}
           >
-            Manage workspace members and their permissions
+            {copy.description}
           </Typography>
 
           {membersLoading ? (
             <Typography
               sx={{ fontSize: 14, color: theme.palette.text.secondary }}
             >
-              Loading members…
+              {copy.loadingMembers}
             </Typography>
           ) : !hasMembers ? (
             <Typography
               sx={{ fontSize: 14, color: theme.palette.text.secondary }}
             >
-              No members found for this workspace.
+              {copy.noMembers}
             </Typography>
           ) : (
             <Stack spacing={2.2}>
@@ -586,7 +690,7 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
                           bgcolor: "#F6F8FF",
                         }}
                       >
-                        {member.role}
+                        {roleLabel(member.role)}
                       </Box>
 
                       {!member.isOwner && (
@@ -625,7 +729,7 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
                 mb: 1,
               }}
             >
-              Invitations
+              {copy.invitationsTitle}
             </Typography>
             <Typography
               sx={{
@@ -634,16 +738,16 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
                 mb: 2,
               }}
             >
-              Track pending and historical workspace invitations.
+              {copy.invitationsDescription}
             </Typography>
 
             {membersLoading ? (
               <Typography sx={{ fontSize: 14, color: theme.palette.text.secondary }}>
-                Loading invitations…
+                {copy.loadingInvites}
               </Typography>
             ) : !hasInvites ? (
               <Typography sx={{ fontSize: 14, color: theme.palette.text.secondary }}>
-                No invitations found for this workspace.
+                {copy.noInvites}
               </Typography>
             ) : (
               <Stack spacing={1.6}>
@@ -690,11 +794,14 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
                           {invite.email}
                         </Typography>
                         <Typography sx={{ fontSize: 12.5, color: "#6B7280" }}>
-                          {invite.role} • Invited by {invite.invitedByLabel}
+                          {roleLabel(invite.role)} • {copy.invitedByPrefix}{" "}
+                          {invite.invitedByLabel}
                         </Typography>
                         <Typography sx={{ fontSize: 12, color: "#9CA3AF", mt: 0.35 }}>
-                          Sent: {formatDateLabel(invite.lastSentAt ?? invite.createdAt)} •
-                          Expires: {formatDateLabel(invite.expiresAt)} • Resent: {invite.resendCount}
+                          {copy.sent}:{" "}
+                          {formatDateLabel(invite.lastSentAt ?? invite.createdAt)} •{" "}
+                          {copy.expires}: {formatDateLabel(invite.expiresAt)} •{" "}
+                          {copy.resent}: {invite.resendCount}
                         </Typography>
                       </Box>
 
@@ -781,7 +888,7 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
                             },
                           }}
                         >
-                          Resend
+                          {copy.resend}
                         </Button>
 
                         <Button
@@ -820,7 +927,7 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
                             },
                           }}
                         >
-                          Revoke
+                          {copy.revoke}
                         </Button>
                       </Stack>
                     </Box>
@@ -861,7 +968,7 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
               },
             }}
           >
-            Cancel Changes
+            {copy.cancelChanges}
           </Button>
 
           <Button
@@ -891,7 +998,7 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
               },
             }}
           >
-            Save
+            {copy.save}
           </Button>
         </Box>
       </Box>
@@ -919,7 +1026,7 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
             pb: 1,
           }}
         >
-          Revoke invitation
+          {copy.revokeDialogTitle}
         </DialogTitle>
         <DialogContent sx={{ pt: "8px !important" }}>
           <Typography
@@ -929,11 +1036,10 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
               lineHeight: 1.55,
             }}
           >
-            This will immediately disable the invitation link for{" "}
-            <Box component="span" sx={{ fontWeight: 700, color: "#111827" }}>
-              {inviteToRevoke?.email ?? "this user"}
-            </Box>
-            . You can still send a new invite later.
+            {copy.revokeDialogDescription.replace(
+              "{email}",
+              inviteToRevoke?.email ?? copy.confirmRemoveFallback,
+            )}
           </Typography>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2.5, pt: 1.2, gap: 1.2 }}>
@@ -950,8 +1056,8 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
               fontWeight: 600,
               color: "#6B7280",
             }}
-          >
-            Cancel
+            >
+            {copy.cancel}
           </Button>
           <Button
             type="button"
@@ -992,7 +1098,7 @@ const MembersTabContent = ({ workspaceId }: MembersTabContentProps) => {
               },
             }}
           >
-            Revoke invitation
+            {copy.revokeConfirm}
           </Button>
         </DialogActions>
       </Dialog>

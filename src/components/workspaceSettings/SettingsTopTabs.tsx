@@ -11,6 +11,7 @@ import type { ReactElement } from "react";
 
 import AddCircleOutlineRoundedIcon from "@mui/icons-material/AddCircleOutlineRounded";
 import BusinessCenterOutlinedIcon from "@mui/icons-material/BusinessCenterOutlined";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 export type TopTab = "create" | "myWorkspaces";
 
@@ -26,6 +27,7 @@ export default function SettingsTopTabs({
   onTabChange,
 }: SettingsTopTabsProps): ReactElement {
   const theme = useTheme();
+  const { t } = useLanguage();
 
   const tabBaseStyles = {
     display: "inline-flex",
@@ -79,7 +81,7 @@ export default function SettingsTopTabs({
           }}
         >
           <AddCircleOutlineRoundedIcon sx={{ fontSize: 20, mr: 0.5 }} />
-          Create
+          {t("topTabs.create")}
         </Button>
 
         <Button
@@ -96,7 +98,7 @@ export default function SettingsTopTabs({
           }}
         >
           <BusinessCenterOutlinedIcon sx={{ fontSize: 20, mr: 0.5 }} />
-          {`My Workspaces (${workspaceCount})`}
+          {t("topTabs.myWorkspacesWithCount", { count: workspaceCount })}
         </Button>
       </Stack>
     </Box>

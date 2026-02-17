@@ -21,6 +21,7 @@ import CloseOutlinedIcon from "@mui/icons-material/CloseOutlined";
 
 import { useParams } from "next/navigation";
 import { toast } from "react-toastify";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 type AILibraryModalTab = "upload" | "notes";
 
@@ -45,6 +46,72 @@ const AILibraryModal: FC<AILibraryModalProps> = ({
   onDocumentCreated,
   onKnowledgeCreated,
 }) => {
+  const { locale } = useLanguage();
+  const copy =
+    locale === "it"
+      ? {
+          title: "Aggiungi documento alla libreria",
+          subtitle:
+            "Carica documenti o aggiungi note per addestrare la base di conoscenza AI.",
+          tabUpload: "Carica documenti",
+          tabNotes: "Aggiungi note",
+          uploadPrefix: "Carica",
+          uploadSuffix: "o trascina qui",
+          fileTypes:
+            "PDF, XLS, XLSX, PPT, PPTX, TXT, DOC, DOCX, CSV (max 3MB)",
+          selectedFile: "File selezionato",
+          notesTitleLabel: "Titolo",
+          notesTitlePlaceholder: "Aggiungi titolo",
+          notesDescriptionLabel: "Descrizione",
+          notesDescriptionPlaceholder: "Aggiungi descrizione",
+          cancel: "Annulla",
+          upload: "Carica",
+          save: "Salva",
+          toastWorkspaceMissing:
+            "Workspace mancante. Ricarica la pagina e riprova.",
+          toastSelectFile: "Seleziona un file da caricare.",
+          toastUploadFailed: "Impossibile caricare il documento.",
+          toastUploadSuccess: "Documento aggiunto alla libreria AI.",
+          toastUploadError:
+            "Si e verificato un errore durante il caricamento del documento.",
+          toastFillFields: "Compila sia titolo che descrizione.",
+          toastSaveKnowledgeFailed: "Impossibile salvare la voce di conoscenza.",
+          toastSaveKnowledgeSuccess: "Conoscenza aggiunta alla libreria AI.",
+          toastSaveKnowledgeError:
+            "Si e verificato un errore durante il salvataggio della voce di conoscenza.",
+        }
+      : {
+          title: "Add Document to Library",
+          subtitle:
+            "Upload documents or add notes to train your AI knowledge base.",
+          tabUpload: "Upload Documents",
+          tabNotes: "Add Notes",
+          uploadPrefix: "Upload",
+          uploadSuffix: "or drag and drop",
+          fileTypes:
+            "PDF, XLS, XLSX, PPT, PPTX, TXT, DOC, DOCX, CSV (max. 3MB)",
+          selectedFile: "Selected file",
+          notesTitleLabel: "Title",
+          notesTitlePlaceholder: "Add title",
+          notesDescriptionLabel: "Description",
+          notesDescriptionPlaceholder: "Add description",
+          cancel: "Cancel",
+          upload: "Upload",
+          save: "Save",
+          toastWorkspaceMissing:
+            "Workspace is missing. Please refresh and try again.",
+          toastSelectFile: "Please select a file to upload.",
+          toastUploadFailed: "Failed to upload document.",
+          toastUploadSuccess: "Document added to AI library.",
+          toastUploadError:
+            "Something went wrong while uploading the document.",
+          toastFillFields: "Please fill in both title and description.",
+          toastSaveKnowledgeFailed: "Failed to save knowledge.",
+          toastSaveKnowledgeSuccess: "Knowledge added to AI library.",
+          toastSaveKnowledgeError:
+            "Something went wrong while saving the knowledge entry.",
+        };
+
   const params = useParams<{ workspaceId?: string }>();
 
   const routeWorkspaceIdRaw = params?.workspaceId;
@@ -102,14 +169,14 @@ const AILibraryModal: FC<AILibraryModalProps> = ({
       console.warn(
         "AILibraryModal: effectiveWorkspaceId is missing (prop + route param both empty).",
       );
-      toast.error("Workspace is missing. Please refresh and try again.");
+      toast.error(copy.toastWorkspaceMissing);
       return;
     }
 
     if (activeTab === "upload") {
       // ------ Document upload ------
       if (!selectedFile) {
-        toast.error("Please select a file to upload.");
+        toast.error(copy.toastSelectFile);
         return;
       }
 
@@ -129,7 +196,7 @@ const AILibraryModal: FC<AILibraryModalProps> = ({
         );
 
         if (!res.ok) {
-          let message = "Failed to upload document.";
+          let message = copy.toastUploadFailed;
           try {
             const data = (await res.json()) as ApiErrorResponse;
             if (data.error) message = data.error;
@@ -140,12 +207,12 @@ const AILibraryModal: FC<AILibraryModalProps> = ({
           return;
         }
 
-        toast.success("Document added to AI library.");
+        toast.success(copy.toastUploadSuccess);
         if (onDocumentCreated) onDocumentCreated();
         handleClose();
       } catch (error) {
         console.error("Error uploading document", error);
-        toast.error("Something went wrong while uploading the document.");
+        toast.error(copy.toastUploadError);
       } finally {
         setIsSubmitting(false);
       }
@@ -158,7 +225,7 @@ const AILibraryModal: FC<AILibraryModalProps> = ({
     const description = notesDescription.trim();
 
     if (!title || !description) {
-      toast.error("Please fill in both title and description.");
+      toast.error(copy.toastFillFields);
       return;
     }
 
@@ -183,7 +250,7 @@ const AILibraryModal: FC<AILibraryModalProps> = ({
       );
 
       if (!res.ok) {
-        let message = "Failed to save knowledge.";
+        let message = copy.toastSaveKnowledgeFailed;
         try {
           const data = (await res.json()) as ApiErrorResponse;
           if (data.error) message = data.error;
@@ -194,12 +261,12 @@ const AILibraryModal: FC<AILibraryModalProps> = ({
         return;
       }
 
-      toast.success("Knowledge added to AI library.");
+      toast.success(copy.toastSaveKnowledgeSuccess);
       if (onKnowledgeCreated) onKnowledgeCreated();
       handleClose();
     } catch (error) {
       console.error("Error saving knowledge", error);
-      toast.error("Something went wrong while saving the knowledge entry.");
+      toast.error(copy.toastSaveKnowledgeError);
     } finally {
       setIsSubmitting(false);
     }
@@ -240,7 +307,7 @@ const AILibraryModal: FC<AILibraryModalProps> = ({
             },
           }}
         >
-          Upload Documents
+          {copy.tabUpload}
         </Button>
 
         <Button
@@ -263,7 +330,7 @@ const AILibraryModal: FC<AILibraryModalProps> = ({
             },
           }}
         >
-          Add Notes
+          {copy.tabNotes}
         </Button>
       </Stack>
     </Box>
@@ -319,7 +386,7 @@ const AILibraryModal: FC<AILibraryModalProps> = ({
             mb: 0.5,
           }}
         >
-          Upload{" "}
+          {copy.uploadPrefix}{" "}
           <Typography
             component="span"
             sx={{
@@ -327,7 +394,7 @@ const AILibraryModal: FC<AILibraryModalProps> = ({
               color: "#9CA3AF",
             }}
           >
-            or drag and drop
+            {copy.uploadSuffix}
           </Typography>
         </Typography>
 
@@ -338,7 +405,7 @@ const AILibraryModal: FC<AILibraryModalProps> = ({
             mt: 0.5,
           }}
         >
-          PDF, XLS, XLSX, PPT, PPTX, TXT, DOC, DOCX, CSV (max. 3MB)
+          {copy.fileTypes}
         </Typography>
 
         <input
@@ -365,7 +432,7 @@ const AILibraryModal: FC<AILibraryModalProps> = ({
               whiteSpace: "nowrap",
             }}
           >
-            Selected file: <strong>{selectedFileName}</strong>
+            {copy.selectedFile}: <strong>{selectedFileName}</strong>
           </Typography>
         </Tooltip>
       )}
@@ -382,11 +449,11 @@ const AILibraryModal: FC<AILibraryModalProps> = ({
             mb: 0.5,
           }}
         >
-          Title
+          {copy.notesTitleLabel}
         </Typography>
         <TextField
           fullWidth
-          placeholder="Add title"
+          placeholder={copy.notesTitlePlaceholder}
           value={notesTitle}
           onChange={(e) => setNotesTitle(e.target.value)}
           InputProps={{
@@ -416,11 +483,11 @@ const AILibraryModal: FC<AILibraryModalProps> = ({
             mb: 0.5,
           }}
         >
-          Description
+          {copy.notesDescriptionLabel}
         </Typography>
         <TextField
           fullWidth
-          placeholder="Add description"
+          placeholder={copy.notesDescriptionPlaceholder}
           multiline
           minRows={4}
           value={notesDescription}
@@ -447,7 +514,7 @@ const AILibraryModal: FC<AILibraryModalProps> = ({
     </Box>
   );
 
-  const primaryLabel = activeTab === "upload" ? "Upload" : "Save";
+  const primaryLabel = activeTab === "upload" ? copy.upload : copy.save;
 
   return (
     <Dialog
@@ -472,10 +539,10 @@ const AILibraryModal: FC<AILibraryModalProps> = ({
       >
         <Box>
           <Typography sx={{ fontSize: 24, fontWeight: 700, mb: 0.5 }}>
-            Add Document to Library
+            {copy.title}
           </Typography>
           <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
-            Upload documents or add notes to train your AI knowledge base.
+            {copy.subtitle}
           </Typography>
         </Box>
 
@@ -535,7 +602,7 @@ const AILibraryModal: FC<AILibraryModalProps> = ({
             },
           }}
         >
-          Cancel
+          {copy.cancel}
         </Button>
 
         <Button

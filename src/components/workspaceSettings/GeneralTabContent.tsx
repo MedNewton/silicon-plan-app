@@ -16,6 +16,7 @@ import {
 import { toast } from "react-toastify";
 
 import type { Workspace } from "@/types/workspaces";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 type GetWorkspaceResponse = {
   workspace: Workspace;
@@ -32,6 +33,76 @@ const GeneralTabContent = ({
 }: GeneralTabContentProps) => {
   const router = useRouter();
   const { user } = useUser();
+  const { locale } = useLanguage();
+
+  const copy =
+    locale === "it"
+      ? {
+          title: "Generale",
+          workspaceImage: "Immagine workspace",
+          uploadNew: "Carica nuova",
+          workspaceName: "Nome workspace",
+          workspaceNamePlaceholder: "Azienda Srl",
+          dangerTitle: "Area pericolosa",
+          dangerDescription:
+            "Eliminare questo workspace rimuove in modo permanente membri, piani, task, elementi della libreria AI e documenti generati.",
+          deleteWorkspace: "Elimina workspace",
+          onlyOwnerCanDelete: "Solo il proprietario puo eliminare questo workspace.",
+          cancelChanges: "Annulla modifiche",
+          save: "Salva",
+          deleteDialogTitle: "Elimina workspace",
+          deleteDialogDescription:
+            "Questa azione non puo essere annullata. Digita {name} per confermare l'eliminazione.",
+          deleteDialogPlaceholder: "Nome workspace",
+          cancel: "Annulla",
+          deleting: "Eliminazione...",
+          deleteConfirm: "Elimina workspace",
+          toastUpdateFailed: "Impossibile aggiornare il workspace.",
+          toastUpdateSuccess: "Dettagli workspace aggiornati.",
+          toastUpdateError:
+            "Si e verificato un errore durante l'aggiornamento del workspace.",
+          toastDeleteFailed: "Impossibile eliminare il workspace.",
+          toastDeleteSuccess: "Workspace eliminato.",
+          toastDeleteError:
+            "Si e verificato un errore durante l'eliminazione del workspace.",
+          toastUploadFailed: "Impossibile caricare l'immagine del workspace.",
+          toastUploadSuccess: "Immagine workspace aggiornata.",
+          toastUploadError:
+            "Si e verificato un errore durante il caricamento dell'immagine.",
+          workspaceImageAlt: "Immagine workspace",
+        }
+      : {
+          title: "General",
+          workspaceImage: "Workspace image",
+          uploadNew: "Upload new",
+          workspaceName: "Workspace Name",
+          workspaceNamePlaceholder: "Company Inc.",
+          dangerTitle: "Danger zone",
+          dangerDescription:
+            "Deleting this workspace permanently removes members, plans, tasks, AI library items, and generated documents.",
+          deleteWorkspace: "Delete Workspace",
+          onlyOwnerCanDelete: "Only the workspace owner can delete this workspace.",
+          cancelChanges: "Cancel Changes",
+          save: "Save",
+          deleteDialogTitle: "Delete workspace",
+          deleteDialogDescription:
+            "This action cannot be undone. Type {name} to confirm deletion.",
+          deleteDialogPlaceholder: "Workspace name",
+          cancel: "Cancel",
+          deleting: "Deleting...",
+          deleteConfirm: "Delete workspace",
+          toastUpdateFailed: "Failed to update workspace.",
+          toastUpdateSuccess: "Workspace details updated.",
+          toastUpdateError: "Something went wrong while updating workspace.",
+          toastDeleteFailed: "Failed to delete workspace.",
+          toastDeleteSuccess: "Workspace deleted.",
+          toastDeleteError:
+            "Something went wrong while deleting the workspace.",
+          toastUploadFailed: "Failed to upload workspace image.",
+          toastUploadSuccess: "Workspace image updated.",
+          toastUploadError: "Something went wrong while uploading image.",
+          workspaceImageAlt: "Workspace image",
+        };
 
   const [workspaceLoading, setWorkspaceLoading] = useState<boolean>(true);
   const [workspaceSaving, setWorkspaceSaving] = useState<boolean>(false);
@@ -127,7 +198,7 @@ const GeneralTabContent = ({
 
       if (!res.ok) {
         console.error("Failed to update workspace");
-        toast.error("Failed to update workspace");
+        toast.error(copy.toastUpdateFailed);
         return;
       }
 
@@ -146,10 +217,10 @@ const GeneralTabContent = ({
         onWorkspaceNameChange(nextName);
       }
 
-      toast.success("Workspace details updated");
+      toast.success(copy.toastUpdateSuccess);
     } catch (error) {
       console.error("Error while updating workspace", error);
-      toast.error("Something went wrong while updating workspace");
+      toast.error(copy.toastUpdateError);
     } finally {
       setWorkspaceSaving(false);
     }
@@ -196,7 +267,7 @@ const GeneralTabContent = ({
       });
 
       if (!res.ok) {
-        let message = "Failed to delete workspace";
+        let message = copy.toastDeleteFailed;
         try {
           const json = (await res.json()) as { error?: string };
           if (json.error) {
@@ -209,13 +280,13 @@ const GeneralTabContent = ({
         return;
       }
 
-      toast.success("Workspace deleted");
+      toast.success(copy.toastDeleteSuccess);
       setDeleteDialogOpen(false);
       router.push("/?tab=my-workspaces");
       router.refresh();
     } catch (error) {
       console.error("Failed to delete workspace", error);
-      toast.error("Something went wrong while deleting the workspace");
+      toast.error(copy.toastDeleteError);
     } finally {
       setWorkspaceDeleting(false);
     }
@@ -239,7 +310,7 @@ const GeneralTabContent = ({
 
       if (!res.ok) {
         console.error("Failed to upload workspace image");
-        toast.error("Failed to upload workspace image");
+        toast.error(copy.toastUploadFailed);
         return;
       }
 
@@ -250,10 +321,10 @@ const GeneralTabContent = ({
       setImageUrl(nextImage);
       setInitialImageUrl(nextImage);
 
-      toast.success("Workspace image updated");
+      toast.success(copy.toastUploadSuccess);
     } catch (error) {
       console.error("Error uploading workspace image", error);
-      toast.error("Something went wrong while uploading image");
+      toast.error(copy.toastUploadError);
     } finally {
       event.target.value = "";
     }
@@ -293,7 +364,7 @@ const GeneralTabContent = ({
             mb: 4,
           }}
         >
-          General
+          {copy.title}
         </Typography>
 
         <Box
@@ -321,7 +392,7 @@ const GeneralTabContent = ({
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={imageUrl}
-                alt={workspaceName || "Workspace image"}
+                alt={workspaceName || copy.workspaceImageAlt}
                 style={{
                   width: "100%",
                   height: "100%",
@@ -348,7 +419,7 @@ const GeneralTabContent = ({
               mb: 0.5,
             }}
           >
-            Workspace image
+            {copy.workspaceImage}
           </Typography>
 
           <Button
@@ -365,7 +436,7 @@ const GeneralTabContent = ({
               cursor: "pointer",
             }}
           >
-            Upload new
+            {copy.uploadNew}
             <input
               type="file"
               accept="image/*"
@@ -388,12 +459,12 @@ const GeneralTabContent = ({
               mb: 1,
             }}
           >
-            Workspace Name
+            {copy.workspaceName}
           </Typography>
 
           <TextField
             fullWidth
-            placeholder="Company Inc."
+            placeholder={copy.workspaceNamePlaceholder}
             value={workspaceName}
             onChange={(e) => setWorkspaceName(e.target.value)}
             InputProps={{
@@ -435,7 +506,7 @@ const GeneralTabContent = ({
             mb: 0.8,
           }}
         >
-          Danger zone
+          {copy.dangerTitle}
         </Typography>
         <Typography
           sx={{
@@ -444,8 +515,7 @@ const GeneralTabContent = ({
             mb: 2.2,
           }}
         >
-          Deleting this workspace permanently removes members, plans, tasks,
-          AI library items, and generated documents.
+          {copy.dangerDescription}
         </Typography>
         <Button
           type="button"
@@ -471,7 +541,7 @@ const GeneralTabContent = ({
             },
           }}
         >
-          Delete Workspace
+          {copy.deleteWorkspace}
         </Button>
         {!isWorkspaceOwner ? (
           <Typography
@@ -481,7 +551,7 @@ const GeneralTabContent = ({
               mt: 1.2,
             }}
           >
-            Only the workspace owner can delete this workspace.
+            {copy.onlyOwnerCanDelete}
           </Typography>
         ) : null}
       </Box>
@@ -517,7 +587,7 @@ const GeneralTabContent = ({
             },
           }}
         >
-          Cancel Changes
+          {copy.cancelChanges}
         </Button>
 
         <Button
@@ -547,7 +617,7 @@ const GeneralTabContent = ({
             },
           }}
         >
-          Save
+          {copy.save}
         </Button>
       </Box>
 
@@ -565,7 +635,7 @@ const GeneralTabContent = ({
             pb: 1,
           }}
         >
-          Delete workspace
+          {copy.deleteDialogTitle}
         </DialogTitle>
         <DialogContent sx={{ pt: "8px !important" }}>
           <Typography
@@ -575,16 +645,12 @@ const GeneralTabContent = ({
               mb: 2,
             }}
           >
-            This action cannot be undone. Type{" "}
-            <Box component="span" sx={{ fontWeight: 700 }}>
-              {initialName}
-            </Box>{" "}
-            to confirm deletion.
+            {copy.deleteDialogDescription.replace("{name}", initialName)}
           </Typography>
           <TextField
             fullWidth
             autoFocus
-            placeholder={initialName || "Workspace name"}
+            placeholder={initialName || copy.deleteDialogPlaceholder}
             value={deleteConfirmationName}
             onChange={(event) => setDeleteConfirmationName(event.target.value)}
             onKeyDown={(event) => {
@@ -612,7 +678,7 @@ const GeneralTabContent = ({
               color: "#6B7280",
             }}
           >
-            Cancel
+            {copy.cancel}
           </Button>
           <Button
             type="button"
@@ -634,7 +700,7 @@ const GeneralTabContent = ({
               },
             }}
           >
-            {workspaceDeleting ? "Deleting..." : "Delete workspace"}
+            {workspaceDeleting ? copy.deleting : copy.deleteConfirm}
           </Button>
         </DialogActions>
       </Dialog>

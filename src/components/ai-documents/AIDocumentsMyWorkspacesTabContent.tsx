@@ -18,20 +18,67 @@ import ChatBubbleOutlineOutlinedIcon from "@mui/icons-material/ChatBubbleOutline
 import AppsOutlinedIcon from "@mui/icons-material/AppsOutlined";
 
 import type { Workspace } from "@/types/workspaces";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
+import type { AppLocale } from "@/lib/i18n/locales";
+import type { TranslationKey } from "@/lib/i18n/messages";
 
 export type AIDocumentMyWorkspacesTabContentProps = Readonly<{
   workspaces: Workspace[];
   loading: boolean;
 }>;
 
-function formatDate(iso?: string | null): string {
+type Translator = (
+  key: TranslationKey,
+  vars?: Record<string, string | number>,
+) => string;
+
+function formatDate(
+  iso: string | null | undefined,
+  locale: AppLocale,
+  t: Translator,
+): string {
   if (!iso) return "";
   try {
-    return new Intl.DateTimeFormat("en-GB", {
-      day: "2-digit",
+    const date = new Date(iso);
+    const now = new Date();
+    const localeCode = locale === "it" ? "it-IT" : "en-GB";
+
+    const timeStr = new Intl.DateTimeFormat(localeCode, {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: locale !== "it",
+    }).format(date);
+
+    const isToday =
+      date.getDate() === now.getDate() &&
+      date.getMonth() === now.getMonth() &&
+      date.getFullYear() === now.getFullYear();
+
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const isYesterday =
+      date.getDate() === yesterday.getDate() &&
+      date.getMonth() === yesterday.getMonth() &&
+      date.getFullYear() === yesterday.getFullYear();
+
+    if (isToday) {
+      return t("workspaceCard.todayAt", { time: timeStr });
+    }
+
+    if (isYesterday) {
+      return t("workspaceCard.yesterdayAt", { time: timeStr });
+    }
+
+    const dateOptions: Intl.DateTimeFormatOptions = {
       month: "short",
-      year: "numeric",
-    }).format(new Date(iso));
+      day: "numeric",
+    };
+    if (date.getFullYear() !== now.getFullYear()) {
+      dateOptions.year = "numeric";
+    }
+
+    const dateStr = new Intl.DateTimeFormat(localeCode, dateOptions).format(date);
+    return t("workspaceCard.dateAt", { date: dateStr, time: timeStr });
   } catch {
     return "";
   }
@@ -43,6 +90,7 @@ export default function AIDocumentMyWorkspacesTabContent({
 }: AIDocumentMyWorkspacesTabContentProps): ReactElement {
   const theme = useTheme();
   const router = useRouter();
+  const { locale, t } = useLanguage();
 
   if (loading) {
     return (
@@ -56,7 +104,7 @@ export default function AIDocumentMyWorkspacesTabContent({
           fontSize: 14,
         }}
       >
-        Loading workspaces…
+        {t("workspaceCard.loadingWorkspaces")}
       </Box>
     );
   }
@@ -73,7 +121,7 @@ export default function AIDocumentMyWorkspacesTabContent({
           fontSize: 14,
         }}
       >
-        You don&apos;t have any workspaces yet. Create one to get started.
+        {t("workspaceCard.noWorkspaces")}
       </Box>
     );
   }
@@ -96,7 +144,7 @@ export default function AIDocumentMyWorkspacesTabContent({
       >
         {workspaces.map((workspace, index) => {
           const createdAt = workspace.created_at ?? (null as string | null);
-          const dateLabel = createdAt ? formatDate(createdAt) : "";
+          const dateLabel = createdAt ? formatDate(createdAt, locale, t) : "";
 
           const isFirst = index % 2 === 0;
 
@@ -174,7 +222,7 @@ export default function AIDocumentMyWorkspacesTabContent({
                         color: theme.palette.text.secondary,
                       }}
                     >
-                      Created | {dateLabel}
+                      {t("workspaceCard.createdOn", { date: dateLabel })}
                     </Typography>
                   )}
                   <Stack direction="row" spacing={1.5}>
@@ -264,7 +312,7 @@ export default function AIDocumentMyWorkspacesTabContent({
                     },
                   }}
                 >
-                  Manage Workspace
+                  {t("workspaceCard.manageWorkspace")}
                 </Button>
                 <Button
                 fullWidth
@@ -287,7 +335,7 @@ export default function AIDocumentMyWorkspacesTabContent({
                     },
                   }}
                 >
-                  Setup Business
+                  {t("workspaceCard.setupBusiness")}
                 </Button>
               </Stack>
             </Box>

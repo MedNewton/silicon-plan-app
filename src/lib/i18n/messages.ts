@@ -1,0 +1,88 @@
+import { DEFAULT_APP_LOCALE, type AppLocale } from "@/lib/i18n/locales";
+
+const EN_MESSAGES = {
+  "language.label": "Language",
+  "language.english": "English",
+  "language.italian": "Italian",
+  "sidebar.aiDocuments": "AI Documents",
+  "sidebar.consultants": "Consultants",
+  "sidebar.myBookings": "My Bookings",
+  "sidebar.sessionHistory": "Session History",
+  "sidebar.learning": "Learning",
+  "sidebar.signOut": "Sign Out",
+  "sidebar.settings": "Settings",
+  "sidebar.back": "Back",
+  "sidebar.manageSectionTitle": "AI Documents",
+  "sidebar.businessPlan": "Business Plan",
+  "sidebar.canvasModels": "Canvas Models",
+  "sidebar.pitchDeck": "Pitch Deck",
+  "sidebar.financeForecasting": "Finance forecasting",
+  "topTabs.create": "Create",
+  "topTabs.myWorkspacesWithCount": "My Workspaces ({count})",
+  "topTabs.plan": "PLAN",
+  "topTabs.download": "DOWNLOAD",
+  "settings.setupBusiness": "Setup Business",
+  "settings.workspaceFallback": "Workspace",
+  "settings.general": "General",
+  "settings.businessActivities": "Business activities",
+  "settings.members": "Members",
+  "settings.aiLibrary": "AI Library",
+  "workspaceCard.loadingWorkspaces": "Loading workspaces...",
+  "workspaceCard.noWorkspaces": "You don't have any workspaces yet. Create one to get started.",
+  "workspaceCard.createdOn": "Created | {date}",
+  "workspaceCard.manageWorkspace": "Manage Workspace",
+  "workspaceCard.setupBusiness": "Setup Business",
+  "workspaceCard.todayAt": "Today at {time}",
+  "workspaceCard.yesterdayAt": "Yesterday at {time}",
+  "workspaceCard.dateAt": "{date} at {time}",
+  "page.invalidWorkspace": "Invalid workspace.",
+} as const;
+
+export type TranslationKey = keyof typeof EN_MESSAGES;
+
+const IT_MESSAGES: Record<TranslationKey, string> = {
+  "language.label": "Lingua",
+  "language.english": "Inglese",
+  "language.italian": "Italiano",
+  "sidebar.aiDocuments": "Documenti AI",
+  "sidebar.consultants": "Consulenti",
+  "sidebar.myBookings": "Le mie prenotazioni",
+  "sidebar.sessionHistory": "Cronologia sessioni",
+  "sidebar.learning": "Formazione",
+  "sidebar.signOut": "Esci",
+  "sidebar.settings": "Impostazioni",
+  "sidebar.back": "Indietro",
+  "sidebar.manageSectionTitle": "Documenti AI",
+  "sidebar.businessPlan": "Piano aziendale",
+  "sidebar.canvasModels": "Modelli Canvas",
+  "sidebar.pitchDeck": "Pitch Deck",
+  "sidebar.financeForecasting": "Previsioni finanziarie",
+  "topTabs.create": "Crea",
+  "topTabs.myWorkspacesWithCount": "I miei workspace ({count})",
+  "topTabs.plan": "PIANO",
+  "topTabs.download": "SCARICA",
+  "settings.setupBusiness": "Configura azienda",
+  "settings.workspaceFallback": "Workspace",
+  "settings.general": "Generale",
+  "settings.businessActivities": "Attivita aziendali",
+  "settings.members": "Membri",
+  "settings.aiLibrary": "Libreria AI",
+  "workspaceCard.loadingWorkspaces": "Caricamento workspace...",
+  "workspaceCard.noWorkspaces": "Non hai ancora workspace. Creane uno per iniziare.",
+  "workspaceCard.createdOn": "Creato | {date}",
+  "workspaceCard.manageWorkspace": "Gestisci workspace",
+  "workspaceCard.setupBusiness": "Configura azienda",
+  "workspaceCard.todayAt": "Oggi alle {time}",
+  "workspaceCard.yesterdayAt": "Ieri alle {time}",
+  "workspaceCard.dateAt": "{date} alle {time}",
+  "page.invalidWorkspace": "Workspace non valido.",
+};
+
+const MESSAGES: Record<AppLocale, Record<TranslationKey, string>> = {
+  en: EN_MESSAGES,
+  it: IT_MESSAGES,
+};
+
+export function getLocalizedMessage(locale: AppLocale, key: TranslationKey): string {
+  return MESSAGES[locale]?.[key] ?? MESSAGES[DEFAULT_APP_LOCALE][key];
+}

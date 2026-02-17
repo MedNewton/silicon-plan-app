@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 
 import type { Workspace } from "@/types/workspaces";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 type CreateWorkspaceResponse = {
   workspace: Workspace;
@@ -19,6 +20,40 @@ export default function AIDocumentCreateTabContent(
 ): ReactElement {
   const theme = useTheme();
   const router = useRouter();
+  const { locale } = useLanguage();
+
+  const copy =
+    locale === "it"
+      ? {
+          title: "Crea workspace",
+          subtitleLine1: "Un workspace e lo spazio in cui pianifichi",
+          subtitleLine2: "la tua attivita e gestisci il tuo team.",
+          subtitleLine3: "Tutto avviene nel workspace.",
+          workspaceNameLabel: "Nome workspace",
+          workspaceNamePlaceholder: "Azienda Srl",
+          workspaceNameHint:
+            "Scegli un nome che rappresenti il business che stai costruendo.",
+          cta: "Crea workspace",
+          toastCreateFailed: "Impossibile creare il workspace.",
+          toastCreateSuccess: "Workspace creato.",
+          toastCreateError:
+            "Si e verificato un errore durante la creazione del workspace.",
+        }
+      : {
+          title: "Create Workspace",
+          subtitleLine1: "A workspace is where you will plan your",
+          subtitleLine2: "business and manage your team.",
+          subtitleLine3: "Everything happens within the workspace.",
+          workspaceNameLabel: "Workspace Name",
+          workspaceNamePlaceholder: "Company Inc.",
+          workspaceNameHint:
+            "Choose a name after the business you are building.",
+          cta: "Create Workspace",
+          toastCreateFailed: "Failed to create workspace.",
+          toastCreateSuccess: "Workspace created.",
+          toastCreateError:
+            "Something went wrong while creating workspace.",
+        };
 
   const [workspaceName, setWorkspaceName] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -41,17 +76,17 @@ export default function AIDocumentCreateTabContent(
       });
 
       if (!response.ok) {
-        toast.error("Failed to create workspace");
+        toast.error(copy.toastCreateFailed);
         throw new Error("Failed to create workspace");
       }
 
       const data = (await response.json()) as CreateWorkspaceResponse;
 
-      toast.success("Workspace created");
+      toast.success(copy.toastCreateSuccess);
       router.push(`/workspaces/${data.workspace.id}/business-setup`);
     } catch (error) {
       console.error(error);
-      toast.error("Something went wrong while creating workspace");
+      toast.error(copy.toastCreateError);
     } finally {
       setIsSubmitting(false);
     }
@@ -95,7 +130,7 @@ export default function AIDocumentCreateTabContent(
               mb: 1.5,
             }}
           >
-            Create Workspace
+            {copy.title}
           </Typography>
 
           <Typography
@@ -105,11 +140,11 @@ export default function AIDocumentCreateTabContent(
               color: theme.palette.text.secondary,
             }}
           >
-            A workspace is where you will plan your
+            {copy.subtitleLine1}
             <br />
-            business and manage your team.
+            {copy.subtitleLine2}
             <br />
-            Everything happens within the workspace
+            {copy.subtitleLine3}
           </Typography>
 
           <Box
@@ -125,12 +160,12 @@ export default function AIDocumentCreateTabContent(
                 color: theme.palette.text.primary,
               }}
             >
-              Workspace Name
+              {copy.workspaceNameLabel}
             </Typography>
 
             <TextField
               fullWidth
-              placeholder="Company Inc."
+              placeholder={copy.workspaceNamePlaceholder}
               value={workspaceName}
               onChange={(event) => setWorkspaceName(event.target.value)}
               InputProps={{
@@ -159,7 +194,7 @@ export default function AIDocumentCreateTabContent(
                 color: theme.palette.text.secondary,
               }}
             >
-              Choose a name after the business you are building.
+              {copy.workspaceNameHint}
             </Typography>
 
             <Box mt={4}>
@@ -190,7 +225,7 @@ export default function AIDocumentCreateTabContent(
                   },
                 }}
               >
-                Create Workspace
+                {copy.cta}
               </Button>
             </Box>
           </Box>

@@ -15,6 +15,8 @@ import BookmarkBorderOutlinedIcon from "@mui/icons-material/BookmarkBorderOutlin
 import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
 import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
 import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
+import LanguageToggle from "@/components/i18n/LanguageToggle";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 export type NavKey =
   | "ai-documents"
@@ -34,6 +36,7 @@ export default function AIDocumentsSideBar({
 }: AIDocumentsSideBarProps): ReactElement {
   const theme = useTheme();
   const { signOut } = useClerk();
+  const { t } = useLanguage();
 
   const handleSignOut = () => {
     void signOut({ redirectUrl: "/auth" });
@@ -124,27 +127,27 @@ export default function AIDocumentsSideBar({
       <Box sx={{ flex: 1, pt: 2 }}>
         {makeItem(
           "ai-documents",
-          "AI Documents",
+          t("sidebar.aiDocuments"),
           <DescriptionOutlinedIcon sx={{ fontSize: 22 }} />,
         )}
         {makeItem(
           "consultants",
-          "Consultants",
+          t("sidebar.consultants"),
           <PersonOutlineOutlinedIcon sx={{ fontSize: 22 }} />,
         )}
         {makeItem(
           "bookings",
-          "My Bookings",
+          t("sidebar.myBookings"),
           <BookmarkBorderOutlinedIcon sx={{ fontSize: 22 }} />,
         )}
         {makeItem(
           "session-history",
-          "Session History",
+          t("sidebar.sessionHistory"),
           <HistoryOutlinedIcon sx={{ fontSize: 22 }} />,
         )}
         {makeItem(
           "learning",
-          "Learning",
+          t("sidebar.learning"),
           <MenuBookOutlinedIcon sx={{ fontSize: 22 }} />,
         )}
       </Box>
@@ -152,17 +155,21 @@ export default function AIDocumentsSideBar({
       <Box
         sx={{
           borderTop: "1px solid rgba(226,232,240,1)",
-          py: 1.5,
+          px: 3,
+          py: 1.8,
           mb: 1,
+          display: "flex",
+          flexDirection: "column",
+          gap: 1.6,
         }}
       >
+        <LanguageToggle />
         <Box
           onClick={handleSignOut}
           sx={{
             display: "flex",
             alignItems: "center",
             gap: 1.5,
-            px: 3,
             cursor: "pointer",
             color: theme.palette.text.secondary,
             "&:hover": {
@@ -172,7 +179,7 @@ export default function AIDocumentsSideBar({
         >
           <LogoutOutlinedIcon sx={{ fontSize: 22 }} />
           <Typography sx={{ fontSize: 15, fontWeight: 500 }}>
-            Sign Out
+            {t("sidebar.signOut")}
           </Typography>
         </Box>
       </Box>

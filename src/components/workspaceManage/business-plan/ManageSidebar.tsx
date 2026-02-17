@@ -15,6 +15,8 @@ import SlideshowOutlinedIcon from "@mui/icons-material/SlideshowOutlined";
 import ShowChartOutlinedIcon from "@mui/icons-material/ShowChartOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
+import LanguageToggle from "@/components/i18n/LanguageToggle";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 export type ManageSidebarNavKey =
   | "business-plan"
@@ -36,6 +38,7 @@ export default function ManageSidebar({
 }: ManageSidebarProps): ReactElement {
   const theme = useTheme();
   const router = useRouter();
+  const { t } = useLanguage();
 
   const itemBaseStyles = {
     height: 64,
@@ -160,7 +163,9 @@ export default function ManageSidebar({
           }}
         >
           <ArrowBackIosNewIcon sx={{ fontSize: 18 }} />
-          <Typography sx={{ fontSize: 15, fontWeight: 500 }}>Back</Typography>
+          <Typography sx={{ fontSize: 15, fontWeight: 500 }}>
+            {t("sidebar.back")}
+          </Typography>
         </Box>
       </Box>
 
@@ -174,28 +179,28 @@ export default function ManageSidebar({
               color: "#9CA3AF",
             }}
           >
-            AI Documents
+            {t("sidebar.manageSectionTitle")}
           </Typography>
         </Box>
 
         {makeItem(
           "business-plan",
-          "Business Plan",
+          t("sidebar.businessPlan"),
           <DescriptionOutlinedIcon sx={{ fontSize: 22 }} />,
         )}
         {makeItem(
           "canvas-models",
-          "Canvas Models",
+          t("sidebar.canvasModels"),
           <ViewQuiltOutlinedIcon sx={{ fontSize: 22 }} />,
         )}
         {makeItem(
           "pitch-deck",
-          "Pitch Deck",
+          t("sidebar.pitchDeck"),
           <SlideshowOutlinedIcon sx={{ fontSize: 22 }} />,
         )}
         {makeItem(
           "finance-forecasting",
-          "Finance forecasting",
+          t("sidebar.financeForecasting"),
           <ShowChartOutlinedIcon sx={{ fontSize: 22 }} />,
         )}
       </Box>
@@ -204,17 +209,21 @@ export default function ManageSidebar({
       <Box
         sx={{
           borderTop: "1px solid rgba(226,232,240,1)",
-          py: 1.5,
+          px: 3,
+          py: 1.8,
           mb: 1,
+          display: "flex",
+          flexDirection: "column",
+          gap: 1.6,
         }}
       >
+        <LanguageToggle />
         <Box
           onClick={() => handleNavClick("settings")}
           sx={{
             display: "flex",
             alignItems: "center",
             gap: 1.5,
-            px: 3,
             cursor: "pointer",
             color:
               activeItem === "settings"
@@ -224,7 +233,7 @@ export default function ManageSidebar({
         >
           <SettingsOutlinedIcon sx={{ fontSize: 22 }} />
           <Typography sx={{ fontSize: 15, fontWeight: 500 }}>
-            Settings
+            {t("sidebar.settings")}
           </Typography>
         </Box>
       </Box>

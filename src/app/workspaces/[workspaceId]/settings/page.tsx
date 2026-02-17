@@ -21,6 +21,7 @@ import SettingsTopTabs, {
 import SettingsSecondarySidebar, {
   type SettingsTab,
 } from "@/components/workspaceSettings/SettingsSecondarySidebar";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 type GetWorkspaceResponse = {
   workspace: Workspace;
@@ -34,6 +35,7 @@ export default function WorkspaceSettingsPage() {
   const theme = useTheme();
   const router = useRouter();
   const params = useParams();
+  const { t } = useLanguage();
 
   const workspaceId =
     typeof params.workspaceId === "string"
@@ -127,7 +129,7 @@ export default function WorkspaceSettingsPage() {
             color: theme.palette.text.secondary,
           }}
         >
-          Invalid workspace.
+          {t("page.invalidWorkspace")}
         </Box>
       );
     }

@@ -17,6 +17,7 @@ import { useState, type FormEvent } from "react";
 import { toast } from "react-toastify";
 
 import type { WorkspaceRole } from "@/types/workspaces";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 type InviteMembersModalProps = {
   open: boolean;
@@ -31,6 +32,48 @@ const InviteMembersModal = ({
   onClose,
   onInvited,
 }: InviteMembersModalProps) => {
+  const { locale } = useLanguage();
+  const copy =
+    locale === "it"
+      ? {
+          title: "Invita membro",
+          subtitle:
+            "Invia un invito email per aggiungere una persona a questo workspace.",
+          emailLabel: "Indirizzo email",
+          emailPlaceholder: "collega@azienda.com",
+          roleLabel: "Ruolo",
+          roleViewer: "Viewer",
+          roleEditor: "Editor",
+          roleAdmin: "Admin",
+          roleHelp:
+            "Gli admin possono gestire membri e impostazioni. Gli editor possono modificare i contenuti. I viewer possono solo visualizzare.",
+          cancel: "Annulla",
+          sendInvite: "Invia invito",
+          toastEmailRequired: "Inserisci un indirizzo email.",
+          toastInviteFailed: "Impossibile inviare l'invito.",
+          toastInviteSuccess: "Invito inviato.",
+          toastInviteError:
+            "Si e verificato un errore durante l'invio dell'invito.",
+        }
+      : {
+          title: "Invite member",
+          subtitle: "Send an email invite to add someone to this workspace.",
+          emailLabel: "Email address",
+          emailPlaceholder: "teammate@company.com",
+          roleLabel: "Role",
+          roleViewer: "Viewer",
+          roleEditor: "Editor",
+          roleAdmin: "Admin",
+          roleHelp:
+            "Admins can manage members and settings. Editors can modify content. Viewers can only view.",
+          cancel: "Cancel",
+          sendInvite: "Send invite",
+          toastEmailRequired: "Please enter an email address.",
+          toastInviteFailed: "Failed to send invite.",
+          toastInviteSuccess: "Invitation sent.",
+          toastInviteError: "Something went wrong while sending invite.",
+        };
+
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<WorkspaceRole>("viewer");
   const [inviteSubmitting, setInviteSubmitting] = useState(false);
@@ -55,7 +98,7 @@ const InviteMembersModal = ({
     if (!workspaceId) return;
 
     if (!inviteEmail.trim()) {
-      toast.error("Please enter an email address");
+      toast.error(copy.toastEmailRequired);
       return;
     }
 
@@ -75,7 +118,7 @@ const InviteMembersModal = ({
       );
 
       if (!res.ok) {
-        let message = "Failed to send invite";
+        let message = copy.toastInviteFailed;
         try {
           const data = (await res.json()) as { error?: string };
           if (data.error) message = data.error;
@@ -86,12 +129,12 @@ const InviteMembersModal = ({
         return;
       }
 
-      toast.success("Invitation sent");
+      toast.success(copy.toastInviteSuccess);
       if (onInvited) onInvited();
       handleCloseInvite();
     } catch (error) {
       console.error("Error sending invite", error);
-      toast.error("Something went wrong while sending invite");
+      toast.error(copy.toastInviteError);
     } finally {
       setInviteSubmitting(false);
     }
@@ -117,7 +160,7 @@ const InviteMembersModal = ({
           pb: 0.5,
         }}
       >
-        Invite member
+        {copy.title}
       </DialogTitle>
 
       <DialogContent
@@ -132,7 +175,7 @@ const InviteMembersModal = ({
             mb: 2.5,
           }}
         >
-          Send an email invite to add someone to this workspace.
+          {copy.subtitle}
         </Typography>
 
         <Box
@@ -148,12 +191,12 @@ const InviteMembersModal = ({
                 mb: 0.7,
               }}
             >
-              Email address
+              {copy.emailLabel}
             </Typography>
             <TextField
               fullWidth
               type="email"
-              placeholder="teammate@company.com"
+              placeholder={copy.emailPlaceholder}
               value={inviteEmail}
               onChange={(e) => setInviteEmail(e.target.value)}
               autoFocus
@@ -184,7 +227,7 @@ const InviteMembersModal = ({
                 mb: 0.7,
               }}
             >
-              Role
+              {copy.roleLabel}
             </Typography>
 
             <Select
@@ -209,9 +252,9 @@ const InviteMembersModal = ({
                 },
               }}
             >
-              <MenuItem value="viewer">Viewer</MenuItem>
-              <MenuItem value="editor">Editor</MenuItem>
-              <MenuItem value="admin">Admin</MenuItem>
+              <MenuItem value="viewer">{copy.roleViewer}</MenuItem>
+              <MenuItem value="editor">{copy.roleEditor}</MenuItem>
+              <MenuItem value="admin">{copy.roleAdmin}</MenuItem>
             </Select>
 
             <Typography
@@ -221,8 +264,7 @@ const InviteMembersModal = ({
                 color: "text.secondary",
               }}
             >
-              Admins can manage members and settings. Editors can modify
-              content. Viewers can only view.
+              {copy.roleHelp}
             </Typography>
           </Box>
 
@@ -256,7 +298,7 @@ const InviteMembersModal = ({
                 },
               }}
             >
-              Cancel
+              {copy.cancel}
             </Button>
 
             <Button
@@ -286,7 +328,7 @@ const InviteMembersModal = ({
                 },
               }}
             >
-              Send invite
+              {copy.sendInvite}
             </Button>
           </DialogActions>
         </Box>
