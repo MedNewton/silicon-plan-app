@@ -2,9 +2,10 @@
 "use client";
 
 import type { FC } from "react";
-import { Box, Button, Stack } from "@mui/material";
+import { Box, Button, CircularProgress, Stack } from "@mui/material";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
+import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 export type ManageTopTab = "plan" | "download";
@@ -12,12 +13,19 @@ export type ManageTopTab = "plan" | "download";
 export type ManageTopTabsProps = Readonly<{
   activeTab: ManageTopTab;
   onTabChange: (tab: ManageTopTab) => void;
+  onAutoGenerate?: () => void;
+  isGenerating?: boolean;
 }>;
 
 const ACTIVE_COLOR = "#4C6AD2";   // main blue
 const INACTIVE_COLOR = "#6B7280"; // muted grey-blue
 
-const ManageTopTabs: FC<ManageTopTabsProps> = ({ activeTab, onTabChange }) => {
+const ManageTopTabs: FC<ManageTopTabsProps> = ({
+  activeTab,
+  onTabChange,
+  onAutoGenerate,
+  isGenerating,
+}) => {
   const isPlanActive = activeTab === "plan";
   const isDownloadActive = activeTab === "download";
   const { t } = useLanguage();
@@ -31,10 +39,10 @@ const ManageTopTabs: FC<ManageTopTabsProps> = ({ activeTab, onTabChange }) => {
         py: 1.25,
         display: "flex",
         alignItems: "center",
-        justifyContent: "center",
+        justifyContent: "space-between",
       }}
     >
-      <Stack direction="row" spacing={5} alignItems="stretch">
+      <Stack direction="row" spacing={5} alignItems="stretch" sx={{ flex: 1, justifyContent: "center" }}>
         {/* PLAN */}
         <Box
           sx={{
@@ -113,6 +121,42 @@ const ManageTopTabs: FC<ManageTopTabsProps> = ({ activeTab, onTabChange }) => {
           </Button>
         </Box>
       </Stack>
+
+      {/* AUTO GENERATE BUTTON */}
+      {onAutoGenerate && (
+        <Button
+          onClick={onAutoGenerate}
+          disabled={isGenerating}
+          startIcon={
+            isGenerating ? (
+              <CircularProgress size={16} sx={{ color: ACTIVE_COLOR }} />
+            ) : (
+              <AutoFixHighIcon sx={{ fontSize: 18 }} />
+            )
+          }
+          sx={{
+            textTransform: "none",
+            fontSize: 13,
+            fontWeight: 600,
+            color: ACTIVE_COLOR,
+            border: "1px solid #D3DDF5",
+            borderRadius: 2,
+            px: 2,
+            py: 0.75,
+            whiteSpace: "nowrap",
+            "&:hover": {
+              bgcolor: "rgba(76,106,210,0.04)",
+              borderColor: ACTIVE_COLOR,
+            },
+            "&.Mui-disabled": {
+              color: "#9CA3AF",
+              borderColor: "#E5E7EB",
+            },
+          }}
+        >
+          {t("topTabs.autoGenerate")}
+        </Button>
+      )}
     </Box>
   );
 };

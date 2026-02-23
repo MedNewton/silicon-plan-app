@@ -2,8 +2,8 @@
 "use client";
 
 import { Box, useTheme } from "@mui/material";
-import { useRouter, useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 
 import type { Workspace } from "@/types/workspaces";
 
@@ -31,10 +31,21 @@ type ListWorkspacesResponse = {
   workspaces: Workspace[];
 };
 
+const VALID_SETTINGS_TABS: SettingsTab[] = ["general", "business", "members", "library"];
+
 export default function WorkspaceSettingsPage() {
+  return (
+    <Suspense>
+      <WorkspaceSettingsPageInner />
+    </Suspense>
+  );
+}
+
+function WorkspaceSettingsPageInner() {
   const theme = useTheme();
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const { t } = useLanguage();
 
   const workspaceId =
@@ -44,9 +55,15 @@ export default function WorkspaceSettingsPage() {
         ? params.workspaceId[0]
         : "";
 
+  const tabParam = searchParams.get("tab");
+  const initialTab: SettingsTab =
+    tabParam && VALID_SETTINGS_TABS.includes(tabParam as SettingsTab)
+      ? (tabParam as SettingsTab)
+      : "general";
+
   const [activeNav, setActiveNav] = useState<NavKey>("ai-documents");
   const [topTab, setTopTab] = useState<TopTab>("myWorkspaces");
-  const [settingsTab, setSettingsTab] = useState<SettingsTab>("general");
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>(initialTab);
 
   const [workspaceCount, setWorkspaceCount] = useState<number>(0);
   const [workspaceName, setWorkspaceName] = useState<string>("");

@@ -794,6 +794,31 @@ export async function deleteChapter(params: {
   }
 }
 
+export async function deleteAllChapters(params: {
+  businessPlanId: BusinessPlanId;
+  userId: UserId;
+}): Promise<void> {
+  const { businessPlanId, userId } = params;
+  const client = getSupabaseClient();
+
+  const workspaceId = await getWorkspaceIdFromBusinessPlan(client, businessPlanId);
+  if (!workspaceId) {
+    throw new Error("Business plan not found.");
+  }
+
+  await ensureUserHasWorkspaceAccess(client, workspaceId, userId);
+
+  // Delete will cascade to sections due to ON DELETE CASCADE
+  const { error } = await client
+    .from("business_plan_chapters")
+    .delete()
+    .eq("business_plan_id", businessPlanId);
+
+  if (error) {
+    throw new Error(`Failed to delete all chapters: ${error.message}`);
+  }
+}
+
 export async function reorderChapters(params: {
   workspaceId: WorkspaceId;
   userId: UserId;

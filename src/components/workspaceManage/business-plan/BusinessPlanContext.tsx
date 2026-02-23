@@ -87,6 +87,10 @@ type BusinessPlanContextValue = {
   ) => Promise<void>;
   deleteTask: (taskId: string) => Promise<void>;
 
+  // AI generation
+  isGenerating: boolean;
+  generateBusinessPlan: (force?: boolean) => Promise<{ success?: boolean; skipped?: boolean; error?: string }>;
+
   // AI chat state
   conversationId: BusinessPlanAiConversationId | null;
   messages: BusinessPlanAiMessage[];
@@ -143,6 +147,7 @@ export const BusinessPlanProvider: FC<BusinessPlanProviderProps> = ({
     parentTaskId: string | null;
     changedAt: number;
   } | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [isChatSending, setIsChatSending] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
@@ -608,6 +613,44 @@ export const BusinessPlanProvider: FC<BusinessPlanProviderProps> = ({
     [workspaceId, refreshTasks]
   );
 
+  const generateBusinessPlan = useCallback(
+    async (force = false): Promise<{ success?: boolean; skipped?: boolean; error?: string }> => {
+      setIsGenerating(true);
+      try {
+        const response = await fetch(
+          `/api/workspaces/${workspaceId}/business-plan/generate`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ force }),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to generate business plan");
+        }
+
+        const data = (await response.json()) as {
+          success?: boolean;
+          skipped?: boolean;
+          error?: string;
+        };
+
+        if (data.success) {
+          await refreshData();
+        }
+
+        return data;
+      } catch (err) {
+        console.error("Error generating business plan:", err);
+        return { error: err instanceof Error ? err.message : "Generation failed" };
+      } finally {
+        setIsGenerating(false);
+      }
+    },
+    [workspaceId, refreshData]
+  );
+
   const refreshChat = useCallback(async () => {
     try {
       setIsChatLoading(true);
@@ -883,6 +926,8 @@ export const BusinessPlanProvider: FC<BusinessPlanProviderProps> = ({
     addTask,
     updateTask,
     deleteTask,
+    isGenerating,
+    generateBusinessPlan,
     conversationId,
     messages,
     pendingChanges,

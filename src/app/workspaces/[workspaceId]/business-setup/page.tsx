@@ -1005,7 +1005,17 @@ export default function WorkspaceBusinessSetupPage() {
       }
 
       const json = (await response.json()) as BusinessProfileResponse;
-      router.push(json.redirectTo ?? "/?tab=my-workspaces");
+
+      // Auto-generate business plan for new workspaces (fire-and-forget)
+      fetch(`/api/workspaces/${workspaceId}/business-plan/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ force: false }),
+      }).catch(() => {
+        // silently ignore – user can regenerate manually later
+      });
+
+      router.push(json.redirectTo ?? `/workspaces/${workspaceId}/settings?tab=library`);
     } catch (error) {
       console.error(error);
     } finally {
