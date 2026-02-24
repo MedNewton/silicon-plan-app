@@ -25,6 +25,7 @@ import {
   DOCX_TYPOGRAPHY,
   EXPORT_TYPOGRAPHY,
 } from "@/lib/exportStyles";
+import { fetchImageAsUint8Array } from "@/lib/workspaceBranding";
 
 const DOCX_PAGE_SIZE_TWIPS: Record<"A4" | "Letter" | "A3", { width: number; height: number }> = {
   A4: { width: 11906, height: 16838 },
@@ -186,17 +187,22 @@ const renderChapterHtml = (
   isChild = false,
 ): string => {
   const headingTag = isChild ? "h2" : "h1";
-  const sections = (chapter.sections ?? []).map((section) =>
-    `<div class="export-block">${renderSectionHtml(section.content, currencyCode)}</div>`
+  const headingHtml = `<${headingTag}>${escapeHtml(chapter.title ?? "")}</${headingTag}>`;
+  const sectionHtmls = (chapter.sections ?? []).map((section) =>
+    renderSectionHtml(section.content, currencyCode)
   );
   const children = (chapter.children ?? []).map((child) =>
     renderChapterHtml(child, currencyCode, true)
   );
-  return [
-    `<div class="export-block"><${headingTag}>${escapeHtml(chapter.title ?? "")}</${headingTag}></div>`,
-    ...sections,
-    ...children,
-  ].join("\n");
+
+  // Group the heading with the first section so the heading is never orphaned
+  // at the bottom of a page without its content following it
+  const firstBlock = sectionHtmls.length > 0
+    ? `<div class="export-block">${headingHtml}${sectionHtmls[0]}</div>`
+    : `<div class="export-block">${headingHtml}</div>`;
+  const remainingBlocks = sectionHtmls.slice(1).map(s => `<div class="export-block">${s}</div>`);
+
+  return [firstBlock, ...remainingBlocks, ...children].join("\n");
 };
 
 export const buildBusinessPlanHtml = (
@@ -372,16 +378,24 @@ const paragraphFromText = (
     heading,
   });
 
-const buildDocxSections = (
+const getImageDimensions = (url: string): Promise<{ width: number; height: number }> =>
+  new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    img.onerror = () => resolve({ width: 500, height: 350 });
+    img.src = url;
+  });
+
+const buildDocxSections = async (
   chapters: BusinessPlanChapterWithSections[],
   currencyCode?: BusinessPlanCurrencyCode
-) => {
+): Promise<Array<Paragraph | Table>> => {
   const blocks: Array<Paragraph | Table> = [];
 
-  chapters.forEach((chapter) => {
+  for (const chapter of chapters) {
     blocks.push(paragraphFromText(chapter.title ?? "", HeadingLevel.HEADING_1));
 
-    (chapter.sections ?? []).forEach((section) => {
+    for (const section of chapter.sections ?? []) {
       const content = section.content;
       switch (content.type) {
         case "section_title":
@@ -451,15 +465,70 @@ const buildDocxSections = (
           );
           break;
         }
+        case "image": {
+          if (content.url) {
+            try {
+              const imageBytes = await fetchImageAsUint8Array(content.url);
+              if (imageBytes && imageBytes.length > 0) {
+                const dims = await getImageDimensions(content.url);
+                const maxW = 500;
+                const scale = Math.min(1, maxW / dims.width);
+                const ext = content.url.split(".").pop()?.toLowerCase();
+                const imgType =
+                  ext === "jpg" || ext === "jpeg" ? "jpg"
+                    : ext === "gif" ? "gif"
+                    : ext === "bmp" ? "bmp"
+                    : "png";
+
+                blocks.push(
+                  new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    children: [
+                      new ImageRun({
+                        data: imageBytes,
+                        type: imgType as "jpg" | "png" | "gif" | "bmp",
+                        transformation: {
+                          width: Math.round(dims.width * scale),
+                          height: Math.round(dims.height * scale),
+                        },
+                      }),
+                    ],
+                  })
+                );
+              }
+            } catch {
+              blocks.push(new Paragraph("[Image could not be loaded]"));
+            }
+
+            if (content.caption) {
+              blocks.push(
+                new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  children: [
+                    new TextRun({
+                      text: normalizeExportText(content.caption),
+                      color: "6B7280",
+                      size: DOCX_TYPOGRAPHY.bodySmall,
+                      italics: true,
+                    }),
+                  ],
+                })
+              );
+            }
+          } else {
+            blocks.push(new Paragraph("[Image placeholder]"));
+          }
+          break;
+        }
         default:
           blocks.push(new Paragraph("[Unsupported section]"));
       }
-    });
+    }
 
     if (chapter.children?.length) {
-      blocks.push(...buildDocxSections(chapter.children, currencyCode));
+      blocks.push(...await buildDocxSections(chapter.children, currencyCode));
     }
-  });
+  }
 
   return blocks;
 };
@@ -619,7 +688,7 @@ export const buildBusinessPlanDocx = async (
                 }),
               ]
             : []),
-          ...buildDocxSections(chapters, currencyCode),
+          ...(await buildDocxSections(chapters, currencyCode)),
         ],
       },
     ],

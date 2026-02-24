@@ -965,6 +965,7 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
             setEditingFinanceSection(null);
           }
         }}
+        workspaceId={workspaceId}
       />
 
       <Box

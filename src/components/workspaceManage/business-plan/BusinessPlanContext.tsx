@@ -31,6 +31,7 @@ import type {
 // ========== TYPES ==========
 
 type BusinessPlanContextValue = {
+  workspaceId: string;
   // Data
   businessPlan: BusinessPlan | null;
   chapters: BusinessPlanChapterWithSections[];
@@ -899,6 +900,7 @@ export const BusinessPlanProvider: FC<BusinessPlanProviderProps> = ({
   );
 
   const value: BusinessPlanContextValue = {
+    workspaceId,
     businessPlan,
     chapters,
     tasks,

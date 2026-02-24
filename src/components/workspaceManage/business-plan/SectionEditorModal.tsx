@@ -2,7 +2,7 @@
 "use client";
 
 import type { FC } from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -20,10 +20,12 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
+  CircularProgress,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
+import CloudUploadOutlinedIcon from "@mui/icons-material/CloudUploadOutlined";
 import type {
   BusinessPlanSection,
   BusinessPlanSectionContent,
@@ -46,6 +48,7 @@ export type SectionEditorModalProps = {
   isSaving: boolean;
   onSave: (content: BusinessPlanSectionContent) => void;
   onCancel: () => void;
+  workspaceId?: string;
 };
 
 const getSectionEditorCopy = (locale: "en" | "it") =>
@@ -88,6 +91,12 @@ const getSectionEditorCopy = (locale: "en" | "it") =>
         addOption: "Aggiungi opzione",
         imageUrl: "URL immagine",
         imageUrlHelp: "Inserisci l'URL dell'immagine da mostrare",
+        uploadImageHelp: "Trascina un'immagine o clicca per sfogliare",
+        orEnterUrl: "Oppure inserisci l'URL di un'immagine",
+        uploading: "Caricamento...",
+        uploadFailed: "Caricamento immagine fallito. Riprova.",
+        fileTooLarge: "File troppo grande (max 5MB)",
+        unsupportedType: "Tipo di file non supportato. Usa PNG, JPEG, GIF o WebP.",
         altText: "Testo alternativo",
         altTextPlaceholder: "Descrivi l'immagine per l'accessibilita",
         altTextHelp: "Testo alternativo per screen reader",
@@ -155,6 +164,12 @@ const getSectionEditorCopy = (locale: "en" | "it") =>
         addOption: "Add Option",
         imageUrl: "Image URL",
         imageUrlHelp: "Enter the URL of the image you want to display",
+        uploadImageHelp: "Drag & drop an image or click to browse",
+        orEnterUrl: "Or enter an image URL",
+        uploading: "Uploading...",
+        uploadFailed: "Failed to upload image. Please try again.",
+        fileTooLarge: "File too large (max 5MB)",
+        unsupportedType: "Unsupported file type. Use PNG, JPEG, GIF, or WebP.",
         altText: "Alt Text",
         altTextPlaceholder: "Describe the image for accessibility",
         altTextHelp: "Alternative text for screen readers",
@@ -191,6 +206,7 @@ const SectionEditorModal: FC<SectionEditorModalProps> = ({
   isSaving,
   onSave,
   onCancel,
+  workspaceId,
 }) => {
   const { locale } = useLanguage();
   const copy = getSectionEditorCopy(locale);
@@ -316,6 +332,7 @@ const SectionEditorModal: FC<SectionEditorModalProps> = ({
             content={content}
             onChange={(c) => setContent(c)}
             copy={copy}
+            workspaceId={workspaceId}
           />
         )}
 
@@ -779,15 +796,122 @@ const ComparisonTableEditor: FC<ComparisonTableEditorProps> = ({ content, onChan
 
 // ========== IMAGE EDITOR ==========
 
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5 MB
+const ACCEPTED_IMAGE_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp"];
+
 type ImageEditorProps = {
   content: ImageSectionContent;
   onChange: (content: ImageSectionContent) => void;
   copy: ReturnType<typeof getSectionEditorCopy>;
+  workspaceId?: string;
 };
 
-const ImageEditor: FC<ImageEditorProps> = ({ content, onChange, copy }) => {
+const ImageEditor: FC<ImageEditorProps> = ({ content, onChange, copy, workspaceId }) => {
+  const [isUploading, setIsUploading] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = async (file: File) => {
+    setUploadError(null);
+
+    if (file.size > MAX_IMAGE_SIZE) {
+      setUploadError(copy.fileTooLarge);
+      return;
+    }
+    if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+      setUploadError(copy.unsupportedType);
+      return;
+    }
+    if (!workspaceId) return;
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch(`/api/workspaces/${workspaceId}/business-plan/images`, {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Upload failed");
+      }
+      const { url } = await res.json();
+      onChange({ ...content, url });
+    } catch {
+      setUploadError(copy.uploadFailed);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+  const handleDragLeave = () => setIsDragOver(false);
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleFileUpload(file);
+  };
+
   return (
     <Stack spacing={3}>
+      {/* Upload drop zone */}
+      {workspaceId && (
+        <>
+          <Box
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onClick={() => !isUploading && fileInputRef.current?.click()}
+            sx={{
+              border: isDragOver ? "2px dashed #4C6AD2" : "2px dashed #D1D5DB",
+              borderRadius: 2,
+              py: 4,
+              px: 3,
+              textAlign: "center",
+              cursor: isUploading ? "default" : "pointer",
+              bgcolor: isDragOver ? "#F0F4FF" : "#F9FAFB",
+              transition: "all 0.2s",
+              "&:hover": isUploading ? {} : { borderColor: "#4C6AD2", bgcolor: "#F0F4FF" },
+            }}
+          >
+            {isUploading ? (
+              <CircularProgress size={28} sx={{ color: "#4C6AD2", mb: 1 }} />
+            ) : (
+              <CloudUploadOutlinedIcon sx={{ fontSize: 36, color: "#9CA3AF", mb: 1 }} />
+            )}
+            <Typography sx={{ fontSize: 14, color: "#6B7280" }}>
+              {isUploading ? copy.uploading : copy.uploadImageHelp}
+            </Typography>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/gif,image/webp"
+              hidden
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleFileUpload(file);
+                e.target.value = "";
+              }}
+            />
+          </Box>
+
+          {uploadError && (
+            <Typography sx={{ fontSize: 13, color: "#EF4444" }}>{uploadError}</Typography>
+          )}
+
+          <Typography sx={{ textAlign: "center", color: "#9CA3AF", fontSize: 13 }}>
+            {copy.orEnterUrl}
+          </Typography>
+        </>
+      )}
+
+      {/* URL field */}
       <TextField
         fullWidth
         label={copy.imageUrl}

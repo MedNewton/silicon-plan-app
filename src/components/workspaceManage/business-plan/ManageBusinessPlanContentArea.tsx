@@ -529,7 +529,7 @@ const SectionBlock: FC<SectionBlockProps> = ({
   dragHandleRef,
 }) => {
   const copy = usePlanContentCopy();
-  const { updateSection, deleteSection, selectedSectionId, setSelectedSectionId } =
+  const { workspaceId, updateSection, deleteSection, selectedSectionId, setSelectedSectionId } =
     useBusinessPlan();
   const [showEditorModal, setShowEditorModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -903,6 +903,7 @@ const SectionBlock: FC<SectionBlockProps> = ({
         isSaving={isSaving}
         onSave={(newContent) => void handleSaveEdit(newContent)}
         onCancel={() => setShowEditorModal(false)}
+        workspaceId={workspaceId}
       />
 
       <Box

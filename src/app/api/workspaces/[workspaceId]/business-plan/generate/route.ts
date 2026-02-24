@@ -135,24 +135,15 @@ export async function POST(
       const entry = chapterEntries[i]!;
       const generatedText = aiResults[i];
 
-      // Create section_title section
-      await createSection({
-        chapterId: entry.subChapterId,
-        userId,
-        sectionType: "section_title",
-        content: { type: "section_title", text: entry.h2Title },
-        orderIndex: 0,
-      });
-      sectionCount++;
-
       // Create text section with generated content
+      // (chapter title is already shown as a heading, no need for a duplicate section_title)
       if (generatedText) {
         await createSection({
           chapterId: entry.subChapterId,
           userId,
           sectionType: "text",
           content: { type: "text", text: generatedText },
-          orderIndex: 1,
+          orderIndex: 0,
         });
         sectionCount++;
       }
