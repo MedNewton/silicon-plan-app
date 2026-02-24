@@ -834,11 +834,11 @@ const ImageEditor: FC<ImageEditorProps> = ({ content, onChange, copy, workspaceI
         body: formData,
       });
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Upload failed");
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data.error ?? "Upload failed");
       }
-      const { url } = await res.json();
-      onChange({ ...content, url });
+      const result = (await res.json()) as { url: string };
+      onChange({ ...content, url: result.url });
     } catch {
       setUploadError(copy.uploadFailed);
     } finally {
@@ -855,7 +855,7 @@ const ImageEditor: FC<ImageEditorProps> = ({ content, onChange, copy, workspaceI
     e.preventDefault();
     setIsDragOver(false);
     const file = e.dataTransfer.files[0];
-    if (file) handleFileUpload(file);
+    if (file) void handleFileUpload(file);
   };
 
   return (
@@ -895,7 +895,7 @@ const ImageEditor: FC<ImageEditorProps> = ({ content, onChange, copy, workspaceI
               hidden
               onChange={(e) => {
                 const file = e.target.files?.[0];
-                if (file) handleFileUpload(file);
+                if (file) void handleFileUpload(file);
                 e.target.value = "";
               }}
             />

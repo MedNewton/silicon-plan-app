@@ -486,7 +486,7 @@ const buildDocxSections = async (
                     children: [
                       new ImageRun({
                         data: imageBytes,
-                        type: imgType as "jpg" | "png" | "gif" | "bmp",
+                        type: imgType,
                         transformation: {
                           width: Math.round(dims.width * scale),
                           height: Math.round(dims.height * scale),
