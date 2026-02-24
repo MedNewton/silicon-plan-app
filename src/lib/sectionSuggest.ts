@@ -75,7 +75,7 @@ export function parseTransformedTextToContent(
     return {
       type: "list",
       items,
-      ordered: (originalContent as Record<string, unknown>).ordered ?? false,
+      ordered: (originalContent).ordered ?? false,
     };
   }
 
