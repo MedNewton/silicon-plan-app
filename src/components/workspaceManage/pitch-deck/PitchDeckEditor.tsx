@@ -1055,6 +1055,10 @@ const PitchDeckEditor: FC<PitchDeckEditorProps> = ({ workspaceId }) => {
           if (!selectedSlide) return;
           await updateSlide(selectedSlide.id, { title, content });
         }}
+        onAutoSave={async ({ title, content }) => {
+          if (!selectedSlide) return;
+          await updateSlide(selectedSlide.id, { title, content });
+        }}
       />
 
       <SlideAiDrawer

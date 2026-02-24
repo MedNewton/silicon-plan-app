@@ -2,7 +2,7 @@
 "use client";
 
 import type { FC } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Box,
   Button,
@@ -31,6 +31,7 @@ export type SlideEditorModalProps = {
   slide: PitchDeckSlide | null;
   onClose: () => void;
   onSave: (params: { title: string; content: PitchDeckSlideContent }) => Promise<void> | void;
+  onAutoSave?: (params: { title: string; content: PitchDeckSlideContent }) => Promise<void> | void;
 };
 
 type DraftFields = {
@@ -328,12 +329,15 @@ const buildContentFromDraft = (
   }
 };
 
-const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onSave }) => {
+const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onSave, onAutoSave }) => {
   const { locale } = useLanguage();
   const [contentType, setContentType] = useState<PitchDeckSlideContentType>("title_text");
   const [slideTitle, setSlideTitle] = useState("");
   const [draft, setDraft] = useState<DraftFields>(emptyDraft(""));
   const [isSaving, setIsSaving] = useState(false);
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const initializedSlideIdRef = useRef<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
 
   const copy =
     locale === "it"
@@ -372,6 +376,8 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
           cancel: "Annulla",
           save: "Salva",
           saving: "Salvataggio...",
+          autoSaving: "Salvataggio...",
+          autoSaved: "Salvato",
           helpComparison: "Usa | per separare le colonne. Una riga per linea.",
           helpTimeline: "Una voce per riga: data | titolo | descrizione",
           helpTeam: "Un membro per riga: nome | ruolo | bio",
@@ -423,6 +429,8 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
           cancel: "Cancel",
           save: "Save",
           saving: "Saving...",
+          autoSaving: "Saving...",
+          autoSaved: "Saved",
           helpComparison: "Use | to separate columns. One row per line.",
           helpTimeline: "One entry per line: date | title | description",
           helpTeam: "One member per line: name | role | bio",
@@ -455,25 +463,117 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
   };
 
   useEffect(() => {
+    if (!open) {
+      initializedSlideIdRef.current = null;
+      return;
+    }
     if (!slide) return;
+    if (initializedSlideIdRef.current === slide.id) return;
+    initializedSlideIdRef.current = slide.id;
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = null;
+    }
+    setSaveStatus("idle");
     setSlideTitle(slide.title);
     setContentType(slide.content.type);
     setDraft(buildDraftFromContent(slide.content, slide.title));
-  }, [slide]);
+  }, [open, slide]);
 
-  const handleContentTypeChange = (nextType: PitchDeckSlideContentType) => {
-    setContentType(nextType);
-    setDraft((prev) => {
-      const next = emptyDraft(slideTitle || prev.contentTitle || "");
-      next.contentTitle = prev.contentTitle || slideTitle;
-      next.text = prev.text;
-      next.bullets = prev.bullets;
-      return next;
-    });
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+    };
+  }, []);
+
+  const triggerAutoSave = useCallback(
+    (
+      nextTitle: string,
+      nextDraft: DraftFields,
+      nextContentType: PitchDeckSlideContentType = contentType
+    ) => {
+      if (!slide || !onAutoSave) return;
+
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+
+      setSaveStatus("idle");
+
+      autoSaveTimerRef.current = setTimeout(() => {
+        void (async () => {
+          setSaveStatus("saving");
+          try {
+            const content = buildContentFromDraft(nextContentType, nextTitle, nextDraft, slide.content);
+            await onAutoSave({ title: nextTitle.trim() || slide.title, content });
+            setSaveStatus("saved");
+          } catch {
+            setSaveStatus("idle");
+          } finally {
+            autoSaveTimerRef.current = null;
+          }
+        })();
+      }, 1500);
+    },
+    [contentType, slide, onAutoSave]
+  );
+
+  const handleDraftFieldChange = <K extends keyof DraftFields>(field: K, value: DraftFields[K]) => {
+    const nextDraft = { ...draft, [field]: value };
+    setDraft(nextDraft);
+    triggerAutoSave(slideTitle, nextDraft, contentType);
   };
+
+  const handleSlideTitleChange = (nextTitle: string) => {
+    setSlideTitle(nextTitle);
+    triggerAutoSave(nextTitle, draft, contentType);
+  };
+
+  const handleContentTypeChange = useCallback(
+    (nextType: PitchDeckSlideContentType) => {
+      setContentType(nextType);
+      setDraft((prev) => {
+        const next = emptyDraft(slideTitle || prev.contentTitle || "");
+        next.contentTitle = prev.contentTitle || slideTitle;
+        next.text = prev.text;
+        next.bullets = prev.bullets;
+        triggerAutoSave(slideTitle, next, nextType);
+        return next;
+      });
+    },
+    [slideTitle, triggerAutoSave]
+  );
+
+  const handleClose = useCallback(() => {
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = null;
+
+      if (slide && onAutoSave) {
+        const content = buildContentFromDraft(contentType, slideTitle, draft, slide.content);
+        setSaveStatus("saving");
+        void Promise.resolve(
+          onAutoSave({ title: slideTitle.trim() || slide.title, content })
+        )
+          .then(() => {
+            setSaveStatus("saved");
+          })
+          .catch(() => {
+            setSaveStatus("idle");
+          });
+      }
+    }
+    onClose();
+  }, [contentType, draft, onAutoSave, onClose, slide, slideTitle]);
 
   const handleSave = async () => {
     if (!slide) return;
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = null;
+    }
     setIsSaving(true);
     try {
       const content = buildContentFromDraft(contentType, slideTitle, draft, slide.content);
@@ -500,8 +600,23 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
   }, [contentType, copy.helpComparison, copy.helpMetrics, copy.helpTeam, copy.helpTimeline]);
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle sx={{ fontWeight: 600 }}>{copy.editSlide}</DialogTitle>
+    <Dialog
+      open={open}
+      onClose={() => {
+        handleClose();
+      }}
+      maxWidth="md"
+      fullWidth
+    >
+      <DialogTitle sx={{ fontWeight: 600, display: "flex", alignItems: "center", gap: 1 }}>
+        {copy.editSlide}
+        {saveStatus === "saving" ? (
+          <Typography sx={{ fontSize: 12, color: "#9CA3AF" }}>{copy.autoSaving}</Typography>
+        ) : null}
+        {saveStatus === "saved" ? (
+          <Typography sx={{ fontSize: 12, color: "#10B981" }}>{copy.autoSaved}</Typography>
+        ) : null}
+      </DialogTitle>
       <DialogContent sx={{ pt: 2, display: "flex", flexDirection: "column", gap: 2 }}>
         {!slide ? (
           <Typography sx={{ color: "#6B7280" }}>{copy.selectSlideToEdit}</Typography>
@@ -510,7 +625,7 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
             <TextField
               label={copy.slideTitle}
               value={slideTitle}
-              onChange={(e) => setSlideTitle(e.target.value)}
+              onChange={(e) => handleSlideTitleChange(e.target.value)}
               fullWidth
             />
 
@@ -533,7 +648,7 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
               <TextField
                 label={copy.contentTitle}
                 value={draft.contentTitle}
-                onChange={(e) => setDraft({ ...draft, contentTitle: e.target.value })}
+                onChange={(e) => handleDraftFieldChange("contentTitle", e.target.value)}
                 fullWidth
               />
             ) : null}
@@ -542,7 +657,7 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
               <TextField
                 label={copy.subtitle}
                 value={draft.subtitle}
-                onChange={(e) => setDraft({ ...draft, subtitle: e.target.value })}
+                onChange={(e) => handleDraftFieldChange("subtitle", e.target.value)}
                 fullWidth
               />
             ) : null}
@@ -551,7 +666,7 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
               <TextField
                 label={copy.bullets}
                 value={draft.bullets}
-                onChange={(e) => setDraft({ ...draft, bullets: e.target.value })}
+                onChange={(e) => handleDraftFieldChange("bullets", e.target.value)}
                 fullWidth
                 multiline
                 minRows={4}
@@ -562,7 +677,7 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
               <TextField
                 label={copy.bodyText}
                 value={draft.text}
-                onChange={(e) => setDraft({ ...draft, text: e.target.value })}
+                onChange={(e) => handleDraftFieldChange("text", e.target.value)}
                 fullWidth
                 multiline
                 minRows={5}
@@ -574,13 +689,13 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
                 <TextField
                   label={copy.imageUrl}
                   value={draft.imageUrl}
-                  onChange={(e) => setDraft({ ...draft, imageUrl: e.target.value })}
+                  onChange={(e) => handleDraftFieldChange("imageUrl", e.target.value)}
                   fullWidth
                 />
                 <TextField
                   label={copy.imageAltText}
                   value={draft.imageAlt}
-                  onChange={(e) => setDraft({ ...draft, imageAlt: e.target.value })}
+                  onChange={(e) => handleDraftFieldChange("imageAlt", e.target.value)}
                   fullWidth
                 />
                 <FormControl fullWidth>
@@ -591,10 +706,7 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
                     onChange={(e) => {
                       const value = e.target.value;
                       if (value === "left" || value === "right" || value === "top" || value === "bottom") {
-                        setDraft({
-                          ...draft,
-                          imagePosition: value,
-                        });
+                        handleDraftFieldChange("imagePosition", value);
                       }
                     }}
                   >
@@ -616,13 +728,13 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
                   <TextField
                     label={copy.leftTitle}
                     value={draft.leftTitle}
-                    onChange={(e) => setDraft({ ...draft, leftTitle: e.target.value })}
+                    onChange={(e) => handleDraftFieldChange("leftTitle", e.target.value)}
                     fullWidth
                   />
                   <TextField
                     label={copy.leftText}
                     value={draft.leftText}
-                    onChange={(e) => setDraft({ ...draft, leftText: e.target.value })}
+                    onChange={(e) => handleDraftFieldChange("leftText", e.target.value)}
                     fullWidth
                     multiline
                     minRows={3}
@@ -630,7 +742,7 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
                   <TextField
                     label={copy.leftBullets}
                     value={draft.leftBullets}
-                    onChange={(e) => setDraft({ ...draft, leftBullets: e.target.value })}
+                    onChange={(e) => handleDraftFieldChange("leftBullets", e.target.value)}
                     fullWidth
                     multiline
                     minRows={3}
@@ -643,13 +755,13 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
                   <TextField
                     label={copy.rightTitle}
                     value={draft.rightTitle}
-                    onChange={(e) => setDraft({ ...draft, rightTitle: e.target.value })}
+                    onChange={(e) => handleDraftFieldChange("rightTitle", e.target.value)}
                     fullWidth
                   />
                   <TextField
                     label={copy.rightText}
                     value={draft.rightText}
-                    onChange={(e) => setDraft({ ...draft, rightText: e.target.value })}
+                    onChange={(e) => handleDraftFieldChange("rightText", e.target.value)}
                     fullWidth
                     multiline
                     minRows={3}
@@ -657,7 +769,7 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
                   <TextField
                     label={copy.rightBullets}
                     value={draft.rightBullets}
-                    onChange={(e) => setDraft({ ...draft, rightBullets: e.target.value })}
+                    onChange={(e) => handleDraftFieldChange("rightBullets", e.target.value)}
                     fullWidth
                     multiline
                     minRows={3}
@@ -671,14 +783,14 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
                 <TextField
                   label={copy.headers}
                   value={draft.headers}
-                  onChange={(e) => setDraft({ ...draft, headers: e.target.value })}
+                  onChange={(e) => handleDraftFieldChange("headers", e.target.value)}
                   fullWidth
                 />
                 <TextField
                   label={copy.rows}
                   helperText={helpText}
                   value={draft.rows}
-                  onChange={(e) => setDraft({ ...draft, rows: e.target.value })}
+                  onChange={(e) => handleDraftFieldChange("rows", e.target.value)}
                   fullWidth
                   multiline
                   minRows={4}
@@ -691,7 +803,7 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
                 label={copy.timelineEntries}
                 helperText={helpText}
                 value={draft.timeline}
-                onChange={(e) => setDraft({ ...draft, timeline: e.target.value })}
+                onChange={(e) => handleDraftFieldChange("timeline", e.target.value)}
                 fullWidth
                 multiline
                 minRows={4}
@@ -703,7 +815,7 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
                 label={copy.teamMembers}
                 helperText={helpText}
                 value={draft.team}
-                onChange={(e) => setDraft({ ...draft, team: e.target.value })}
+                onChange={(e) => handleDraftFieldChange("team", e.target.value)}
                 fullWidth
                 multiline
                 minRows={4}
@@ -715,7 +827,7 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
                 label={copy.metrics}
                 helperText={helpText}
                 value={draft.metrics}
-                onChange={(e) => setDraft({ ...draft, metrics: e.target.value })}
+                onChange={(e) => handleDraftFieldChange("metrics", e.target.value)}
                 fullWidth
                 multiline
                 minRows={4}
@@ -727,7 +839,7 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
                 <TextField
                   label={copy.quote}
                   value={draft.quote}
-                  onChange={(e) => setDraft({ ...draft, quote: e.target.value })}
+                  onChange={(e) => handleDraftFieldChange("quote", e.target.value)}
                   fullWidth
                   multiline
                   minRows={3}
@@ -735,13 +847,13 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
                 <TextField
                   label={copy.author}
                   value={draft.author}
-                  onChange={(e) => setDraft({ ...draft, author: e.target.value })}
+                  onChange={(e) => handleDraftFieldChange("author", e.target.value)}
                   fullWidth
                 />
                 <TextField
                   label={copy.authorTitle}
                   value={draft.authorTitle}
-                  onChange={(e) => setDraft({ ...draft, authorTitle: e.target.value })}
+                  onChange={(e) => handleDraftFieldChange("authorTitle", e.target.value)}
                   fullWidth
                 />
               </Stack>
@@ -750,7 +862,7 @@ const SlideEditorModal: FC<SlideEditorModalProps> = ({ open, slide, onClose, onS
         )}
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={onClose} disabled={isSaving}>
+        <Button onClick={handleClose} disabled={isSaving}>
           {copy.cancel}
         </Button>
         <Button
