@@ -94,6 +94,14 @@ const PendingChangeCard: FC<PendingChangeCardProps> = ({
             in_progress: "In corso",
             done: "Completato",
           } as Record<string, string>,
+          textActionLabels: {
+            summarize: "Riassunto",
+            rephrase: "Parafrasato",
+            simplify: "Semplificato",
+            detail: "Espanso in dettaglio",
+            grammar: "Grammatica corretta",
+            translate: "Tradotto",
+          } as Record<string, string>,
           accept: "Accetta",
           reject: "Rifiuta",
         }
@@ -148,6 +156,14 @@ const PendingChangeCard: FC<PendingChangeCardProps> = ({
             todo: "To do",
             in_progress: "In progress",
             done: "Done",
+          } as Record<string, string>,
+          textActionLabels: {
+            summarize: "Summarized",
+            rephrase: "Rephrased",
+            simplify: "Simplified",
+            detail: "Expanded in detail",
+            grammar: "Grammar corrected",
+            translate: "Translated",
           } as Record<string, string>,
           accept: "Accept",
           reject: "Reject",
@@ -244,6 +260,16 @@ const PendingChangeCard: FC<PendingChangeCardProps> = ({
     }
 
     if (change.change_type === "update_section") {
+      const sourceAction = data.source_action as string | undefined;
+      if (sourceAction) {
+        const actionLabel = copy.textActionLabels?.[sourceAction] ?? sourceAction;
+        const langSuffix =
+          sourceAction === "translate" && typeof data.source_language === "string"
+            ? ` → ${data.source_language}`
+            : "";
+        const preview = data.content ? summarizeContent(data.content) : "";
+        return `${actionLabel}${langSuffix}${preview ? ` — ${preview}` : ""}`;
+      }
       if (data.content) {
         return summarizeContent(data.content);
       }

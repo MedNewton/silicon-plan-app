@@ -19,6 +19,14 @@ import {
 } from "@/server/businessPlanTasks";
 import { buildBusinessPlanContext, buildBusinessPlanSystemPrompt } from "@/lib/businessPlanAi";
 import { getWorkspaceAiContext } from "@/lib/workspaceAiContext";
+import {
+  type SectionAiAction,
+  SECTION_AI_ACTIONS,
+  SUPPORTED_SECTION_TYPES as SUPPORTED_TEXT_ACTION_TYPES,
+  executeSectionAiAction,
+  serializeSectionContentToText,
+  parseTransformedTextToContent,
+} from "@/lib/sectionSuggest";
 import type {
   BusinessPlanPendingChange,
   PendingChangeType,
@@ -29,6 +37,7 @@ type ChatBody = {
   message: string;
   conversationId?: string | null;
   selectedChapterId?: string | null;
+  selectedSectionId?: string | null;
   selectedTaskId?: string | null;
 };
 
@@ -172,6 +181,39 @@ const tools: ChatCompletionTool[] = [
           taskId: { type: "string" },
         },
         required: ["taskId"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "propose_section_text_action",
+      description:
+        "Propose a text transformation on an existing section. " +
+        "Use this when the user asks to summarize, rephrase, simplify, expand/detail, " +
+        "fix grammar, or translate a section's text content. " +
+        "The action will transform the section text and propose it as an update for user review.",
+      parameters: {
+        type: "object",
+        properties: {
+          sectionId: {
+            type: "string",
+            description:
+              "The ID of the section to transform. If omitted, the currently selected section will be used.",
+          },
+          action: {
+            type: "string",
+            enum: ["summarize", "rephrase", "simplify", "detail", "grammar", "translate"],
+            description: "The text transformation to apply.",
+          },
+          language: {
+            type: "string",
+            description:
+              "Target language for translation. Required when action is 'translate'. " +
+              "Supported: English, French, Spanish, Arabic, German, Italian.",
+          },
+        },
+        required: ["action"],
       },
     },
   },
@@ -757,6 +799,7 @@ const TOOL_TO_CHANGE: Record<string, PendingChangeType> = {
   propose_add_task: "add_task",
   propose_update_task: "update_task",
   propose_delete_task: "delete_task",
+  propose_section_text_action: "update_section",
 };
 
 export async function POST(
@@ -778,6 +821,7 @@ export async function POST(
     const body = (await req.json()) as ChatBody;
     const messageText = body.message?.trim();
     const selectedChapterId = body.selectedChapterId ?? null;
+    const selectedSectionId = body.selectedSectionId ?? null;
     const selectedTaskId = body.selectedTaskId ?? null;
 
     if (!messageText) {
@@ -842,6 +886,14 @@ export async function POST(
     if (selectedTaskRef) {
       selectedContextLines.push(
         `User has selected task: "${selectedTaskRef.title}" (id: ${selectedTaskRef.id}, level: ${selectedTaskRef.hierarchy_level})`
+      );
+    }
+    const selectedSectionRef = selectedSectionId
+      ? findSectionById(planData?.chapters ?? [], selectedSectionId)
+      : null;
+    if (selectedSectionRef) {
+      selectedContextLines.push(
+        `User has selected section: type="${selectedSectionRef.section_type}" (id: ${selectedSectionRef.id})`
       );
     }
 
@@ -937,9 +989,12 @@ export async function POST(
     });
     let toolCalls = completion.choices[0]?.message?.tool_calls ?? [];
 
-    const looksLikeStructuralRequest = /\b(chapter|section|task|subtask|h1|h2|outline|structure)\b/i.test(
+    const isSectionTextActionRequest = /\b(summarize|rephrase|paraphrase|simplify|simpler|expand|detail|grammar|spelling|punctuation|translate|translation)\b/i.test(
       messageText
     );
+    const looksLikeStructuralRequest =
+      /\b(chapter|section|task|subtask|h1|h2|outline|structure)\b/i.test(messageText) ||
+      isSectionTextActionRequest;
 
     // Retry logic: handles both "no tool call" and "wrong tool type" scenarios
     const hasWrongToolType = (calls: typeof toolCalls): boolean => {
@@ -952,13 +1007,16 @@ export async function POST(
       const hasChapterTool = calls.some((c) => c.type === "function" && c.function.name.includes("chapter"));
       const hasTaskTool = calls.some((c) => c.type === "function" && c.function.name.includes("task"));
       const hasSectionTool = calls.some((c) => c.type === "function" && c.function.name.includes("section"));
+      const hasTextActionTool = calls.some((c) => c.type === "function" && c.function.name === "propose_section_text_action");
 
       // Wrong: user said "chapter" but only got task tools, no chapter tools
       if (mentionsChapter && !mentionsTask && !hasChapterTool && hasTaskTool) return true;
       // Wrong: user said "task" but only got chapter tools, no task tools
       if (mentionsTask && !mentionsChapter && !hasTaskTool && hasChapterTool) return true;
       // Wrong: user said "section" but got no section tools
-      if (mentionsSection && !mentionsChapter && !mentionsTask && !hasSectionTool && (hasChapterTool || hasTaskTool)) return true;
+      if (mentionsSection && !mentionsChapter && !mentionsTask && !hasSectionTool && !hasTextActionTool && (hasChapterTool || hasTaskTool)) return true;
+      // Wrong: user asked for text action but got structural tools instead
+      if (isSectionTextActionRequest && !hasTextActionTool && !mentionsChapter && !mentionsTask) return true;
 
       return false;
     };
@@ -971,6 +1029,7 @@ export async function POST(
 - "chapter"/"subchapter" → use chapter tools (propose_add_chapter, propose_update_chapter, propose_delete_chapter)
 - "task"/"subtask"/"h1"/"h2" → use task tools (propose_add_task, propose_update_task, propose_delete_task)
 - "section"/"paragraph"/"content" → use section tools (propose_add_section, propose_update_section, propose_delete_section)
+- "summarize"/"rephrase"/"simplify"/"detail"/"grammar"/"translate" → use propose_section_text_action
 Do NOT mix tool types unless the user explicitly asks for multiple entity types.`
         : "";
 
@@ -981,7 +1040,7 @@ Do NOT mix tool types unless the user explicitly asks for multiple entity types.
             role: "system",
             content: `${systemPrompt}
 
-You must call one or more tools when the user asks to create, update, delete, or structure chapters/sections/tasks.
+You must call one or more tools when the user asks to create, update, delete, or structure chapters/sections/tasks, or when the user asks to summarize, rephrase, simplify, detail, fix grammar, or translate a section.
 If selected UI context is provided, treat "here" or "this" as that selected target.
 If the request is ambiguous, ask a concise clarifying question.${retryHint}`,
           },
@@ -1581,6 +1640,91 @@ If the request is ambiguous, ask a concise clarifying question.${retryHint}`,
             break;
           }
           proposedData = {};
+          break;
+        }
+        case "propose_section_text_action": {
+          const actionValue = args.action as string | undefined;
+          if (
+            !actionValue ||
+            !SECTION_AI_ACTIONS.has(actionValue as SectionAiAction)
+          ) {
+            skippedUpdates.push("Invalid text action requested.");
+            break;
+          }
+
+          let resolvedSectionId =
+            readStringArg(args, ["sectionId", "section_id"]) ?? null;
+          if (!resolvedSectionId && selectedSectionId) {
+            resolvedSectionId = selectedSectionId;
+          }
+
+          if (!resolvedSectionId) {
+            skippedUpdates.push(
+              "I need to know which section to transform. Please select a section in the editor or specify which one."
+            );
+            break;
+          }
+
+          const targetSection = findSectionById(
+            planData?.chapters ?? [],
+            resolvedSectionId
+          );
+          if (!targetSection) {
+            skippedUpdates.push("I couldn't find the specified section.");
+            break;
+          }
+
+          if (!SUPPORTED_TEXT_ACTION_TYPES.has(targetSection.section_type)) {
+            skippedUpdates.push(
+              "This text action is only available for text-based sections (text, title, subsection, list, table)."
+            );
+            break;
+          }
+
+          const sectionText = serializeSectionContentToText(
+            targetSection.content
+          );
+          if (!sectionText.trim()) {
+            skippedUpdates.push(
+              "The section has no text content to transform."
+            );
+            break;
+          }
+
+          const actionLanguage =
+            actionValue === "translate"
+              ? readStringArg(args, ["language"]) ?? "English"
+              : undefined;
+
+          try {
+            const transformedText = await executeSectionAiAction({
+              action: actionValue as SectionAiAction,
+              sourceText: sectionText,
+              sectionType: targetSection.section_type,
+              language: actionLanguage,
+              systemPrompt,
+              openAiApiKey,
+            });
+
+            const newContent = parseTransformedTextToContent(
+              transformedText,
+              targetSection.content
+            );
+
+            changeType = "update_section" as PendingChangeType;
+            targetId = resolvedSectionId;
+            proposedData = {
+              content: newContent,
+              section_type: targetSection.section_type,
+              source_action: actionValue,
+              source_language: actionLanguage ?? null,
+            };
+          } catch (err) {
+            console.error("Section text action error:", err);
+            skippedUpdates.push(
+              "Failed to apply the text transformation. Please try again."
+            );
+          }
           break;
         }
         default:

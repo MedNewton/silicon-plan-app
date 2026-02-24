@@ -717,6 +717,7 @@ export const BusinessPlanProvider: FC<BusinessPlanProviderProps> = ({
               conversationId,
               message: content.trim(),
               selectedChapterId,
+              selectedSectionId,
               selectedTaskId,
             }),
           }
@@ -753,7 +754,7 @@ export const BusinessPlanProvider: FC<BusinessPlanProviderProps> = ({
         setIsChatSending(false);
       }
     },
-    [workspaceId, conversationId, selectedChapterId, selectedTaskId]
+    [workspaceId, conversationId, selectedChapterId, selectedSectionId, selectedTaskId]
   );
 
   const acceptPendingChange = useCallback(

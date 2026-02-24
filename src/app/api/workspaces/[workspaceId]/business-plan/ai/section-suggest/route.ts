@@ -2,27 +2,22 @@
 
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import OpenAI from "openai";
 
 import { getBusinessPlanWithChapters, getOrCreateBusinessPlan } from "@/server/businessPlan";
 import { buildBusinessPlanContext, buildBusinessPlanSystemPrompt } from "@/lib/businessPlanAi";
 import { getWorkspaceAiContext } from "@/lib/workspaceAiContext";
+import {
+  type SectionAiAction,
+  ACTION_PROMPTS,
+  executeSectionAiAction,
+} from "@/lib/sectionSuggest";
 
 type SuggestBody = {
   sectionId: string;
   sectionType?: string;
-  action: "summarize" | "rephrase" | "simplify" | "detail" | "grammar" | "translate";
+  action: SectionAiAction;
   text?: string;
   language?: string;
-};
-
-const ACTION_PROMPTS: Record<SuggestBody["action"], string> = {
-  summarize: "Summarize the text in a concise paragraph.",
-  rephrase: "Rephrase the text while preserving the original meaning.",
-  simplify: "Rewrite the text to be simpler and easier to read.",
-  detail: "Expand the text with more detail and clarity.",
-  grammar: "Correct grammar, spelling, and punctuation while preserving tone.",
-  translate: "Translate the text to the requested language.",
 };
 
 const findSectionText = (
@@ -104,37 +99,15 @@ export async function POST(
       return new NextResponse("No text available for this section", { status: 400 });
     }
 
-    const formattingHint =
-      sectionType === "list"
-        ? "Return one list item per line."
-        : sectionType === "table" || sectionType === "comparison_table"
-        ? "Return a table with the first line as headers and each next line as a row, using ' | ' as the separator."
-        : null;
-
-    const prompt = [
-      `Task: ${ACTION_PROMPTS[action]}`,
-      action === "translate" ? `Target language: ${language ?? "English"}` : null,
-      formattingHint,
-      "Return ONLY the updated text. Do not add headings or bullet labels.",
-      "",
-      "Text:",
+    const output = await executeSectionAiAction({
+      action,
       sourceText,
-    ]
-      .filter(Boolean)
-      .join("\n");
-
-    const openai = new OpenAI({ apiKey: openAiApiKey });
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: prompt },
-      ],
-      temperature: 0.4,
-      max_tokens: 600,
+      sectionType: sectionType ?? "text",
+      language,
+      systemPrompt,
+      openAiApiKey,
     });
 
-    const output = completion.choices[0]?.message?.content?.trim() ?? sourceText;
     return NextResponse.json({ text: output });
   } catch (error) {
     console.error("Unexpected error in POST /ai/section-suggest:", error);
