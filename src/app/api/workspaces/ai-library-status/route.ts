@@ -44,10 +44,10 @@ export async function GET() {
     const hasLibrarySet = new Set<string>();
 
     for (const row of knowledgeResult.data ?? []) {
-      hasLibrarySet.add(row.workspace_id as string);
+      hasLibrarySet.add(row.workspace_id);
     }
     for (const row of documentsResult.data ?? []) {
-      hasLibrarySet.add(row.workspace_id as string);
+      hasLibrarySet.add(row.workspace_id);
     }
 
     const missingLibrary = workspaceIds.filter((id) => !hasLibrarySet.has(id));
