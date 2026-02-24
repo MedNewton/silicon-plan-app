@@ -2,12 +2,14 @@
 "use client";
 
 import {
+  Alert,
   Box,
   Button,
   Stack,
   Typography,
   useTheme,
 } from "@mui/material";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import type { ReactElement } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -25,6 +27,7 @@ import type { TranslationKey } from "@/lib/i18n/messages";
 export type AIDocumentMyWorkspacesTabContentProps = Readonly<{
   workspaces: Workspace[];
   loading: boolean;
+  missingLibraryIds?: string[];
 }>;
 
 type Translator = (
@@ -87,10 +90,14 @@ function formatDate(
 export default function AIDocumentMyWorkspacesTabContent({
   workspaces,
   loading,
+  missingLibraryIds = [],
 }: AIDocumentMyWorkspacesTabContentProps): ReactElement {
   const theme = useTheme();
   const router = useRouter();
   const { locale, t } = useLanguage();
+
+  const missingSet = new Set(missingLibraryIds);
+  const workspacesMissingLibrary = workspaces.filter((w) => missingSet.has(w.id));
 
   if (loading) {
     return (
@@ -142,6 +149,56 @@ export default function AIDocumentMyWorkspacesTabContent({
           maxWidth: 900,
         }}
       >
+        {workspacesMissingLibrary.length > 0 && (
+          <Alert
+            severity="warning"
+            icon={<WarningAmberIcon sx={{ fontSize: 22 }} />}
+            sx={{
+              mb: 4,
+              borderRadius: 3,
+              border: "1px solid #FDE68A",
+              bgcolor: "#FFFBEB",
+              "& .MuiAlert-icon": { color: "#D97706", alignItems: "center" },
+              "& .MuiAlert-message": { width: "100%" },
+            }}
+          >
+            <Typography sx={{ fontSize: 14, fontWeight: 600, color: "#92400E", mb: 0.5 }}>
+              {locale === "it"
+                ? "Libreria AI mancante"
+                : "Missing AI Library"}
+            </Typography>
+            <Typography sx={{ fontSize: 13, color: "#92400E", lineHeight: 1.6 }}>
+              {locale === "it"
+                ? "I seguenti workspace non hanno ancora contenuti nella Libreria AI (documenti o note). Aggiungi contesto per migliorare la generazione del business plan:"
+                : "The following workspaces don't have any AI Library content (documents or notes) yet. Add context to improve business plan generation:"}
+            </Typography>
+            <Box component="ul" sx={{ mt: 1, mb: 0, pl: 2.5 }}>
+              {workspacesMissingLibrary.map((ws) => (
+                <Box
+                  component="li"
+                  key={ws.id}
+                  sx={{ fontSize: 13, color: "#92400E", mb: 0.3 }}
+                >
+                  <Typography
+                    component="a"
+                    href={`/workspaces/${ws.id}/settings?tab=library`}
+                    sx={{
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: "#4C6AD2",
+                      textDecoration: "underline",
+                      cursor: "pointer",
+                      "&:hover": { color: "#3B5ABF" },
+                    }}
+                  >
+                    {ws.name}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+          </Alert>
+        )}
+
         {workspaces.map((workspace, index) => {
           const createdAt = workspace.created_at ?? (null as string | null);
           const dateLabel = createdAt ? formatDate(createdAt, locale, t) : "";

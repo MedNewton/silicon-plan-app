@@ -35,17 +35,26 @@ export default function AIDocumentsPage() {
 
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [loadingWorkspaces, setLoadingWorkspaces] = useState(false);
+  const [missingLibraryIds, setMissingLibraryIds] = useState<string[]>([]);
 
   useEffect(() => {
     const loadWorkspaces = async () => {
       try {
         setLoadingWorkspaces(true);
-        const res = await fetch("/api/workspaces");
-        if (!res.ok) {
+        const [wsRes, libRes] = await Promise.all([
+          fetch("/api/workspaces"),
+          fetch("/api/workspaces/ai-library-status"),
+        ]);
+        if (!wsRes.ok) {
           throw new Error("Failed to load workspaces");
         }
-        const data = (await res.json()) as ListWorkspacesResponse;
-        setWorkspaces(data.workspaces ?? []);
+        const wsData = (await wsRes.json()) as ListWorkspacesResponse;
+        setWorkspaces(wsData.workspaces ?? []);
+
+        if (libRes.ok) {
+          const libData = (await libRes.json()) as { missingLibrary: string[] };
+          setMissingLibraryIds(libData.missingLibrary ?? []);
+        }
       } catch (error) {
         console.error("Failed to load workspaces", error);
       } finally {
@@ -75,6 +84,7 @@ export default function AIDocumentsPage() {
           <AIDocumentMyWorkspacesTabContent
             workspaces={workspaces}
             loading={loadingWorkspaces}
+            missingLibraryIds={missingLibraryIds}
           />
         )}
       </>

@@ -521,47 +521,108 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
         return;
       }
 
+      // --- Segment-based PDF rendering with proper margins ---
+      const marginPx = mmToPx(A4_MARGIN_MM);
+      const contentWidth = paperSizePx.width - 2 * marginPx;
+      const contentHeightPerPage = paperSizePx.height - 2 * marginPx;
+
+      // 1. Create offscreen container to measure element heights
       const container = document.createElement("div");
       container.style.position = "fixed";
       container.style.left = "-9999px";
       container.style.top = "0";
-      container.style.width = `${paperSizePx.width}px`;
-      container.style.padding = `${mmToPx(A4_MARGIN_MM)}px`;
+      container.style.width = `${contentWidth}px`;
       container.style.background = "#FFFFFF";
       container.style.fontFamily = fontFamily;
       container.innerHTML = html;
       document.body.appendChild(container);
 
-      const canvas = await html2canvas(container, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: "#FFFFFF",
-      });
+      // Extract the <body> children from the parsed HTML
+      const bodyEl = container.querySelector("body");
+      const sourceEl = bodyEl ?? container;
+      const blocks = Array.from(sourceEl.children) as HTMLElement[];
 
-      const imgData = canvas.toDataURL("image/png");
+      // 2. Group blocks into pages, avoiding mid-element breaks
+      type PageGroup = { elements: HTMLElement[]; totalHeight: number };
+      const pages: PageGroup[] = [];
+      let currentPage: PageGroup = { elements: [], totalHeight: 0 };
+
+      for (const block of blocks) {
+        const h = block.offsetHeight;
+        if (currentPage.totalHeight + h > contentHeightPerPage && currentPage.elements.length > 0) {
+          pages.push(currentPage);
+          currentPage = { elements: [], totalHeight: 0 };
+        }
+        currentPage.elements.push(block);
+        currentPage.totalHeight += h;
+      }
+      if (currentPage.elements.length > 0) pages.push(currentPage);
+
+      // 3. Render each page group separately and add to PDF
       const pdf = new jsPDF({
         unit: "px",
         format: [paperSizePx.width, paperSizePx.height],
       });
 
-      const imgWidth = paperSizePx.width;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-      let position = 0;
+      for (let i = 0; i < pages.length; i++) {
+        if (i > 0) pdf.addPage();
 
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= paperSizePx.height;
+        const pageContainer = document.createElement("div");
+        pageContainer.style.width = `${contentWidth}px`;
+        pageContainer.style.background = "#FFFFFF";
+        pageContainer.style.fontFamily = fontFamily;
+        pageContainer.style.fontSize = `${fontSize}px`;
+        pageContainer.style.color = "#1F2933";
+        pageContainer.style.lineHeight = "1.6";
+        pageContainer.style.position = "fixed";
+        pageContainer.style.left = "-9999px";
+        pageContainer.style.top = "0";
 
-      while (heightLeft > 0) {
-        position -= paperSizePx.height;
-        pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-        heightLeft -= paperSizePx.height;
+        // Copy the stylesheet from the source container
+        const styleTag = container.querySelector("style");
+        if (styleTag) {
+          pageContainer.appendChild(styleTag.cloneNode(true));
+        }
+
+        for (const el of pages[i]!.elements) {
+          pageContainer.appendChild(el.cloneNode(true));
+        }
+        document.body.appendChild(pageContainer);
+
+        const canvas = await html2canvas(pageContainer, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: "#FFFFFF",
+          width: contentWidth,
+        });
+
+        const imgData = canvas.toDataURL("image/png");
+        const imgHeight = (canvas.height * contentWidth) / canvas.width;
+
+        // If the segment is taller than the content area (oversized element),
+        // slice it across multiple pages with margins
+        if (imgHeight > contentHeightPerPage) {
+          let sliceOffset = 0;
+          let isFirstSlice = true;
+          while (sliceOffset < imgHeight) {
+            if (!isFirstSlice) pdf.addPage();
+            pdf.addImage(
+              imgData, "PNG",
+              marginPx, marginPx - sliceOffset,
+              contentWidth, imgHeight,
+            );
+            sliceOffset += contentHeightPerPage;
+            isFirstSlice = false;
+          }
+        } else {
+          pdf.addImage(imgData, "PNG", marginPx, marginPx, contentWidth, imgHeight);
+        }
+
+        pageContainer.remove();
       }
 
-      const safeName2 = sanitizeFileName(businessPlan.title || "business-plan", "business-plan");
-      pdf.save(`${safeName2}.pdf`);
       container.remove();
+      pdf.save(`${safeName}.pdf`);
       toast.success(copy.toastPdfExported);
     } catch (error) {
       console.error("Failed to export:", error);

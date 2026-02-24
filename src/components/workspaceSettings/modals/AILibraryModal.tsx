@@ -58,7 +58,7 @@ const AILibraryModal: FC<AILibraryModalProps> = ({
           uploadPrefix: "Carica",
           uploadSuffix: "o trascina qui",
           fileTypes:
-            "PDF, XLS, XLSX, PPT, PPTX, TXT, DOC, DOCX, CSV (max 3MB)",
+            "PDF, XLS, XLSX, PPT, PPTX, TXT, DOC, DOCX, CSV (max 200MB)",
           selectedFile: "File selezionato",
           notesTitleLabel: "Titolo",
           notesTitlePlaceholder: "Aggiungi titolo",
@@ -89,7 +89,7 @@ const AILibraryModal: FC<AILibraryModalProps> = ({
           uploadPrefix: "Upload",
           uploadSuffix: "or drag and drop",
           fileTypes:
-            "PDF, XLS, XLSX, PPT, PPTX, TXT, DOC, DOCX, CSV (max. 3MB)",
+            "PDF, XLS, XLSX, PPT, PPTX, TXT, DOC, DOCX, CSV (max. 200MB)",
           selectedFile: "Selected file",
           notesTitleLabel: "Title",
           notesTitlePlaceholder: "Add title",

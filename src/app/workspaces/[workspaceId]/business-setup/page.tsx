@@ -783,7 +783,7 @@ export default function WorkspaceBusinessSetupPage() {
       if (!currentData.isOperating) {
         errors.isOperating = copy.errOperationStatus;
       }
-      if (!currentData.businessPlanPurpose.trim()) {
+      if (!currentData.businessPlanPurpose.trim() || currentData.businessPlanPurpose.trim() === "Other") {
         errors.businessPlanPurpose = copy.errPlanPurpose;
       }
     }
@@ -836,7 +836,7 @@ export default function WorkspaceBusinessSetupPage() {
       if (!currentData.productOrService.trim()) {
         errors.productOrService = copy.errProductService;
       }
-      if (!currentData.salesChannel.trim()) {
+      if (!currentData.salesChannel.trim() || currentData.salesChannel.trim() === "Other") {
         errors.salesChannel = copy.errSalesChannel;
       }
     }
@@ -845,7 +845,7 @@ export default function WorkspaceBusinessSetupPage() {
       if (!currentData.targetMarket.trim()) {
         errors.targetMarket = copy.errTargetMarket;
       }
-      if (!currentData.teamSize.trim()) {
+      if (!currentData.teamSize.trim() || currentData.teamSize.trim() === "Other") {
         errors.teamSize = copy.errTeamSize;
       }
     }
@@ -1193,7 +1193,7 @@ export default function WorkspaceBusinessSetupPage() {
               onChange={(event) => {
                 const next = event.target.value;
                 if (next === "Other") {
-                  updateField("businessPlanPurpose", "");
+                  updateField("businessPlanPurpose", "Other");
                 } else {
                   updateField("businessPlanPurpose", next);
                 }
@@ -1215,16 +1215,19 @@ export default function WorkspaceBusinessSetupPage() {
               ))}
               <MenuItem value="Other">{copy.other}</MenuItem>
             </Select>
-            <TextField
-              fullWidth
-              sx={{ mt: 1.5 }}
-              placeholder={copy.businessPlanPurposePlaceholder}
-              value={data.businessPlanPurpose}
-              onChange={(e) => updateField("businessPlanPurpose", e.target.value)}
-              error={Boolean(fieldErrors.businessPlanPurpose)}
-              helperText={fieldErrors.businessPlanPurpose}
-              InputProps={{ sx: inputBaseSx }}
-            />
+            {!PURPOSE_OPTIONS.includes(data.businessPlanPurpose as never) &&
+              data.businessPlanPurpose !== "" && (
+              <TextField
+                fullWidth
+                sx={{ mt: 1.5 }}
+                placeholder={copy.businessPlanPurposePlaceholder}
+                value={data.businessPlanPurpose === "Other" ? "" : data.businessPlanPurpose}
+                onChange={(e) => updateField("businessPlanPurpose", e.target.value || "Other")}
+                error={Boolean(fieldErrors.businessPlanPurpose)}
+                helperText={fieldErrors.businessPlanPurpose}
+                InputProps={{ sx: inputBaseSx }}
+              />
+            )}
           </Box>
         </Stack>
       );
@@ -1516,7 +1519,7 @@ export default function WorkspaceBusinessSetupPage() {
               onChange={(event) => {
                 const next = event.target.value;
                 if (next === "Other") {
-                  updateField("salesChannel", "");
+                  updateField("salesChannel", "Other");
                 } else {
                   updateField("salesChannel", next);
                 }
@@ -1538,16 +1541,19 @@ export default function WorkspaceBusinessSetupPage() {
               ))}
               <MenuItem value="Other">{copy.other}</MenuItem>
             </Select>
-            <TextField
-              fullWidth
-              sx={{ mt: 1.5 }}
-              placeholder={copy.salesChannelPlaceholder}
-              value={data.salesChannel}
-              onChange={(e) => updateField("salesChannel", e.target.value)}
-              error={Boolean(fieldErrors.salesChannel)}
-              helperText={fieldErrors.salesChannel}
-              InputProps={{ sx: inputBaseSx }}
-            />
+            {!SALES_CHANNEL_OPTIONS.includes(data.salesChannel as never) &&
+              data.salesChannel !== "" && (
+              <TextField
+                fullWidth
+                sx={{ mt: 1.5 }}
+                placeholder={copy.salesChannelPlaceholder}
+                value={data.salesChannel === "Other" ? "" : data.salesChannel}
+                onChange={(e) => updateField("salesChannel", e.target.value || "Other")}
+                error={Boolean(fieldErrors.salesChannel)}
+                helperText={fieldErrors.salesChannel}
+                InputProps={{ sx: inputBaseSx }}
+              />
+            )}
           </Box>
         </Stack>
       );
@@ -1589,7 +1595,7 @@ export default function WorkspaceBusinessSetupPage() {
               onChange={(event) => {
                 const next = event.target.value;
                 if (next === "Other") {
-                  updateField("teamSize", "");
+                  updateField("teamSize", "Other");
                 } else {
                   updateField("teamSize", next);
                 }
@@ -1611,16 +1617,19 @@ export default function WorkspaceBusinessSetupPage() {
               ))}
               <MenuItem value="Other">{copy.other}</MenuItem>
             </Select>
-            <TextField
-              fullWidth
-              sx={{ mt: 1.5 }}
-              placeholder={copy.teamSizePlaceholder}
-              value={data.teamSize}
-              onChange={(e) => updateField("teamSize", e.target.value)}
-              error={Boolean(fieldErrors.teamSize)}
-              helperText={fieldErrors.teamSize}
-              InputProps={{ sx: inputBaseSx }}
-            />
+            {!TEAM_SIZE_OPTIONS.includes(data.teamSize as never) &&
+              data.teamSize !== "" && (
+              <TextField
+                fullWidth
+                sx={{ mt: 1.5 }}
+                placeholder={copy.teamSizePlaceholder}
+                value={data.teamSize === "Other" ? "" : data.teamSize}
+                onChange={(e) => updateField("teamSize", e.target.value || "Other")}
+                error={Boolean(fieldErrors.teamSize)}
+                helperText={fieldErrors.teamSize}
+                InputProps={{ sx: inputBaseSx }}
+              />
+            )}
           </Box>
         </Stack>
       );

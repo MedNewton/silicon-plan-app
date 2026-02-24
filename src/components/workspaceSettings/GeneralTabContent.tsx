@@ -86,7 +86,7 @@ const GeneralTabContent = ({
           save: "Save",
           deleteDialogTitle: "Delete workspace",
           deleteDialogDescription:
-            "This action cannot be undone. Type {name} to confirm deletion.",
+            'This action cannot be undone. Type "{name}" to confirm deletion.',
           deleteDialogPlaceholder: "Workspace name",
           cancel: "Cancel",
           deleting: "Deleting...",

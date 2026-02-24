@@ -1,5 +1,7 @@
 // src/app/api/workspaces/[workspaceId]/ai-library/documents/route.ts
 
+export const maxDuration = 120; // allow longer uploads
+
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 
@@ -17,7 +19,7 @@ import {
 } from "@/lib/aiDocumentExtraction";
 
 type Supa = SupabaseClient<SupabaseDb>;
-const MAX_UPLOAD_BYTES = 3 * 1024 * 1024;
+const MAX_UPLOAD_BYTES = 200 * 1024 * 1024;
 
 async function ensureWorkspaceAccess(
   client: Supa,
@@ -131,7 +133,7 @@ export async function POST(
 
     if (file.size > MAX_UPLOAD_BYTES) {
       return NextResponse.json(
-        { error: "File is too large. Maximum allowed size is 3MB." },
+        { error: "File is too large. Maximum allowed size is 200MB." },
         { status: 400 },
       );
     }

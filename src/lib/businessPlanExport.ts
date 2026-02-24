@@ -182,16 +182,18 @@ const renderSectionHtml = (
 
 const renderChapterHtml = (
   chapter: BusinessPlanChapterWithSections,
-  currencyCode?: BusinessPlanCurrencyCode
+  currencyCode?: BusinessPlanCurrencyCode,
+  isChild = false,
 ): string => {
+  const headingTag = isChild ? "h2" : "h1";
   const sections = (chapter.sections ?? []).map((section) =>
-    renderSectionHtml(section.content, currencyCode)
+    `<div class="export-block">${renderSectionHtml(section.content, currencyCode)}</div>`
   );
   const children = (chapter.children ?? []).map((child) =>
-    renderChapterHtml(child, currencyCode)
+    renderChapterHtml(child, currencyCode, true)
   );
   return [
-    `<h1>${escapeHtml(chapter.title ?? "")}</h1>`,
+    `<div class="export-block"><${headingTag}>${escapeHtml(chapter.title ?? "")}</${headingTag}></div>`,
     ...sections,
     ...children,
   ].join("\n");
@@ -251,6 +253,9 @@ export const buildBusinessPlanHtml = (
         color: #1F2933;
         line-height: 1.6;
       }
+      .export-block {
+        break-inside: avoid;
+      }
       .brand-header {
         display: flex;
         align-items: center;
@@ -277,6 +282,7 @@ export const buildBusinessPlanHtml = (
       h1, h2, h3 {
         color: ${headingColor};
         margin: 0;
+        break-after: avoid;
       }
       h1 {
         margin-top: 28px;
@@ -310,6 +316,7 @@ export const buildBusinessPlanHtml = (
         width: 100%;
         border-collapse: collapse;
         margin: 14px 0;
+        break-inside: avoid;
       }
       th, td {
         border: 1px solid #E5E7EB;
@@ -323,6 +330,7 @@ export const buildBusinessPlanHtml = (
       }
       figure {
         margin: 14px 0;
+        break-inside: avoid;
       }
       figcaption {
         margin-top: 6px;
@@ -336,6 +344,9 @@ export const buildBusinessPlanHtml = (
         border: 0;
         border-top: 1px solid #D1D5DB;
       }
+      li {
+        break-inside: avoid;
+      }
       .page-break {
         break-after: page;
         page-break-after: always;
@@ -344,9 +355,9 @@ export const buildBusinessPlanHtml = (
     </style>
   </head>
   <body>
-    ${headerHtml}
-    <h1>${title}</h1>
-    ${currencyLabel ? `<p class="currency-note">Currency: ${currencyLabel}</p>` : ""}
+    ${headerHtml ? `<div class="export-block">${headerHtml}</div>` : ""}
+    <div class="export-block"><h1>${title}</h1></div>
+    ${currencyLabel ? `<div class="export-block"><p class="currency-note">Currency: ${currencyLabel}</p></div>` : ""}
     ${body}
   </body>
 </html>`;
