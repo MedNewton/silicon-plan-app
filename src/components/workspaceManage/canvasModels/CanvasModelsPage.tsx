@@ -265,7 +265,7 @@ const CanvasModelsPage: FC<CanvasModelsPageProps> = ({ workspaceId }) => {
               {models.map((model) => (
                 <Grid key={model.id} size={{ xs: 12, sm: 6, lg: 4 }}>
                   <Box
-                    onClick={() => handleCanvasClick(model.id as WorkspaceCanvasTemplateType, model.title)}
+                    onClick={() => handleCanvasClick("business-model" as WorkspaceCanvasTemplateType, model.title)}
                     sx={{
                       borderRadius: 3,
                       border: "1px solid #E2E8F0",
