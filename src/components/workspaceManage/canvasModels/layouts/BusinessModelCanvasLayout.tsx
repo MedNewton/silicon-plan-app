@@ -185,6 +185,7 @@ const BusinessModelCanvasLayout: FC<BusinessModelCanvasLayoutProps> = ({
           sx={{
             gridRow: "1 / 3",
             borderLeft: "1px solid #D1D5DB",
+            borderRight: "1px solid #D1D5DB",
             borderBottom: "1px solid #D1D5DB",
           }}
         >
