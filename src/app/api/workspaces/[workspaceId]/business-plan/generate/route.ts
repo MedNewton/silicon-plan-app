@@ -13,8 +13,183 @@ import {
 } from "@/server/businessPlan";
 import { getWorkspaceAiContext } from "@/lib/workspaceAiContext";
 import { DEFAULT_BUSINESS_PLAN_TASK_TEMPLATE } from "@/server/businessPlanTaskTemplate";
+import type { BusinessPlanSectionContent } from "@/types/workspaces";
 
 const openai = new OpenAI({ apiKey: process.env.OPEN_AI_API_KEY });
+
+// ---------------------------------------------------------------------------
+// Structured output: the AI returns a JSON array of section blocks.
+// ---------------------------------------------------------------------------
+
+type AiTextBlock = { type: "text"; text: string };
+type AiSubsectionBlock = { type: "subsection"; text: string };
+type AiListBlock = { type: "list"; items: string[]; ordered?: boolean };
+type AiTableBlock = { type: "table"; headers: string[]; rows: string[][] };
+
+type AiSectionBlock =
+  | AiTextBlock
+  | AiSubsectionBlock
+  | AiListBlock
+  | AiTableBlock;
+
+const STRUCTURED_SYSTEM_PROMPT = `You are Silicon Plan AI, an expert business plan writer.
+You produce professional, investor-ready business plan sections.
+
+CRITICAL: You MUST return a valid JSON array of section blocks. No markdown, no prose outside the JSON.
+
+Each element in the array must be ONE of these objects:
+
+1. Text paragraph:
+   {"type":"text","text":"Your paragraph here."}
+
+2. Sub-heading within the section:
+   {"type":"subsection","text":"Sub-heading title"}
+
+3. Bullet / numbered list:
+   {"type":"list","items":["Item 1","Item 2","Item 3"],"ordered":false}
+   Set "ordered":true for numbered lists.
+
+4. Table:
+   {"type":"table","headers":["Col A","Col B","Col C"],"rows":[["r1c1","r1c2","r1c3"],["r2c1","r2c2","r2c3"]]}
+
+Rules:
+- ALWAYS use "table" for any tabular data (TAM/SAM/SOM, competitor matrices, cost breakdowns, financial projections, COCA calculations, etc.). NEVER write tables as text or markdown.
+- ALWAYS use "list" for bullet points or numbered steps. NEVER use asterisks (*) or dashes (-) inside text blocks.
+- Use "subsection" to create sub-headings that organize the section.
+- Use "text" for narrative paragraphs. Do NOT include markdown formatting (no **, no ##, no \\[formulas\\]).
+- For formulas or calculations, express them in plain language (e.g., "LTV = Average Revenue Per User × Customer Lifespan").
+- Keep each text block focused — split long content into multiple text blocks with subsections.
+- Return ONLY the JSON array — no wrapping object, no explanation before or after.`;
+
+/**
+ * Parse the AI response into structured section blocks.
+ * Handles both clean JSON and responses with markdown code fences.
+ */
+function parseAiSections(raw: string): AiSectionBlock[] {
+  let cleaned = raw.trim();
+
+  // Strip markdown code fences if present
+  if (cleaned.startsWith("```")) {
+    cleaned = cleaned.replace(/^```(?:json)?\s*/, "").replace(/\s*```$/, "");
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch {
+    // If JSON parsing fails, fall back to a single text section
+    return [{ type: "text", text: raw.trim() }];
+  }
+
+  if (!Array.isArray(parsed)) {
+    return [{ type: "text", text: raw.trim() }];
+  }
+
+  const blocks: AiSectionBlock[] = [];
+
+  for (const item of parsed) {
+    if (typeof item !== "object" || item === null || !("type" in item)) {
+      continue;
+    }
+
+    const obj = item as Record<string, unknown>;
+
+    switch (obj.type) {
+      case "text":
+        if (typeof obj.text === "string" && obj.text.trim()) {
+          blocks.push({ type: "text", text: obj.text.trim() });
+        }
+        break;
+      case "subsection":
+        if (typeof obj.text === "string" && obj.text.trim()) {
+          blocks.push({ type: "subsection", text: obj.text.trim() });
+        }
+        break;
+      case "list":
+        if (Array.isArray(obj.items) && obj.items.length > 0) {
+          const items = (obj.items as unknown[])
+            .filter((i): i is string => typeof i === "string" && i.trim().length > 0)
+            .map((i) => i.trim());
+          if (items.length > 0) {
+            blocks.push({
+              type: "list",
+              items,
+              ordered: obj.ordered === true,
+            });
+          }
+        }
+        break;
+      case "table":
+        if (Array.isArray(obj.headers) && Array.isArray(obj.rows)) {
+          const headers = (obj.headers as unknown[])
+            .filter((h): h is string => typeof h === "string")
+            .map((h) => h.trim());
+          const rows = (obj.rows as unknown[])
+            .filter((r): r is unknown[] => Array.isArray(r))
+            .map((r) =>
+              r.map((c) => (typeof c === "string" ? c.trim() : typeof c === "number" ? String(c) : ""))
+            );
+          if (headers.length > 0) {
+            blocks.push({ type: "table", headers, rows });
+          }
+        }
+        break;
+      default:
+        // Unknown type — treat as text if it has a text field
+        if (typeof obj.text === "string" && obj.text.trim()) {
+          blocks.push({ type: "text", text: obj.text.trim() });
+        }
+        break;
+    }
+  }
+
+  // If parsing produced nothing usable, fall back
+  if (blocks.length === 0) {
+    return [{ type: "text", text: raw.trim() }];
+  }
+
+  return blocks;
+}
+
+/**
+ * Convert a parsed AI block into a BusinessPlanSectionContent.
+ */
+function toSectionContent(block: AiSectionBlock): {
+  sectionType: BusinessPlanSectionContent["type"];
+  content: BusinessPlanSectionContent;
+} {
+  switch (block.type) {
+    case "text":
+      return { sectionType: "text", content: { type: "text", text: block.text } };
+    case "subsection":
+      return {
+        sectionType: "subsection",
+        content: { type: "subsection", text: block.text },
+      };
+    case "list":
+      return {
+        sectionType: "list",
+        content: {
+          type: "list",
+          items: block.items,
+          ordered: block.ordered ?? false,
+        },
+      };
+    case "table":
+      return {
+        sectionType: "table",
+        content: {
+          type: "table",
+          headers: block.headers,
+          rows: block.rows,
+        },
+      };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Route handler
+// ---------------------------------------------------------------------------
 
 export async function POST(
   req: Request,
@@ -105,24 +280,51 @@ export async function POST(
             messages: [
               {
                 role: "system",
-                content: `You are Silicon Plan AI, an expert business plan writer. Write professional, investor-ready business plan sections. ${workspaceContext.toneInstruction}`,
+                content: `${STRUCTURED_SYSTEM_PROMPT}\n\n${workspaceContext.toneInstruction}`,
               },
               {
                 role: "user",
-                content: `Using the following workspace context, write the "${entry.h2Title}" section for the "${entry.h1Title}" chapter of this business plan.\n\nWorkspace context:\n${workspaceContext.context}\n\nSpecific guidance:\n${entry.aiPrompt}\n\nReturn ONLY the section text content. Do not include the section title or headings.`,
+                content: `Using the following workspace context, write the "${entry.h2Title}" section for the "${entry.h1Title}" chapter of this business plan.\n\nWorkspace context:\n${workspaceContext.context}\n\nSpecific guidance:\n${entry.aiPrompt}\n\nReturn ONLY a JSON array of section blocks as specified in your instructions. Do not include the section title "${entry.h2Title}" — it is already shown as a heading.`,
               },
             ],
             temperature: 0.4,
-            max_tokens: 800,
+            max_tokens: 1200,
+            response_format: { type: "json_object" },
           });
 
-          return completion.choices[0]?.message?.content?.trim() ?? "";
+          const raw = completion.choices[0]?.message?.content?.trim() ?? "";
+
+          // response_format: json_object wraps in an object — handle both
+          let toParse = raw;
+          try {
+            const outer = JSON.parse(raw) as Record<string, unknown>;
+            // If the model wrapped in {"sections":[...]} or {"blocks":[...]}, unwrap
+            if (Array.isArray(outer.sections)) {
+              toParse = JSON.stringify(outer.sections);
+            } else if (Array.isArray(outer.blocks)) {
+              toParse = JSON.stringify(outer.blocks);
+            } else if (Array.isArray(outer.content)) {
+              toParse = JSON.stringify(outer.content);
+            } else if (Array.isArray(outer.data)) {
+              toParse = JSON.stringify(outer.data);
+            } else {
+              // Check if any field is an array
+              const arrField = Object.values(outer).find((v) => Array.isArray(v));
+              if (arrField) {
+                toParse = JSON.stringify(arrField);
+              }
+            }
+          } catch {
+            // Not wrapped — use raw
+          }
+
+          return parseAiSections(toParse);
         } catch (aiError) {
           console.error(
             `AI generation failed for "${entry.h2Title}":`,
             aiError
           );
-          return "";
+          return [];
         }
       })
     );
@@ -133,17 +335,18 @@ export async function POST(
 
     for (let i = 0; i < chapterEntries.length; i++) {
       const entry = chapterEntries[i]!;
-      const generatedText = aiResults[i];
+      const blocks = aiResults[i] ?? [];
 
-      // Create text section with generated content
-      // (chapter title is already shown as a heading, no need for a duplicate section_title)
-      if (generatedText) {
+      for (let j = 0; j < blocks.length; j++) {
+        const block = blocks[j]!;
+        const { sectionType, content } = toSectionContent(block);
+
         await createSection({
           chapterId: entry.subChapterId,
           userId,
-          sectionType: "text",
-          content: { type: "text", text: generatedText },
-          orderIndex: 0,
+          sectionType,
+          content,
+          orderIndex: j,
         });
         sectionCount++;
       }
