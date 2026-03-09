@@ -518,20 +518,30 @@ export default function WorkspaceBusinessSetupPage() {
     locale === "it"
       ? {
           "Software / SaaS / IT": "Software / SaaS / IT",
-          "IT Services / IT Consulting": "Servizi IT / Consulenza IT",
-          "E-commerce / Retail": "E-commerce / Retail",
-          "FinTech / Payments / InsurTech": "FinTech / Pagamenti / InsurTech",
-          "Health / MedTech / Biotech": "Salute / MedTech / Biotech",
-          "Education / EdTech": "Formazione / EdTech",
-          "Media / Marketing / Advertising": "Media / Marketing / Advertising",
-          "Tourism / Hospitality / Food service": "Turismo / Hospitality / Ristorazione",
-          "Logistics / Transport / Mobility": "Logistica / Trasporti / Mobilita",
-          "Manufacturing / Industry 4.0": "Produzione / Industria 4.0",
-          "Agriculture / Food production": "Agricoltura / Produzione alimentare",
-          "Energy / Utilities": "Energia / Utilities",
+          "IT Services / IT Consulting / System Integrator":
+            "Servizi IT / Consulenza IT / System Integrator",
+          "E-commerce / Retail / Marketplace": "E-commerce / Retail / Marketplace",
+          "FinTech / Financial Services / Payments / InsurTech":
+            "FinTech / Servizi finanziari / Pagamenti / InsurTech",
+          "Health / MedTech / Pharma / Wellness":
+            "Salute / MedTech / Pharma / Wellness",
+          "Education / Training / HR Tech": "Formazione / Training / HR Tech",
+          "Media / Publishing / Advertising / Creator economy":
+            "Media / Editoria / Pubblicità / Creator economy",
+          "Tourism / Hospitality / Food Service":
+            "Turismo / Hospitality / Ristorazione",
+          "Transport / Logistics / Mobility":
+            "Trasporti / Logistica / Mobilità",
+          "Manufacturing / Industry / Mechanics":
+            "Produzione / Industria / Meccanica",
+          "Agri-food / Agriculture / Food Production":
+            "Agroalimentare / Agricoltura / Produzione alimentare",
+          "Energy / Utilities / Cleantech": "Energia / Utilities / Cleantech",
           "Construction / Real Estate": "Costruzioni / Real Estate",
-          "Professional Services": "Servizi professionali",
-          "Business Services / B2B": "Servizi alle imprese / B2B",
+          "Professional Services (advisory, legal, accounting)":
+            "Servizi professionali (consulenza, legale, contabilità)",
+          "Business Services (facility, outsourcing, etc.)":
+            "Servizi alle imprese (facility, outsourcing, ecc.)",
           Other: copy.other,
         }
       : {};
@@ -1070,9 +1080,10 @@ export default function WorkspaceBusinessSetupPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            action,
+            action: action === "generate" ? "research" : action,
             fieldLabel,
             text: data[field],
+            locale,
           }),
         },
       );
@@ -1103,6 +1114,7 @@ export default function WorkspaceBusinessSetupPage() {
     <AiFieldActionButton
       loading={aiBusyField === field}
       disabled={isBusy || saving}
+      fieldValue={data[field]}
       onAction={(action) => {
         void handleAiAssist(field, label, action);
       }}
@@ -1261,7 +1273,6 @@ export default function WorkspaceBusinessSetupPage() {
                   {getOptionLabel(option, industryOptionLabels)}
                 </MenuItem>
               ))}
-              <MenuItem value="Other">{copy.other}</MenuItem>
             </Select>
             {renderFieldError("industryOption")}
           </Box>

@@ -42,7 +42,7 @@ export type OnboardingSector =
   | 'Construction / Real Estate'
   | 'Professional Services (advisory, legal, accounting)'
   | 'Business Services (facility, outsourcing, etc.)'
-  | 'Other (with description)';
+  | 'Other';
 
 /**
  * Weighted Damodaran industry mapping

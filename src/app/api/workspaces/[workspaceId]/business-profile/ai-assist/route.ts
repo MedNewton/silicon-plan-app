@@ -11,6 +11,7 @@ type AssistBody = {
   action?: AssistAction;
   fieldLabel?: string;
   text?: string;
+  locale?: string;
 };
 
 const ACTION_INSTRUCTIONS: Record<AssistAction, string> = {
@@ -63,6 +64,7 @@ export async function POST(
       ? trimmedLabel
       : "Business field";
     const sourceText = body?.text?.trim() ?? "";
+    const userLocale = body?.locale === "it" ? "it" : "en";
 
     if (action === "correct" && !sourceText) {
       return NextResponse.json(
@@ -81,9 +83,15 @@ export async function POST(
 
     const workspaceContext = await getWorkspaceAiContext(workspaceId);
 
+    const languageInstruction =
+      userLocale === "it"
+        ? "IMPORTANT: You MUST write your entire response in Italian."
+        : "Write your response in English.";
+
     const systemPrompt = [
       "You are Silicon Plan AI, helping users fill workspace setup/business profile fields.",
       "Write concise, practical, investor-ready text.",
+      languageInstruction,
       workspaceContext.toneInstruction,
       "When details are missing, avoid inventing facts unless the action asks for researched assumptions.",
       "Return only the final field text.",

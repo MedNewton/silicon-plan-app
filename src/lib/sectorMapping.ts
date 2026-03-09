@@ -465,7 +465,7 @@ const SECTOR_MAPPINGS: SectorMapping[] = [
     },
   },
   {
-    onboardingSector: 'Other (with description)',
+    onboardingSector: 'Other',
     atecoMacroPrimary: 'O',
     atecoMacroPrimaryName: 'Supporto',
     suggestedAtecoCodes: [],

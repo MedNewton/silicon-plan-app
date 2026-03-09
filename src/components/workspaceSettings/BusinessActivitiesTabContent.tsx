@@ -650,9 +650,10 @@ const BusinessActivitiesTabContent = ({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            action,
+            action: action === "generate" ? "research" : action,
             fieldLabel,
             text: biz[field],
+            locale,
           }),
         },
       );
@@ -683,6 +684,7 @@ const BusinessActivitiesTabContent = ({
     <AiFieldActionButton
       loading={aiBusyField === field}
       disabled={bizLoading || bizSaving}
+      fieldValue={biz[field]}
       onAction={(action) => {
         void handleAiAssist(field, label, action);
       }}
