@@ -82,6 +82,10 @@ function ManageBusinessPlanPageInner({
     const force = chapters.length > 0;
     setIsGenerating(true);
 
+    // 4-minute client timeout to prevent hanging forever
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 240_000);
+
     try {
       const response = await fetch(
         `/api/workspaces/${workspaceId}/business-plan/generate`,
@@ -89,8 +93,11 @@ function ManageBusinessPlanPageInner({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ force }),
+          signal: controller.signal,
         }
       );
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error("Failed to generate business plan");
@@ -128,6 +135,7 @@ function ManageBusinessPlanPageInner({
       setIsGenerating(false);
       setShowGenerateModal(false);
     } catch {
+      clearTimeout(timeoutId);
       setIsGenerating(false);
       setShowGenerateModal(false);
       toast.error(copy.generateFailed);

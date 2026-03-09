@@ -49,34 +49,16 @@ type AiSectionBlock =
   | AiListBlock
   | AiTableBlock;
 
-const STRUCTURED_SYSTEM_PROMPT = `You are Silicon Plan AI, an expert business plan writer.
-You produce professional, investor-ready business plan sections.
+const STRUCTURED_SYSTEM_PROMPT = `You are Silicon Plan AI. Write professional, investor-ready business plan content.
+Return ONLY a JSON array. No markdown, no text outside JSON.
 
-CRITICAL: You MUST return a valid JSON array of section blocks. No markdown, no prose outside the JSON.
+Block types:
+- {"type":"text","text":"paragraph"}
+- {"type":"subsection","text":"heading"}
+- {"type":"list","items":["a","b"],"ordered":false}
+- {"type":"table","headers":["A","B"],"rows":[["1","2"]]}
 
-Each element in the array must be ONE of these objects:
-
-1. Text paragraph:
-   {"type":"text","text":"Your paragraph here."}
-
-2. Sub-heading within the section:
-   {"type":"subsection","text":"Sub-heading title"}
-
-3. Bullet / numbered list:
-   {"type":"list","items":["Item 1","Item 2","Item 3"],"ordered":false}
-   Set "ordered":true for numbered lists.
-
-4. Table:
-   {"type":"table","headers":["Col A","Col B","Col C"],"rows":[["r1c1","r1c2","r1c3"],["r2c1","r2c2","r2c3"]]}
-
-Rules:
-- ALWAYS use "table" for any tabular data (TAM/SAM/SOM, competitor matrices, cost breakdowns, financial projections, COCA calculations, etc.). NEVER write tables as text or markdown.
-- ALWAYS use "list" for bullet points or numbered steps. NEVER use asterisks (*) or dashes (-) inside text blocks.
-- Use "subsection" to create sub-headings that organize the section.
-- Use "text" for narrative paragraphs. Do NOT include markdown formatting (no **, no ##, no \\[formulas\\]).
-- For formulas or calculations, express them in plain language (e.g., "LTV = Average Revenue Per User × Customer Lifespan").
-- Keep each text block focused — split long content into multiple text blocks with subsections.
-- Return ONLY the JSON array — no wrapping object, no explanation before or after.`;
+Rules: Use "table" for ALL tabular data. Use "list" for ALL bullet/numbered items. No markdown (* or -) in text. No LaTeX. Write formulas in plain text. Return ONLY the JSON array.`;
 
 /**
  * Parse the AI response into structured section blocks.
@@ -302,9 +284,9 @@ export async function POST(
       }
     }
 
-    // ── PHASE 2: OpenAI calls in batches of 8 to stay within rate limits ──
+    // ── PHASE 2: OpenAI calls in batches of 10 ──
 
-    const BATCH_SIZE = 8;
+    const BATCH_SIZE = 10;
 
     const aiResults = await batchAll(
       chapterEntries.map((entry) => async () => {
@@ -322,7 +304,7 @@ export async function POST(
               },
             ],
             temperature: 0.4,
-            max_tokens: 1000,
+            max_tokens: 800,
           });
 
           const raw = completion.choices[0]?.message?.content?.trim() ?? "";
