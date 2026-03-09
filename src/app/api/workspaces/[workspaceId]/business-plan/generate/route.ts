@@ -63,7 +63,8 @@ Rules:
 
 /**
  * Parse the AI response into structured section blocks.
- * Handles both clean JSON and responses with markdown code fences.
+ * Handles: bare JSON arrays, objects wrapping an array, markdown code fences,
+ * and plain text fallback.
  */
 function parseAiSections(raw: string): AiSectionBlock[] {
   let cleaned = raw.trim();
@@ -79,6 +80,20 @@ function parseAiSections(raw: string): AiSectionBlock[] {
   } catch {
     // If JSON parsing fails, fall back to a single text section
     return [{ type: "text", text: raw.trim() }];
+  }
+
+  // If AI returned a wrapper object like {"sections":[...]} or {"blocks":[...]},
+  // unwrap to find the array.
+  if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)) {
+    const obj = parsed as Record<string, unknown>;
+    const arrField = obj.sections ?? obj.blocks ?? obj.content ?? obj.data
+      ?? Object.values(obj).find((v) => Array.isArray(v));
+    if (Array.isArray(arrField)) {
+      parsed = arrField;
+    } else {
+      // Single object — wrap in array
+      parsed = [obj];
+    }
   }
 
   if (!Array.isArray(parsed)) {
@@ -289,36 +304,10 @@ export async function POST(
             ],
             temperature: 0.4,
             max_tokens: 1200,
-            response_format: { type: "json_object" },
           });
 
           const raw = completion.choices[0]?.message?.content?.trim() ?? "";
-
-          // response_format: json_object wraps in an object — handle both
-          let toParse = raw;
-          try {
-            const outer = JSON.parse(raw) as Record<string, unknown>;
-            // If the model wrapped in {"sections":[...]} or {"blocks":[...]}, unwrap
-            if (Array.isArray(outer.sections)) {
-              toParse = JSON.stringify(outer.sections);
-            } else if (Array.isArray(outer.blocks)) {
-              toParse = JSON.stringify(outer.blocks);
-            } else if (Array.isArray(outer.content)) {
-              toParse = JSON.stringify(outer.content);
-            } else if (Array.isArray(outer.data)) {
-              toParse = JSON.stringify(outer.data);
-            } else {
-              // Check if any field is an array
-              const arrField = Object.values(outer).find((v) => Array.isArray(v));
-              if (arrField) {
-                toParse = JSON.stringify(arrField);
-              }
-            }
-          } catch {
-            // Not wrapped — use raw
-          }
-
-          return parseAiSections(toParse);
+          return parseAiSections(raw);
         } catch (aiError) {
           console.error(
             `AI generation failed for "${entry.h2Title}":`,
