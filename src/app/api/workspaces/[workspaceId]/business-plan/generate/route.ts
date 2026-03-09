@@ -15,7 +15,24 @@ import { getWorkspaceAiContext } from "@/lib/workspaceAiContext";
 import { DEFAULT_BUSINESS_PLAN_TASK_TEMPLATE } from "@/server/businessPlanTaskTemplate";
 import type { BusinessPlanSectionContent } from "@/types/workspaces";
 
+// Allow up to 5 minutes for generating ~39 sub-chapters via OpenAI
+export const maxDuration = 300;
+
 const openai = new OpenAI({ apiKey: process.env.OPEN_AI_API_KEY });
+
+/** Run promises in batches to avoid overwhelming the API */
+async function batchAll<T>(
+  tasks: (() => Promise<T>)[],
+  batchSize: number,
+): Promise<T[]> {
+  const results: T[] = [];
+  for (let i = 0; i < tasks.length; i += batchSize) {
+    const batch = tasks.slice(i, i + batchSize);
+    const batchResults = await Promise.all(batch.map((fn) => fn()));
+    results.push(...batchResults);
+  }
+  return results;
+}
 
 // ---------------------------------------------------------------------------
 // Structured output: the AI returns a JSON array of section blocks.
@@ -285,10 +302,12 @@ export async function POST(
       }
     }
 
-    // ── PHASE 2: Fire all OpenAI calls in parallel (the slow part) ──
+    // ── PHASE 2: OpenAI calls in batches of 8 to stay within rate limits ──
 
-    const aiResults = await Promise.all(
-      chapterEntries.map(async (entry) => {
+    const BATCH_SIZE = 8;
+
+    const aiResults = await batchAll(
+      chapterEntries.map((entry) => async () => {
         try {
           const completion = await openai.chat.completions.create({
             model: "gpt-4o-mini",
@@ -303,7 +322,7 @@ export async function POST(
               },
             ],
             temperature: 0.4,
-            max_tokens: 1200,
+            max_tokens: 1000,
           });
 
           const raw = completion.choices[0]?.message?.content?.trim() ?? "";
@@ -313,9 +332,10 @@ export async function POST(
             `AI generation failed for "${entry.h2Title}":`,
             aiError
           );
-          return [];
+          return [] as AiSectionBlock[];
         }
-      })
+      }),
+      BATCH_SIZE,
     );
 
     // ── PHASE 3: Create all sections sequentially (fast DB operations) ──
