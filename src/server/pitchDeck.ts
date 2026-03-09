@@ -301,7 +301,7 @@ type AiSeedSlidePayload = {
 
 const parseAiSeedJson = (raw: string): AiSeedSlidePayload[] => {
   const extractJsonCandidate = (value: string): string => {
-    const fencedMatch = value.match(/```(?:json)?\s*([\s\S]*?)```/i);
+    const fencedMatch = /```(?:json)?\s*([\s\S]*?)```/i.exec(value);
     if (fencedMatch?.[1]) {
       return fencedMatch[1].trim();
     }
