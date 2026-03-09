@@ -717,7 +717,7 @@ const CanvasModelEditPage: FC<CanvasModelEditPageProps> = ({
               onClick={() => setIsEditingTitle(true)}
               sx={{ cursor: "pointer" }}
             >
-              <EditOutlinedIcon sx={{ fontSize: 18, color: "#6B7280" }} />
+              <EditOutlinedIcon className="no-export" sx={{ fontSize: 18, color: "#6B7280" }} />
               <Typography sx={{ fontSize: 15, fontWeight: 500, color: "#111827" }}>
                 {canvas.title}
               </Typography>

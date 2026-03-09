@@ -325,7 +325,7 @@ const CanvasSection: FC<CanvasSectionProps> = ({
         }}
       >
         <Stack direction="row" spacing={0.5} alignItems="center">
-          <EditOutlinedIcon sx={{ fontSize: 16, color: "#9CA3AF" }} />
+          <EditOutlinedIcon className="no-export" sx={{ fontSize: 16, color: "#9CA3AF" }} />
           <Typography
             sx={{
               fontSize: 13,
@@ -341,6 +341,7 @@ const CanvasSection: FC<CanvasSectionProps> = ({
         {/* Add Story Button - appears on hover */}
         <Fade in={isHovered && !isAddingItem && !editingItemId}>
           <Box
+            className="no-export"
             onMouseEnter={() => setIsAddButtonHovered(true)}
             onMouseLeave={() => setIsAddButtonHovered(false)}
             onClick={handleAddClick}
@@ -818,6 +819,7 @@ const CanvasSection: FC<CanvasSectionProps> = ({
                   {!isPlaceholder && (
                     <>
                       <Typography
+                        className="no-export"
                         sx={{
                           fontSize: 10.5,
                           fontWeight: 700,
@@ -839,6 +841,7 @@ const CanvasSection: FC<CanvasSectionProps> = ({
                         {(item.generation_status ?? "final") === "draft" ? copy.draft : copy.final}
                       </Typography>
                       <Button
+                        className="no-export"
                         size="small"
                         variant="text"
                         onClick={(event) => {
@@ -886,6 +889,7 @@ const CanvasSection: FC<CanvasSectionProps> = ({
       {!isAddingItem && !editingItemId && (
         <Fade in={isHovered}>
           <Stack
+            className="no-export"
             direction="row"
             spacing={0.5}
             justifyContent="space-between"

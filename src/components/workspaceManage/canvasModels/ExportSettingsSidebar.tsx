@@ -188,6 +188,11 @@ const ExportSettingsSidebar: FC<ExportSettingsSidebarProps> = ({
 
     setIsExporting(true);
 
+    // Hide UI-only elements (icons, pills, buttons) during capture
+    const element = canvasRef.current;
+    const hiddenEls = element.querySelectorAll<HTMLElement>(".no-export");
+    hiddenEls.forEach((el) => { el.style.display = "none"; });
+
     try {
       const branding = includeBrandingExport
         ? await fetchWorkspaceBranding(workspaceId)
@@ -196,7 +201,6 @@ const ExportSettingsSidebar: FC<ExportSettingsSidebarProps> = ({
       const logoDataUrl = includeBrandingExport
         ? await fetchImageAsDataUrl(branding?.logoUrl ?? null)
         : null;
-      const element = canvasRef.current;
       const paperSize = PAPER_SIZES.find((p) => p.value === settings.paperSize) ?? PAPER_SIZES[0]!;
 
       // Capture the canvas element as an image
@@ -210,21 +214,19 @@ const ExportSettingsSidebar: FC<ExportSettingsSidebarProps> = ({
 
       const imgData = canvas.toDataURL("image/png");
 
-      const pdfWidth = paperSize.width;
-      const pdfHeight = paperSize.height;
-
-      const canvasAspectRatio = canvas.width / canvas.height;
-      const isLandscape = canvasAspectRatio > 1;
+      // Always use landscape for canvas models
+      const pdfWidth = Math.max(paperSize.width, paperSize.height);
+      const pdfHeight = Math.min(paperSize.width, paperSize.height);
 
       const pdf = new jsPDF({
-        orientation: isLandscape ? "landscape" : "portrait",
+        orientation: "landscape",
         unit: "mm",
         format: [paperSize.width, paperSize.height],
       });
 
       const margin = settings.paperSize === "A4" ? A4_MARGIN_MM : 10;
-      const availableWidth = (isLandscape ? pdfHeight : pdfWidth) - margin * 2;
-      const availableHeight = (isLandscape ? pdfWidth : pdfHeight) - margin * 2;
+      const availableWidth = pdfWidth - margin * 2;
+      const availableHeight = pdfHeight - margin * 2;
 
       let imgWidth = availableWidth;
       let imgHeight = (canvas.height * imgWidth) / canvas.width;
@@ -234,13 +236,11 @@ const ExportSettingsSidebar: FC<ExportSettingsSidebarProps> = ({
         imgWidth = (canvas.width * imgHeight) / canvas.height;
       }
 
-      const xOffset = ((isLandscape ? pdfHeight : pdfWidth) - imgWidth) / 2;
-      const yOffset = ((isLandscape ? pdfWidth : pdfHeight) - imgHeight) / 2;
+      const xOffset = (pdfWidth - imgWidth) / 2;
+      const yOffset = (pdfHeight - imgHeight) / 2;
 
       pdf.addImage(imgData, "PNG", xOffset, yOffset, imgWidth, imgHeight);
 
-      const pageWidth = isLandscape ? pdfHeight : pdfWidth;
-      const pageHeight = isLandscape ? pdfWidth : pdfHeight;
       if (logoDataUrl) {
         try {
           const logoWidth = 24;
@@ -249,7 +249,7 @@ const ExportSettingsSidebar: FC<ExportSettingsSidebarProps> = ({
           pdf.addImage(
             logoDataUrl,
             logoFormat,
-            pageWidth - margin - logoWidth,
+            pdfWidth - margin - logoWidth,
             margin * 0.45,
             logoWidth,
             logoHeight
@@ -262,7 +262,7 @@ const ExportSettingsSidebar: FC<ExportSettingsSidebarProps> = ({
       if (workspaceName && workspaceName.trim().length > 0) {
         pdf.setFontSize(PPTX_TYPOGRAPHY.caption);
         pdf.setTextColor(120, 127, 142);
-        pdf.text(workspaceName.trim(), margin, pageHeight - margin * 0.35);
+        pdf.text(workspaceName.trim(), margin, pdfHeight - margin * 0.35);
       }
 
       const filename = `${sanitizeFileName(canvasTitle, "canvas-export")}.pdf`;
@@ -272,6 +272,8 @@ const ExportSettingsSidebar: FC<ExportSettingsSidebarProps> = ({
       console.error("Error generating PDF:", error);
       toast.error(copy.toastExportPdfFailed);
     } finally {
+      // Restore hidden elements
+      hiddenEls.forEach((el) => { el.style.display = ""; });
       setIsExporting(false);
     }
   };
