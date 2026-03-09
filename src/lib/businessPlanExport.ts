@@ -376,6 +376,7 @@ const paragraphFromText = (
   new Paragraph({
     children: buildRunsFromText(text),
     heading,
+    keepNext: heading != null,
   });
 
 const getImageDimensions = (url: string): Promise<{ width: number; height: number }> =>
@@ -404,13 +405,17 @@ const buildDocxSections = async (
         case "subsection":
           blocks.push(paragraphFromText(content.text ?? "", HeadingLevel.HEADING_3));
           break;
-        case "text":
-          blocks.push(
-            new Paragraph({
-              children: buildRunsFromText(content.text ?? ""),
-            })
-          );
+        case "text": {
+          const textVal = normalizeExportText(content.text ?? "");
+          if (textVal) {
+            blocks.push(
+              new Paragraph({
+                children: buildRunsFromText(textVal),
+              })
+            );
+          }
           break;
+        }
         case "list":
           (content.items ?? []).forEach((item) => {
             blocks.push(
@@ -439,10 +444,11 @@ const buildDocxSections = async (
               })
           );
           const rows = [
-            new TableRow({ children: headerCells }),
+            new TableRow({ cantSplit: true, children: headerCells }),
             ...(content.rows ?? []).map(
               (row) =>
                 new TableRow({
+                  cantSplit: true,
                   children: row.map((cell, cellIndex) =>
                     new TableCell({
                       children: [
@@ -520,8 +526,57 @@ const buildDocxSections = async (
           }
           break;
         }
+        case "timeline":
+          (content.entries ?? []).forEach((entry) => {
+            blocks.push(
+              new Paragraph({
+                bullet: { level: 0 },
+                children: [
+                  new TextRun({
+                    text: normalizeExportText(entry.date ?? ""),
+                    bold: true,
+                  }),
+                  new TextRun({
+                    text: ` ${normalizeExportText(entry.title ?? "")}`,
+                  }),
+                  ...(entry.description
+                    ? [
+                        new TextRun({
+                          text: normalizeExportText(entry.description),
+                          break: 1,
+                        }),
+                      ]
+                    : []),
+                ],
+              })
+            );
+          });
+          break;
+        case "page_break":
+          blocks.push(
+            new Paragraph({
+              pageBreakBefore: true,
+              children: [new TextRun("")],
+            })
+          );
+          break;
+        case "empty_space":
+          blocks.push(
+            new Paragraph({
+              spacing: { after: (content.height ?? 40) * 15 },
+              children: [new TextRun("")],
+            })
+          );
+          break;
+        case "embed":
+          blocks.push(
+            new Paragraph({
+              children: buildRunsFromText(content.code ?? ""),
+            })
+          );
+          break;
         default:
-          blocks.push(new Paragraph("[Unsupported section]"));
+          break;
       }
     }
 
@@ -623,6 +678,7 @@ export const buildBusinessPlanDocx = async (
             color: headingColor,
           },
           paragraph: {
+            keepNext: true,
             spacing: { before: 260, after: 140 },
           },
         },
@@ -637,6 +693,7 @@ export const buildBusinessPlanDocx = async (
             color: headingColor,
           },
           paragraph: {
+            keepNext: true,
             spacing: { before: 220, after: 120 },
           },
         },
@@ -651,6 +708,7 @@ export const buildBusinessPlanDocx = async (
             color: headingColor,
           },
           paragraph: {
+            keepNext: true,
             spacing: { before: 180, after: 100 },
           },
         },

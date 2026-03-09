@@ -20,8 +20,7 @@ import {
   type SelectChangeEvent,
 } from "@mui/material";
 import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
+import { renderHtmlToPdf } from "@/lib/businessPlanPdfExport";
 import { toast } from "react-toastify";
 
 import ViewHeadlineOutlinedIcon from "@mui/icons-material/ViewHeadlineOutlined";
@@ -44,7 +43,7 @@ import type {
   BusinessPlanSectionContent,
 } from "@/types/workspaces";
 import { buildBusinessPlanHtml, buildBusinessPlanDocx } from "@/lib/businessPlanExport";
-import { A4_MARGIN_CM, A4_MARGIN_MM, mmToPx, sanitizeFileName } from "@/lib/exportStyles";
+import { A4_MARGIN_CM, A4_MARGIN_MM, sanitizeFileName } from "@/lib/exportStyles";
 import {
   fetchWorkspaceBranding,
   fetchImageAsDataUrl,
@@ -364,12 +363,7 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
   const headingColorValue =
     headingColor === "Navy" ? "#1F2A44" : headingColor === "Black" ? "#111827" : "#4C6AD2";
 
-  const paperSizePx =
-    paperSize === "Letter"
-      ? { width: 816, height: 1056 }
-      : paperSize === "A3"
-      ? { width: 1123, height: 1587 }
-      : { width: 794, height: 1123 };
+  // paperSizePx removed — jsPDF.html() handles dimensions in mm internally
 
   const downloadBlob = (blob: Blob, filename: string) => {
     const url = URL.createObjectURL(blob);
@@ -521,107 +515,12 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
         return;
       }
 
-      // --- Segment-based PDF rendering with proper margins ---
-      const marginPx = mmToPx(A4_MARGIN_MM);
-      const contentWidth = paperSizePx.width - 2 * marginPx;
-      const contentHeightPerPage = paperSizePx.height - 2 * marginPx;
-
-      // 1. Create offscreen container to measure element heights
-      const container = document.createElement("div");
-      container.style.position = "fixed";
-      container.style.left = "-9999px";
-      container.style.top = "0";
-      container.style.width = `${contentWidth}px`;
-      container.style.background = "#FFFFFF";
-      container.style.fontFamily = fontFamily;
-      container.innerHTML = html;
-      document.body.appendChild(container);
-
-      // Extract the <body> children from the parsed HTML
-      const bodyEl = container.querySelector("body");
-      const sourceEl = bodyEl ?? container;
-      const blocks = Array.from(sourceEl.children) as HTMLElement[];
-
-      // 2. Group blocks into pages, avoiding mid-element breaks
-      type PageGroup = { elements: HTMLElement[]; totalHeight: number };
-      const pages: PageGroup[] = [];
-      let currentPage: PageGroup = { elements: [], totalHeight: 0 };
-
-      for (const block of blocks) {
-        const h = block.offsetHeight;
-        if (currentPage.totalHeight + h > contentHeightPerPage && currentPage.elements.length > 0) {
-          pages.push(currentPage);
-          currentPage = { elements: [], totalHeight: 0 };
-        }
-        currentPage.elements.push(block);
-        currentPage.totalHeight += h;
-      }
-      if (currentPage.elements.length > 0) pages.push(currentPage);
-
-      // 3. Render each page group separately and add to PDF
-      const pdf = new jsPDF({
-        unit: "px",
-        format: [paperSizePx.width, paperSizePx.height],
+      // --- PDF rendering via jsPDF.html() for selectable text + automatic pagination ---
+      const pdf = await renderHtmlToPdf(html, {
+        paperSize: paperSize as "A4" | "Letter" | "A3",
+        marginMm: A4_MARGIN_MM,
+        fontFamily,
       });
-
-      for (let i = 0; i < pages.length; i++) {
-        if (i > 0) pdf.addPage();
-
-        const pageContainer = document.createElement("div");
-        pageContainer.style.width = `${contentWidth}px`;
-        pageContainer.style.background = "#FFFFFF";
-        pageContainer.style.fontFamily = fontFamily;
-        pageContainer.style.fontSize = `${fontSize}px`;
-        pageContainer.style.color = "#1F2933";
-        pageContainer.style.lineHeight = "1.6";
-        pageContainer.style.position = "fixed";
-        pageContainer.style.left = "-9999px";
-        pageContainer.style.top = "0";
-
-        // Copy the stylesheet from the source container
-        const styleTag = container.querySelector("style");
-        if (styleTag) {
-          pageContainer.appendChild(styleTag.cloneNode(true));
-        }
-
-        for (const el of pages[i]!.elements) {
-          pageContainer.appendChild(el.cloneNode(true));
-        }
-        document.body.appendChild(pageContainer);
-
-        const canvas = await html2canvas(pageContainer, {
-          scale: 2,
-          useCORS: true,
-          backgroundColor: "#FFFFFF",
-          width: contentWidth,
-        });
-
-        const imgData = canvas.toDataURL("image/png");
-        const imgHeight = (canvas.height * contentWidth) / canvas.width;
-
-        // If the segment is taller than the content area (oversized element),
-        // slice it across multiple pages with margins
-        if (imgHeight > contentHeightPerPage) {
-          let sliceOffset = 0;
-          let isFirstSlice = true;
-          while (sliceOffset < imgHeight) {
-            if (!isFirstSlice) pdf.addPage();
-            pdf.addImage(
-              imgData, "PNG",
-              marginPx, marginPx - sliceOffset,
-              contentWidth, imgHeight,
-            );
-            sliceOffset += contentHeightPerPage;
-            isFirstSlice = false;
-          }
-        } else {
-          pdf.addImage(imgData, "PNG", marginPx, marginPx, contentWidth, imgHeight);
-        }
-
-        pageContainer.remove();
-      }
-
-      container.remove();
       pdf.save(`${safeName}.pdf`);
       toast.success(copy.toastPdfExported);
     } catch (error) {
