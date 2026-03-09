@@ -2,6 +2,12 @@
 
 import type { FC } from "react";
 import { Box, Typography } from "@mui/material";
+import CategoryOutlinedIcon from "@mui/icons-material/CategoryOutlined";
+import HealingOutlinedIcon from "@mui/icons-material/HealingOutlined";
+import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
+import WorkOutlinedIcon from "@mui/icons-material/WorkOutlined";
+import SentimentDissatisfiedOutlinedIcon from "@mui/icons-material/SentimentDissatisfiedOutlined";
+import EmojiEmotionsOutlinedIcon from "@mui/icons-material/EmojiEmotionsOutlined";
 import CanvasSection, { type CanvasSectionItem, type AiSuggestion } from "../CanvasSection";
 import type { CanvasSectionsData } from "@/types/workspaces";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
@@ -79,8 +85,9 @@ const ValuePropositionCanvasLayout: FC<ValuePropositionCanvasLayoutProps> = ({
       sx={{
         bgcolor: "#FFFFFF",
         borderRadius: 2,
-        border: "1px solid #E5E7EB",
+        border: "1px solid #D1D5DB",
         overflow: "hidden",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
       }}
     >
       {/* Two main columns: Value Map and Customer Profile */}
@@ -93,7 +100,7 @@ const ValuePropositionCanvasLayout: FC<ValuePropositionCanvasLayoutProps> = ({
         {/* Value Map (Left side) */}
         <Box
           sx={{
-            borderRight: "1px solid #E5E7EB",
+            borderRight: "1px solid #D1D5DB",
             display: "flex",
             flexDirection: "column",
           }}
@@ -101,17 +108,17 @@ const ValuePropositionCanvasLayout: FC<ValuePropositionCanvasLayoutProps> = ({
           {/* Value Map Header */}
           <Box
             sx={{
-              bgcolor: "#E3E9FA",
+              background: "linear-gradient(135deg, #3B82F6 0%, #6366F1 100%)",
               px: 3,
               py: 2,
-              borderBottom: "1px solid #E5E7EB",
+              borderBottom: "1px solid #D1D5DB",
             }}
           >
             <Typography
               sx={{
                 fontSize: 16,
                 fontWeight: 700,
-                color: "#111827",
+                color: "#FFFFFF",
               }}
             >
               {copy.valueMap}
@@ -119,7 +126,7 @@ const ValuePropositionCanvasLayout: FC<ValuePropositionCanvasLayoutProps> = ({
             <Typography
               sx={{
                 fontSize: 12,
-                color: "#6B7280",
+                color: "rgba(255,255,255,0.8)",
                 mt: 0.5,
               }}
             >
@@ -128,10 +135,12 @@ const ValuePropositionCanvasLayout: FC<ValuePropositionCanvasLayoutProps> = ({
           </Box>
 
           {/* Products & Services */}
-          <Box sx={{ borderBottom: "1px solid #E5E7EB" }}>
+          <Box sx={{ borderBottom: "1px solid #D1D5DB" }}>
             <CanvasSection
               title="Products & Services"
               placeholder="What products and services do you offer?"
+              icon={<CategoryOutlinedIcon />}
+              accentColor="#3B82F6"
               items={getItems("products-services")}
               onAddItem={handleAddItem("products-services")}
               onUpdateItem={handleUpdateItem("products-services")}
@@ -145,10 +154,12 @@ const ValuePropositionCanvasLayout: FC<ValuePropositionCanvasLayoutProps> = ({
           </Box>
 
           {/* Pain Relievers */}
-          <Box sx={{ borderBottom: "1px solid #E5E7EB" }}>
+          <Box sx={{ borderBottom: "1px solid #D1D5DB" }}>
             <CanvasSection
               title="Pain Relievers"
               placeholder="How do you alleviate customer pains?"
+              icon={<HealingOutlinedIcon />}
+              accentColor="#10B981"
               items={getItems("pain-relievers")}
               onAddItem={handleAddItem("pain-relievers")}
               onUpdateItem={handleUpdateItem("pain-relievers")}
@@ -166,6 +177,8 @@ const ValuePropositionCanvasLayout: FC<ValuePropositionCanvasLayoutProps> = ({
             <CanvasSection
               title="Gain Creators"
               placeholder="How do you create customer gains?"
+              icon={<AutoAwesomeOutlinedIcon />}
+              accentColor="#8B5CF6"
               items={getItems("gain-creators")}
               onAddItem={handleAddItem("gain-creators")}
               onUpdateItem={handleUpdateItem("gain-creators")}
@@ -189,17 +202,17 @@ const ValuePropositionCanvasLayout: FC<ValuePropositionCanvasLayoutProps> = ({
           {/* Customer Profile Header */}
           <Box
             sx={{
-              bgcolor: "#F7E1E1",
+              background: "linear-gradient(135deg, #EC4899 0%, #F43F5E 100%)",
               px: 3,
               py: 2,
-              borderBottom: "1px solid #E5E7EB",
+              borderBottom: "1px solid #D1D5DB",
             }}
           >
             <Typography
               sx={{
                 fontSize: 16,
                 fontWeight: 700,
-                color: "#111827",
+                color: "#FFFFFF",
               }}
             >
               {copy.customerProfile}
@@ -207,7 +220,7 @@ const ValuePropositionCanvasLayout: FC<ValuePropositionCanvasLayoutProps> = ({
             <Typography
               sx={{
                 fontSize: 12,
-                color: "#6B7280",
+                color: "rgba(255,255,255,0.8)",
                 mt: 0.5,
               }}
             >
@@ -216,10 +229,12 @@ const ValuePropositionCanvasLayout: FC<ValuePropositionCanvasLayoutProps> = ({
           </Box>
 
           {/* Customer Jobs */}
-          <Box sx={{ borderBottom: "1px solid #E5E7EB" }}>
+          <Box sx={{ borderBottom: "1px solid #D1D5DB" }}>
             <CanvasSection
               title="Customer Jobs"
               placeholder="What jobs are customers trying to get done?"
+              icon={<WorkOutlinedIcon />}
+              accentColor="#EC4899"
               items={getItems("customer-jobs")}
               onAddItem={handleAddItem("customer-jobs")}
               onUpdateItem={handleUpdateItem("customer-jobs")}
@@ -233,10 +248,12 @@ const ValuePropositionCanvasLayout: FC<ValuePropositionCanvasLayoutProps> = ({
           </Box>
 
           {/* Pains */}
-          <Box sx={{ borderBottom: "1px solid #E5E7EB" }}>
+          <Box sx={{ borderBottom: "1px solid #D1D5DB" }}>
             <CanvasSection
               title="Pains"
               placeholder="What frustrates your customers?"
+              icon={<SentimentDissatisfiedOutlinedIcon />}
+              accentColor="#EF4444"
               items={getItems("pains")}
               onAddItem={handleAddItem("pains")}
               onUpdateItem={handleUpdateItem("pains")}
@@ -254,6 +271,8 @@ const ValuePropositionCanvasLayout: FC<ValuePropositionCanvasLayoutProps> = ({
             <CanvasSection
               title="Gains"
               placeholder="What outcomes do customers want to achieve?"
+              icon={<EmojiEmotionsOutlinedIcon />}
+              accentColor="#10B981"
               items={getItems("gains")}
               onAddItem={handleAddItem("gains")}
               onUpdateItem={handleUpdateItem("gains")}

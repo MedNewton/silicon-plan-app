@@ -2,6 +2,15 @@
 
 import type { FC } from "react";
 import { Box } from "@mui/material";
+import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
+import LightbulbOutlinedIcon from "@mui/icons-material/LightbulbOutlined";
+import DiamondOutlinedIcon from "@mui/icons-material/DiamondOutlined";
+import ShieldOutlinedIcon from "@mui/icons-material/ShieldOutlined";
+import PeopleOutlinedIcon from "@mui/icons-material/PeopleOutlined";
+import BarChartOutlinedIcon from "@mui/icons-material/BarChartOutlined";
+import LocalShippingOutlinedIcon from "@mui/icons-material/LocalShippingOutlined";
+import AccountBalanceOutlinedIcon from "@mui/icons-material/AccountBalanceOutlined";
+import TrendingUpOutlinedIcon from "@mui/icons-material/TrendingUpOutlined";
 import CanvasSection, { type CanvasSectionItem, type AiSuggestion } from "../CanvasSection";
 import type { CanvasSectionsData } from "@/types/workspaces";
 
@@ -63,11 +72,12 @@ const LeanCanvasLayout: FC<LeanCanvasLayoutProps> = ({
       sx={{
         bgcolor: "#FFFFFF",
         borderRadius: 2,
-        border: "1px solid #E5E7EB",
+        border: "1px solid #D1D5DB",
         overflow: "hidden",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
       }}
     >
-      {/* Main grid - 5 columns like Business Model Canvas */}
+      {/* Main grid - 5 columns */}
       <Box
         sx={{
           display: "grid",
@@ -78,13 +88,15 @@ const LeanCanvasLayout: FC<LeanCanvasLayoutProps> = ({
         <Box
           sx={{
             gridRow: "1 / 3",
-            borderRight: "1px solid #E5E7EB",
-            borderBottom: "1px solid #E5E7EB",
+            borderRight: "1px solid #D1D5DB",
+            borderBottom: "1px solid #D1D5DB",
           }}
         >
           <CanvasSection
             title="PROBLEM"
             placeholder="List your top 1-3 problems. What existing alternatives do customers use?"
+            icon={<WarningAmberOutlinedIcon />}
+            accentColor="#EF4444"
             items={getItems("problem")}
             onAddItem={handleAddItem("problem")}
             onUpdateItem={handleUpdateItem("problem")}
@@ -100,13 +112,15 @@ const LeanCanvasLayout: FC<LeanCanvasLayoutProps> = ({
         {/* Solution */}
         <Box
           sx={{
-            borderRight: "1px solid #E5E7EB",
-            borderBottom: "1px solid #E5E7EB",
+            borderRight: "1px solid #D1D5DB",
+            borderBottom: "1px solid #D1D5DB",
           }}
         >
           <CanvasSection
             title="Solution"
             placeholder="Outline a possible solution for each problem"
+            icon={<LightbulbOutlinedIcon />}
+            accentColor="#8B5CF6"
             items={getItems("solution")}
             onAddItem={handleAddItem("solution")}
             onUpdateItem={handleUpdateItem("solution")}
@@ -122,13 +136,15 @@ const LeanCanvasLayout: FC<LeanCanvasLayoutProps> = ({
         <Box
           sx={{
             gridRow: "1 / 3",
-            borderRight: "1px solid #E5E7EB",
-            borderBottom: "1px solid #E5E7EB",
+            borderRight: "1px solid #D1D5DB",
+            borderBottom: "1px solid #D1D5DB",
           }}
         >
           <CanvasSection
             title="Unique Value Proposition"
             placeholder="Single, clear, compelling message that turns an unaware visitor into an interested prospect"
+            icon={<DiamondOutlinedIcon />}
+            accentColor="#EC4899"
             items={getItems("unique-value-proposition")}
             onAddItem={handleAddItem("unique-value-proposition")}
             onUpdateItem={handleUpdateItem("unique-value-proposition")}
@@ -144,13 +160,15 @@ const LeanCanvasLayout: FC<LeanCanvasLayoutProps> = ({
         {/* Unfair Advantage */}
         <Box
           sx={{
-            borderRight: "1px solid #E5E7EB",
-            borderBottom: "1px solid #E5E7EB",
+            borderRight: "1px solid #D1D5DB",
+            borderBottom: "1px solid #D1D5DB",
           }}
         >
           <CanvasSection
             title="Unfair Advantage"
             placeholder="Something that cannot be easily copied or bought"
+            icon={<ShieldOutlinedIcon />}
+            accentColor="#F59E0B"
             items={getItems("unfair-advantage")}
             onAddItem={handleAddItem("unfair-advantage")}
             onUpdateItem={handleUpdateItem("unfair-advantage")}
@@ -166,12 +184,14 @@ const LeanCanvasLayout: FC<LeanCanvasLayoutProps> = ({
         <Box
           sx={{
             gridRow: "1 / 3",
-            borderBottom: "1px solid #E5E7EB",
+            borderBottom: "1px solid #D1D5DB",
           }}
         >
           <CanvasSection
             title="Customer Segments"
             placeholder="List your target customers and users. Who are your early adopters?"
+            icon={<PeopleOutlinedIcon />}
+            accentColor="#3B82F6"
             items={getItems("customer-segments")}
             onAddItem={handleAddItem("customer-segments")}
             onUpdateItem={handleUpdateItem("customer-segments")}
@@ -187,13 +207,15 @@ const LeanCanvasLayout: FC<LeanCanvasLayoutProps> = ({
         {/* Key Metrics (below Solution) */}
         <Box
           sx={{
-            borderRight: "1px solid #E5E7EB",
-            borderBottom: "1px solid #E5E7EB",
+            borderRight: "1px solid #D1D5DB",
+            borderBottom: "1px solid #D1D5DB",
           }}
         >
           <CanvasSection
             title="Key Metrics"
             placeholder="List the key numbers that tell you how your business is doing"
+            icon={<BarChartOutlinedIcon />}
+            accentColor="#8B5CF6"
             items={getItems("key-metrics")}
             onAddItem={handleAddItem("key-metrics")}
             onUpdateItem={handleUpdateItem("key-metrics")}
@@ -208,13 +230,15 @@ const LeanCanvasLayout: FC<LeanCanvasLayoutProps> = ({
         {/* Channels (below Unfair Advantage) */}
         <Box
           sx={{
-            borderRight: "1px solid #E5E7EB",
-            borderBottom: "1px solid #E5E7EB",
+            borderRight: "1px solid #D1D5DB",
+            borderBottom: "1px solid #D1D5DB",
           }}
         >
           <CanvasSection
             title="Channels"
             placeholder="List your path to customers (inbound or outbound)"
+            icon={<LocalShippingOutlinedIcon />}
+            accentColor="#F59E0B"
             items={getItems("channels")}
             onAddItem={handleAddItem("channels")}
             onUpdateItem={handleUpdateItem("channels")}
@@ -235,10 +259,12 @@ const LeanCanvasLayout: FC<LeanCanvasLayoutProps> = ({
         }}
       >
         {/* Cost Structure */}
-        <Box sx={{ borderRight: "1px solid #E5E7EB" }}>
+        <Box sx={{ borderRight: "1px solid #D1D5DB" }}>
           <CanvasSection
             title="Cost Structure"
             placeholder="List your fixed and variable costs"
+            icon={<AccountBalanceOutlinedIcon />}
+            accentColor="#F59E0B"
             items={getItems("cost-structure")}
             onAddItem={handleAddItem("cost-structure")}
             onUpdateItem={handleUpdateItem("cost-structure")}
@@ -255,6 +281,8 @@ const LeanCanvasLayout: FC<LeanCanvasLayoutProps> = ({
           <CanvasSection
             title="Revenue Streams"
             placeholder="List your sources of revenue"
+            icon={<TrendingUpOutlinedIcon />}
+            accentColor="#10B981"
             items={getItems("revenue-streams")}
             onAddItem={handleAddItem("revenue-streams")}
             onUpdateItem={handleUpdateItem("revenue-streams")}

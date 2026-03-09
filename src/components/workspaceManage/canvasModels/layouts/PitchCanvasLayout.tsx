@@ -1,7 +1,19 @@
 "use client";
 
-import type { FC } from "react";
+import type { FC, ReactNode } from "react";
 import { Box, Typography } from "@mui/material";
+import CampaignOutlinedIcon from "@mui/icons-material/CampaignOutlined";
+import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
+import LightbulbOutlinedIcon from "@mui/icons-material/LightbulbOutlined";
+import DevicesOutlinedIcon from "@mui/icons-material/DevicesOutlined";
+import PublicOutlinedIcon from "@mui/icons-material/PublicOutlined";
+import RocketLaunchOutlinedIcon from "@mui/icons-material/RocketLaunchOutlined";
+import TrendingUpOutlinedIcon from "@mui/icons-material/TrendingUpOutlined";
+import StorefrontOutlinedIcon from "@mui/icons-material/StorefrontOutlined";
+import PeopleOutlinedIcon from "@mui/icons-material/PeopleOutlined";
+import GroupsOutlinedIcon from "@mui/icons-material/GroupsOutlined";
+import AccountBalanceOutlinedIcon from "@mui/icons-material/AccountBalanceOutlined";
+import VolunteerActivismOutlinedIcon from "@mui/icons-material/VolunteerActivismOutlined";
 import CanvasSection, { type CanvasSectionItem, type AiSuggestion } from "../CanvasSection";
 import type { CanvasSectionsData } from "@/types/workspaces";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
@@ -17,19 +29,27 @@ export type PitchCanvasLayoutProps = Readonly<{
   onDismissAISuggestions?: (sectionId: string) => void;
 }>;
 
-const PITCH_SECTIONS = [
-  { id: "hook", title: "Hook", placeholder: "What's your attention-grabbing opening?", color: "#E4F4F2" },
-  { id: "problem", title: "Problem", placeholder: "What problem are you solving?", color: "#F7E1E1" },
-  { id: "solution", title: "Solution", placeholder: "How do you solve this problem?", color: "#E4F4F2" },
-  { id: "product", title: "Product Demo", placeholder: "How does your product work?", color: "#EAF3D9" },
-  { id: "market", title: "Market Size", placeholder: "How big is the opportunity?", color: "#F1E5F6" },
-  { id: "gtm", title: "Go-to-Market", placeholder: "How will you reach customers?", color: "#E3E9FA" },
-  { id: "traction", title: "Traction", placeholder: "What progress have you made?", color: "#E4F4F2" },
-  { id: "business-model", title: "Business Model", placeholder: "How do you make money?", color: "#EAF3D9" },
-  { id: "competition", title: "Competition", placeholder: "Who are your competitors?", color: "#F7E1E1" },
-  { id: "team", title: "Team", placeholder: "Who is on your team?", color: "#F1E5F6" },
-  { id: "financials", title: "Financials", placeholder: "What are your projections?", color: "#E3E9FA" },
-  { id: "ask", title: "The Ask", placeholder: "What are you asking for?", color: "#E4F4F2" },
+type PitchSection = {
+  id: string;
+  title: string;
+  placeholder: string;
+  icon: ReactNode;
+  accentColor: string;
+};
+
+const PITCH_SECTIONS: PitchSection[] = [
+  { id: "hook", title: "Hook", placeholder: "What's your attention-grabbing opening?", icon: <CampaignOutlinedIcon />, accentColor: "#6366F1" },
+  { id: "problem", title: "Problem", placeholder: "What problem are you solving?", icon: <WarningAmberOutlinedIcon />, accentColor: "#EF4444" },
+  { id: "solution", title: "Solution", placeholder: "How do you solve this problem?", icon: <LightbulbOutlinedIcon />, accentColor: "#8B5CF6" },
+  { id: "product", title: "Product Demo", placeholder: "How does your product work?", icon: <DevicesOutlinedIcon />, accentColor: "#3B82F6" },
+  { id: "market", title: "Market Size", placeholder: "How big is the opportunity?", icon: <PublicOutlinedIcon />, accentColor: "#10B981" },
+  { id: "gtm", title: "Go-to-Market", placeholder: "How will you reach customers?", icon: <RocketLaunchOutlinedIcon />, accentColor: "#EC4899" },
+  { id: "traction", title: "Traction", placeholder: "What progress have you made?", icon: <TrendingUpOutlinedIcon />, accentColor: "#10B981" },
+  { id: "business-model", title: "Business Model", placeholder: "How do you make money?", icon: <StorefrontOutlinedIcon />, accentColor: "#F59E0B" },
+  { id: "competition", title: "Competition", placeholder: "Who are your competitors?", icon: <PeopleOutlinedIcon />, accentColor: "#EF4444" },
+  { id: "team", title: "Team", placeholder: "Who is on your team?", icon: <GroupsOutlinedIcon />, accentColor: "#8B5CF6" },
+  { id: "financials", title: "Financials", placeholder: "What are your projections?", icon: <AccountBalanceOutlinedIcon />, accentColor: "#F59E0B" },
+  { id: "ask", title: "The Ask", placeholder: "What are you asking for?", icon: <VolunteerActivismOutlinedIcon />, accentColor: "#6366F1" },
 ];
 
 const PitchCanvasLayout: FC<PitchCanvasLayoutProps> = ({
@@ -90,24 +110,25 @@ const PitchCanvasLayout: FC<PitchCanvasLayoutProps> = ({
       sx={{
         bgcolor: "#FFFFFF",
         borderRadius: 2,
-        border: "1px solid #E5E7EB",
+        border: "1px solid #D1D5DB",
         overflow: "hidden",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
       }}
     >
       {/* Header */}
       <Box
         sx={{
-          bgcolor: "#F1E5F6",
+          background: "linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)",
           px: 3,
           py: 2,
-          borderBottom: "1px solid #E5E7EB",
+          borderBottom: "1px solid #D1D5DB",
         }}
       >
         <Typography
           sx={{
             fontSize: 16,
             fontWeight: 700,
-            color: "#111827",
+            color: "#FFFFFF",
           }}
         >
           {copy.header}
@@ -115,7 +136,7 @@ const PitchCanvasLayout: FC<PitchCanvasLayoutProps> = ({
         <Typography
           sx={{
             fontSize: 12,
-            color: "#6B7280",
+            color: "rgba(255,255,255,0.8)",
             mt: 0.5,
           }}
         >
@@ -134,15 +155,15 @@ const PitchCanvasLayout: FC<PitchCanvasLayoutProps> = ({
           <Box
             key={section.id}
             sx={{
-              borderRight: (index + 1) % 4 !== 0 ? "1px solid #E5E7EB" : "none",
-              borderBottom: index < 8 ? "1px solid #E5E7EB" : "none",
+              borderRight: (index + 1) % 4 !== 0 ? "1px solid #D1D5DB" : "none",
+              borderBottom: index < 8 ? "1px solid #D1D5DB" : "none",
             }}
           >
             {/* Section number badge */}
             <Box
               sx={{
                 px: 2,
-                pt: 2,
+                pt: 1.5,
                 display: "flex",
                 alignItems: "center",
                 gap: 1,
@@ -150,20 +171,21 @@ const PitchCanvasLayout: FC<PitchCanvasLayoutProps> = ({
             >
               <Box
                 sx={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: "50%",
-                  bgcolor: section.color,
+                  width: 22,
+                  height: 22,
+                  borderRadius: "6px",
+                  bgcolor: `${section.accentColor}14`,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
+                  border: `1px solid ${section.accentColor}30`,
                 }}
               >
                 <Typography
                   sx={{
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: "#374151",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: section.accentColor,
                   }}
                 >
                   {index + 1}
@@ -173,6 +195,8 @@ const PitchCanvasLayout: FC<PitchCanvasLayoutProps> = ({
             <CanvasSection
               title={section.title}
               placeholder={section.placeholder}
+              icon={section.icon}
+              accentColor={section.accentColor}
               items={getItems(section.id)}
               onAddItem={handleAddItem(section.id)}
               onUpdateItem={handleUpdateItem(section.id)}

@@ -1,6 +1,6 @@
 "use client";
 
-import type { FC } from "react";
+import type { FC, ReactNode } from "react";
 import { useState } from "react";
 import {
   Box,
@@ -36,6 +36,8 @@ export type AiSuggestion = {
 export type CanvasSectionProps = Readonly<{
   title: string;
   placeholder?: string;
+  icon?: ReactNode;
+  accentColor?: string;
   items?: CanvasSectionItem[];
   onAddItem?: (item: Omit<CanvasSectionItem, "id">) => void;
   onUpdateItem?: (item: CanvasSectionItem) => void;
@@ -155,6 +157,8 @@ const IT_PLACEHOLDER_MAP: Record<string, string> = {
 const CanvasSection: FC<CanvasSectionProps> = ({
   title,
   placeholder = "Who are our key partners?",
+  icon,
+  accentColor,
   items = [],
   onAddItem,
   onUpdateItem,
@@ -324,14 +328,37 @@ const CanvasSection: FC<CanvasSectionProps> = ({
           mb: 1.5,
         }}
       >
-        <Stack direction="row" spacing={0.5} alignItems="center">
-          <EditOutlinedIcon className="no-export" sx={{ fontSize: 16, color: "#9CA3AF" }} />
+        <Stack direction="row" spacing={1} alignItems="center">
+          {icon && (
+            <Box
+              sx={{
+                width: 28,
+                height: 28,
+                borderRadius: "8px",
+                bgcolor: accentColor ? `${accentColor}18` : "rgba(76, 106, 210, 0.08)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+                "& .MuiSvgIcon-root": {
+                  fontSize: 16,
+                  color: accentColor ?? "#4C6AD2",
+                },
+              }}
+            >
+              {icon}
+            </Box>
+          )}
+          {!icon && (
+            <EditOutlinedIcon className="no-export" sx={{ fontSize: 16, color: "#9CA3AF" }} />
+          )}
           <Typography
             sx={{
-              fontSize: 13,
+              fontSize: 12,
               fontWeight: 700,
-              color: "#111827",
-              textTransform: resolvedTitle === resolvedTitle.toUpperCase() ? "uppercase" : "none",
+              color: "#374151",
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
             }}
           >
             {resolvedTitle}

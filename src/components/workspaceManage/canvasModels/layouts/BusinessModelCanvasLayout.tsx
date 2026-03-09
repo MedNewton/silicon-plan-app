@@ -2,6 +2,15 @@
 
 import type { FC } from "react";
 import { Box } from "@mui/material";
+import HandshakeOutlinedIcon from "@mui/icons-material/HandshakeOutlined";
+import RocketLaunchOutlinedIcon from "@mui/icons-material/RocketLaunchOutlined";
+import DiamondOutlinedIcon from "@mui/icons-material/DiamondOutlined";
+import FavoriteOutlinedIcon from "@mui/icons-material/FavoriteOutlined";
+import PeopleOutlinedIcon from "@mui/icons-material/PeopleOutlined";
+import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
+import LocalShippingOutlinedIcon from "@mui/icons-material/LocalShippingOutlined";
+import AccountBalanceOutlinedIcon from "@mui/icons-material/AccountBalanceOutlined";
+import TrendingUpOutlinedIcon from "@mui/icons-material/TrendingUpOutlined";
 import CanvasSection, { type CanvasSectionItem, type AiSuggestion } from "../CanvasSection";
 import type { CanvasSectionsData } from "@/types/workspaces";
 
@@ -63,8 +72,9 @@ const BusinessModelCanvasLayout: FC<BusinessModelCanvasLayoutProps> = ({
       sx={{
         bgcolor: "#FFFFFF",
         borderRadius: 2,
-        border: "1px solid #E5E7EB",
+        border: "1px solid #D1D5DB",
         overflow: "hidden",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
       }}
     >
       {/* Top row - 5 columns */}
@@ -78,13 +88,15 @@ const BusinessModelCanvasLayout: FC<BusinessModelCanvasLayoutProps> = ({
         <Box
           sx={{
             gridRow: "1 / 3",
-            borderRight: "1px solid #E5E7EB",
-            borderBottom: "1px solid #E5E7EB",
+            borderRight: "1px solid #D1D5DB",
+            borderBottom: "1px solid #D1D5DB",
           }}
         >
           <CanvasSection
             title="KEY PARTNERS"
             placeholder="Who are our key partners?"
+            icon={<HandshakeOutlinedIcon />}
+            accentColor="#6366F1"
             items={getItems("key-partners")}
             onAddItem={handleAddItem("key-partners")}
             onUpdateItem={handleUpdateItem("key-partners")}
@@ -100,13 +112,15 @@ const BusinessModelCanvasLayout: FC<BusinessModelCanvasLayoutProps> = ({
         {/* Key Activities */}
         <Box
           sx={{
-            borderRight: "1px solid #E5E7EB",
-            borderBottom: "1px solid #E5E7EB",
+            borderRight: "1px solid #D1D5DB",
+            borderBottom: "1px solid #D1D5DB",
           }}
         >
           <CanvasSection
             title="Key Activities"
             placeholder="What key activities do our value propositions require?"
+            icon={<RocketLaunchOutlinedIcon />}
+            accentColor="#8B5CF6"
             items={getItems("key-activities")}
             onAddItem={handleAddItem("key-activities")}
             onUpdateItem={handleUpdateItem("key-activities")}
@@ -122,13 +136,15 @@ const BusinessModelCanvasLayout: FC<BusinessModelCanvasLayoutProps> = ({
         <Box
           sx={{
             gridRow: "1 / 3",
-            borderRight: "1px solid #E5E7EB",
-            borderBottom: "1px solid #E5E7EB",
+            borderRight: "1px solid #D1D5DB",
+            borderBottom: "1px solid #D1D5DB",
           }}
         >
           <CanvasSection
             title="Value Proposition"
             placeholder="What value do we deliver to the customer?"
+            icon={<DiamondOutlinedIcon />}
+            accentColor="#EC4899"
             items={getItems("value-proposition")}
             onAddItem={handleAddItem("value-proposition")}
             onUpdateItem={handleUpdateItem("value-proposition")}
@@ -144,13 +160,15 @@ const BusinessModelCanvasLayout: FC<BusinessModelCanvasLayoutProps> = ({
         {/* Customer Relationships */}
         <Box
           sx={{
-            borderRight: "1px solid #E5E7EB",
-            borderBottom: "1px solid #E5E7EB",
+            borderRight: "1px solid #D1D5DB",
+            borderBottom: "1px solid #D1D5DB",
           }}
         >
           <CanvasSection
             title="Customer Relationships"
             placeholder="What type of relationship does each customer segment expect?"
+            icon={<FavoriteOutlinedIcon />}
+            accentColor="#F43F5E"
             items={getItems("customer-relationships")}
             onAddItem={handleAddItem("customer-relationships")}
             onUpdateItem={handleUpdateItem("customer-relationships")}
@@ -166,12 +184,14 @@ const BusinessModelCanvasLayout: FC<BusinessModelCanvasLayoutProps> = ({
         <Box
           sx={{
             gridRow: "1 / 3",
-            borderBottom: "1px solid #E5E7EB",
+            borderBottom: "1px solid #D1D5DB",
           }}
         >
           <CanvasSection
             title="Customer Segments"
             placeholder="For whom are we creating value?"
+            icon={<PeopleOutlinedIcon />}
+            accentColor="#3B82F6"
             items={getItems("customer-segments")}
             onAddItem={handleAddItem("customer-segments")}
             onUpdateItem={handleUpdateItem("customer-segments")}
@@ -187,13 +207,15 @@ const BusinessModelCanvasLayout: FC<BusinessModelCanvasLayoutProps> = ({
         {/* Key Resources (below Key Activities) */}
         <Box
           sx={{
-            borderRight: "1px solid #E5E7EB",
-            borderBottom: "1px solid #E5E7EB",
+            borderRight: "1px solid #D1D5DB",
+            borderBottom: "1px solid #D1D5DB",
           }}
         >
           <CanvasSection
             title="Key Resources"
             placeholder="What key resources do our value propositions require?"
+            icon={<Inventory2OutlinedIcon />}
+            accentColor="#8B5CF6"
             items={getItems("key-resources")}
             onAddItem={handleAddItem("key-resources")}
             onUpdateItem={handleUpdateItem("key-resources")}
@@ -208,13 +230,15 @@ const BusinessModelCanvasLayout: FC<BusinessModelCanvasLayoutProps> = ({
         {/* Channels (below Customer Relationships) */}
         <Box
           sx={{
-            borderRight: "1px solid #E5E7EB",
-            borderBottom: "1px solid #E5E7EB",
+            borderRight: "1px solid #D1D5DB",
+            borderBottom: "1px solid #D1D5DB",
           }}
         >
           <CanvasSection
             title="Channels"
             placeholder="Through which channels do our customers want to be reached?"
+            icon={<LocalShippingOutlinedIcon />}
+            accentColor="#F43F5E"
             items={getItems("channels")}
             onAddItem={handleAddItem("channels")}
             onUpdateItem={handleUpdateItem("channels")}
@@ -234,10 +258,12 @@ const BusinessModelCanvasLayout: FC<BusinessModelCanvasLayoutProps> = ({
           gridTemplateColumns: "1fr 1fr",
         }}
       >
-        <Box sx={{ borderRight: "1px solid #E5E7EB" }}>
+        <Box sx={{ borderRight: "1px solid #D1D5DB" }}>
           <CanvasSection
             title="Cost Structure"
             placeholder="What are the most important costs inherent in our business model?"
+            icon={<AccountBalanceOutlinedIcon />}
+            accentColor="#F59E0B"
             items={getItems("cost-structure")}
             onAddItem={handleAddItem("cost-structure")}
             onUpdateItem={handleUpdateItem("cost-structure")}
@@ -252,6 +278,8 @@ const BusinessModelCanvasLayout: FC<BusinessModelCanvasLayoutProps> = ({
           <CanvasSection
             title="Revenue Streams"
             placeholder="For what value are our customers really willing to pay?"
+            icon={<TrendingUpOutlinedIcon />}
+            accentColor="#10B981"
             items={getItems("revenue-streams")}
             onAddItem={handleAddItem("revenue-streams")}
             onUpdateItem={handleUpdateItem("revenue-streams")}

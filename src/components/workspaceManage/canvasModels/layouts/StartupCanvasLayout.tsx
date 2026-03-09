@@ -2,6 +2,15 @@
 
 import type { FC } from "react";
 import { Box, Typography } from "@mui/material";
+import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
+import LightbulbOutlinedIcon from "@mui/icons-material/LightbulbOutlined";
+import PeopleOutlinedIcon from "@mui/icons-material/PeopleOutlined";
+import DiamondOutlinedIcon from "@mui/icons-material/DiamondOutlined";
+import ShieldOutlinedIcon from "@mui/icons-material/ShieldOutlined";
+import LocalShippingOutlinedIcon from "@mui/icons-material/LocalShippingOutlined";
+import BarChartOutlinedIcon from "@mui/icons-material/BarChartOutlined";
+import AccountBalanceOutlinedIcon from "@mui/icons-material/AccountBalanceOutlined";
+import TrendingUpOutlinedIcon from "@mui/icons-material/TrendingUpOutlined";
 import CanvasSection, { type CanvasSectionItem, type AiSuggestion } from "../CanvasSection";
 import type { CanvasSectionsData } from "@/types/workspaces";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
@@ -75,24 +84,25 @@ const StartupCanvasLayout: FC<StartupCanvasLayoutProps> = ({
       sx={{
         bgcolor: "#FFFFFF",
         borderRadius: 2,
-        border: "1px solid #E5E7EB",
+        border: "1px solid #D1D5DB",
         overflow: "hidden",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
       }}
     >
       {/* Header */}
       <Box
         sx={{
-          bgcolor: "#E3E9FA",
+          background: "linear-gradient(135deg, #3B82F6 0%, #6366F1 100%)",
           px: 3,
           py: 2,
-          borderBottom: "1px solid #E5E7EB",
+          borderBottom: "1px solid #D1D5DB",
         }}
       >
         <Typography
           sx={{
             fontSize: 16,
             fontWeight: 700,
-            color: "#111827",
+            color: "#FFFFFF",
           }}
         >
           {copy.header}
@@ -100,7 +110,7 @@ const StartupCanvasLayout: FC<StartupCanvasLayoutProps> = ({
         <Typography
           sx={{
             fontSize: 12,
-            color: "#6B7280",
+            color: "rgba(255,255,255,0.8)",
             mt: 0.5,
           }}
         >
@@ -118,13 +128,15 @@ const StartupCanvasLayout: FC<StartupCanvasLayoutProps> = ({
         {/* Problem */}
         <Box
           sx={{
-            borderRight: "1px solid #E5E7EB",
-            borderBottom: "1px solid #E5E7EB",
+            borderRight: "1px solid #D1D5DB",
+            borderBottom: "1px solid #D1D5DB",
           }}
         >
           <CanvasSection
             title="Problem"
             placeholder="What problem are you solving? What's the current alternative?"
+            icon={<WarningAmberOutlinedIcon />}
+            accentColor="#EF4444"
             items={getItems("problem")}
             onAddItem={handleAddItem("problem")}
             onUpdateItem={handleUpdateItem("problem")}
@@ -140,13 +152,15 @@ const StartupCanvasLayout: FC<StartupCanvasLayoutProps> = ({
         {/* Solution */}
         <Box
           sx={{
-            borderRight: "1px solid #E5E7EB",
-            borderBottom: "1px solid #E5E7EB",
+            borderRight: "1px solid #D1D5DB",
+            borderBottom: "1px solid #D1D5DB",
           }}
         >
           <CanvasSection
             title="Solution"
             placeholder="What is your proposed solution? How does it work?"
+            icon={<LightbulbOutlinedIcon />}
+            accentColor="#8B5CF6"
             items={getItems("solution")}
             onAddItem={handleAddItem("solution")}
             onUpdateItem={handleUpdateItem("solution")}
@@ -162,12 +176,14 @@ const StartupCanvasLayout: FC<StartupCanvasLayoutProps> = ({
         {/* Customer Segments */}
         <Box
           sx={{
-            borderBottom: "1px solid #E5E7EB",
+            borderBottom: "1px solid #D1D5DB",
           }}
         >
           <CanvasSection
             title="Customer Segments"
             placeholder="Who are your target customers? Who are early adopters?"
+            icon={<PeopleOutlinedIcon />}
+            accentColor="#3B82F6"
             items={getItems("customer-segments")}
             onAddItem={handleAddItem("customer-segments")}
             onUpdateItem={handleUpdateItem("customer-segments")}
@@ -184,13 +200,15 @@ const StartupCanvasLayout: FC<StartupCanvasLayoutProps> = ({
       {/* Middle row - Unique Value Proposition spanning full width */}
       <Box
         sx={{
-          borderBottom: "1px solid #E5E7EB",
-          bgcolor: "#F9FAFB",
+          borderBottom: "1px solid #D1D5DB",
+          bgcolor: "#FAFAFE",
         }}
       >
         <CanvasSection
           title="UNIQUE VALUE PROPOSITION"
           placeholder="What is your single, clear, compelling message that states why you are different and worth buying?"
+          icon={<DiamondOutlinedIcon />}
+          accentColor="#EC4899"
           items={getItems("unique-value-proposition")}
           onAddItem={handleAddItem("unique-value-proposition")}
           onUpdateItem={handleUpdateItem("unique-value-proposition")}
@@ -213,13 +231,15 @@ const StartupCanvasLayout: FC<StartupCanvasLayoutProps> = ({
         {/* Unfair Advantage */}
         <Box
           sx={{
-            borderRight: "1px solid #E5E7EB",
-            borderBottom: "1px solid #E5E7EB",
+            borderRight: "1px solid #D1D5DB",
+            borderBottom: "1px solid #D1D5DB",
           }}
         >
           <CanvasSection
             title="Unfair Advantage"
             placeholder="What can't be easily copied or bought?"
+            icon={<ShieldOutlinedIcon />}
+            accentColor="#F59E0B"
             items={getItems("unfair-advantage")}
             onAddItem={handleAddItem("unfair-advantage")}
             onUpdateItem={handleUpdateItem("unfair-advantage")}
@@ -235,13 +255,15 @@ const StartupCanvasLayout: FC<StartupCanvasLayoutProps> = ({
         {/* Channels */}
         <Box
           sx={{
-            borderRight: "1px solid #E5E7EB",
-            borderBottom: "1px solid #E5E7EB",
+            borderRight: "1px solid #D1D5DB",
+            borderBottom: "1px solid #D1D5DB",
           }}
         >
           <CanvasSection
             title="Channels"
             placeholder="How will you reach your customers?"
+            icon={<LocalShippingOutlinedIcon />}
+            accentColor="#10B981"
             items={getItems("channels")}
             onAddItem={handleAddItem("channels")}
             onUpdateItem={handleUpdateItem("channels")}
@@ -257,12 +279,14 @@ const StartupCanvasLayout: FC<StartupCanvasLayoutProps> = ({
         {/* Key Metrics */}
         <Box
           sx={{
-            borderBottom: "1px solid #E5E7EB",
+            borderBottom: "1px solid #D1D5DB",
           }}
         >
           <CanvasSection
             title="Key Metrics"
             placeholder="What key metrics will you track?"
+            icon={<BarChartOutlinedIcon />}
+            accentColor="#6366F1"
             items={getItems("key-metrics")}
             onAddItem={handleAddItem("key-metrics")}
             onUpdateItem={handleUpdateItem("key-metrics")}
@@ -284,10 +308,12 @@ const StartupCanvasLayout: FC<StartupCanvasLayoutProps> = ({
         }}
       >
         {/* Cost Structure */}
-        <Box sx={{ borderRight: "1px solid #E5E7EB" }}>
+        <Box sx={{ borderRight: "1px solid #D1D5DB" }}>
           <CanvasSection
             title="Cost Structure"
             placeholder="What are your fixed and variable costs?"
+            icon={<AccountBalanceOutlinedIcon />}
+            accentColor="#F59E0B"
             items={getItems("cost-structure")}
             onAddItem={handleAddItem("cost-structure")}
             onUpdateItem={handleUpdateItem("cost-structure")}
@@ -305,6 +331,8 @@ const StartupCanvasLayout: FC<StartupCanvasLayoutProps> = ({
           <CanvasSection
             title="Revenue Streams"
             placeholder="How will you make money?"
+            icon={<TrendingUpOutlinedIcon />}
+            accentColor="#10B981"
             items={getItems("revenue-streams")}
             onAddItem={handleAddItem("revenue-streams")}
             onUpdateItem={handleUpdateItem("revenue-streams")}

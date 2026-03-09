@@ -2,6 +2,10 @@
 
 import type { FC } from "react";
 import { Box, Typography } from "@mui/material";
+import FlagOutlinedIcon from "@mui/icons-material/FlagOutlined";
+import EmojiEventsOutlinedIcon from "@mui/icons-material/EmojiEventsOutlined";
+import BarChartOutlinedIcon from "@mui/icons-material/BarChartOutlined";
+import GppMaybeOutlinedIcon from "@mui/icons-material/GppMaybeOutlined";
 import CanvasSection, { type CanvasSectionItem, type AiSuggestion } from "../CanvasSection";
 import type { CanvasSectionsData } from "@/types/workspaces";
 
@@ -17,10 +21,10 @@ export type FourQuartersCanvasLayoutProps = Readonly<{
 }>;
 
 const QUARTERS = [
-  { id: "q1", label: "Q1", color: "#E4F4F2" },
-  { id: "q2", label: "Q2", color: "#EAF3D9" },
-  { id: "q3", label: "Q3", color: "#F7E1E1" },
-  { id: "q4", label: "Q4", color: "#E3E9FA" },
+  { id: "q1", label: "Q1", color: "#6366F1" },
+  { id: "q2", label: "Q2", color: "#8B5CF6" },
+  { id: "q3", label: "Q3", color: "#EC4899" },
+  { id: "q4", label: "Q4", color: "#3B82F6" },
 ];
 
 const FourQuartersCanvasLayout: FC<FourQuartersCanvasLayoutProps> = ({
@@ -70,8 +74,9 @@ const FourQuartersCanvasLayout: FC<FourQuartersCanvasLayoutProps> = ({
       sx={{
         bgcolor: "#FFFFFF",
         borderRadius: 2,
-        border: "1px solid #E5E7EB",
+        border: "1px solid #D1D5DB",
         overflow: "hidden",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
       }}
     >
       {/* Quarter columns */}
@@ -85,7 +90,7 @@ const FourQuartersCanvasLayout: FC<FourQuartersCanvasLayoutProps> = ({
           <Box
             key={quarter.id}
             sx={{
-              borderRight: index < 3 ? "1px solid #E5E7EB" : "none",
+              borderRight: index < 3 ? "1px solid #D1D5DB" : "none",
               display: "flex",
               flexDirection: "column",
             }}
@@ -93,18 +98,20 @@ const FourQuartersCanvasLayout: FC<FourQuartersCanvasLayoutProps> = ({
             {/* Quarter header */}
             <Box
               sx={{
-                bgcolor: quarter.color,
+                bgcolor: `${quarter.color}12`,
                 px: 2,
                 py: 1.5,
-                borderBottom: "1px solid #E5E7EB",
+                borderBottom: "1px solid #D1D5DB",
+                borderTop: `3px solid ${quarter.color}`,
               }}
             >
               <Typography
                 sx={{
-                  fontSize: 16,
+                  fontSize: 15,
                   fontWeight: 700,
-                  color: "#111827",
+                  color: quarter.color,
                   textAlign: "center",
+                  letterSpacing: "0.05em",
                 }}
               >
                 {quarter.label}
@@ -112,10 +119,12 @@ const FourQuartersCanvasLayout: FC<FourQuartersCanvasLayoutProps> = ({
             </Box>
 
             {/* Objectives */}
-            <Box sx={{ borderBottom: "1px solid #E5E7EB" }}>
+            <Box sx={{ borderBottom: "1px solid #D1D5DB" }}>
               <CanvasSection
                 title="Objectives"
                 placeholder="What are the key objectives for this quarter?"
+                icon={<FlagOutlinedIcon />}
+                accentColor={quarter.color}
                 items={getItems(`${quarter.id}-objectives`)}
                 onAddItem={handleAddItem(`${quarter.id}-objectives`)}
                 onUpdateItem={handleUpdateItem(`${quarter.id}-objectives`)}
@@ -128,10 +137,12 @@ const FourQuartersCanvasLayout: FC<FourQuartersCanvasLayoutProps> = ({
             </Box>
 
             {/* Milestones */}
-            <Box sx={{ borderBottom: "1px solid #E5E7EB" }}>
+            <Box sx={{ borderBottom: "1px solid #D1D5DB" }}>
               <CanvasSection
                 title="Milestones"
                 placeholder="What milestones need to be achieved?"
+                icon={<EmojiEventsOutlinedIcon />}
+                accentColor={quarter.color}
                 items={getItems(`${quarter.id}-milestones`)}
                 onAddItem={handleAddItem(`${quarter.id}-milestones`)}
                 onUpdateItem={handleUpdateItem(`${quarter.id}-milestones`)}
@@ -144,10 +155,12 @@ const FourQuartersCanvasLayout: FC<FourQuartersCanvasLayoutProps> = ({
             </Box>
 
             {/* Key Metrics */}
-            <Box sx={{ borderBottom: "1px solid #E5E7EB" }}>
+            <Box sx={{ borderBottom: "1px solid #D1D5DB" }}>
               <CanvasSection
                 title="Key Metrics"
                 placeholder="How will you measure success?"
+                icon={<BarChartOutlinedIcon />}
+                accentColor={quarter.color}
                 items={getItems(`${quarter.id}-metrics`)}
                 onAddItem={handleAddItem(`${quarter.id}-metrics`)}
                 onUpdateItem={handleUpdateItem(`${quarter.id}-metrics`)}
@@ -164,6 +177,8 @@ const FourQuartersCanvasLayout: FC<FourQuartersCanvasLayoutProps> = ({
               <CanvasSection
                 title="Risks & Owners"
                 placeholder="What are the risks and who is responsible?"
+                icon={<GppMaybeOutlinedIcon />}
+                accentColor={quarter.color}
                 items={getItems(`${quarter.id}-risks`)}
                 onAddItem={handleAddItem(`${quarter.id}-risks`)}
                 onUpdateItem={handleUpdateItem(`${quarter.id}-risks`)}
