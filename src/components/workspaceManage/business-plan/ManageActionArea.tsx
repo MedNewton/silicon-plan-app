@@ -515,11 +515,12 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
         return;
       }
 
-      // --- PDF rendering via jsPDF.html() for selectable text + automatic pagination ---
+      // --- Single-pass html2canvas render, then slice into pages ---
       const pdf = await renderHtmlToPdf(html, {
         paperSize: paperSize as "A4" | "Letter" | "A3",
         marginMm: A4_MARGIN_MM,
         fontFamily,
+        fontSize: Number(fontSize),
       });
       pdf.save(`${safeName}.pdf`);
       toast.success(copy.toastPdfExported);
