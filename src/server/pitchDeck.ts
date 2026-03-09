@@ -1,5 +1,7 @@
 // src/server/pitchDeck.ts
 import { getSupabaseClient, type SupabaseDb } from "@/lib/supabaseServer";
+import OpenAI from "openai";
+import { getWorkspaceAiContext } from "@/lib/workspaceAiContext";
 import { getBusinessPlanWithChapters } from "@/server/businessPlan";
 import type {
   PitchDeckTemplate,
@@ -181,6 +183,11 @@ type ContextLine = {
 
 const MAX_SEED_BULLET_LENGTH = 180;
 const MAX_SEED_CONTEXT_LINES = 240;
+const MAX_AI_SEED_CONTEXT_CHARS = 9000;
+const MAX_AI_SEED_OUTPUT_TOKENS = 1800;
+
+const GUIDELINE_BULLET_PREFIX =
+  /^(define|identify|explain|describe|show|highlight|summarize|clarify|state|list|set|estimate|project|specify|outline|present|mention)\b/i;
 
 const SLIDE_CONTEXT_KEYWORDS: Record<string, string[]> = {
   Problem: ["problem", "pain", "challenge", "customer jobs", "pains"],
@@ -286,6 +293,62 @@ const mergeBullets = (
 
   return merged;
 };
+
+type AiSeedSlidePayload = {
+  title?: unknown;
+  bullets?: unknown;
+};
+
+const parseAiSeedJson = (raw: string): AiSeedSlidePayload[] => {
+  const extractJsonCandidate = (value: string): string => {
+    const fencedMatch = value.match(/```(?:json)?\s*([\s\S]*?)```/i);
+    if (fencedMatch?.[1]) {
+      return fencedMatch[1].trim();
+    }
+
+    const firstBrace = value.indexOf("{");
+    const lastBrace = value.lastIndexOf("}");
+    if (firstBrace >= 0 && lastBrace > firstBrace) {
+      return value.slice(firstBrace, lastBrace + 1).trim();
+    }
+
+    return value.trim();
+  };
+
+  const candidate = extractJsonCandidate(raw);
+  if (!candidate) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(candidate) as unknown;
+    if (Array.isArray(parsed)) {
+      return parsed as AiSeedSlidePayload[];
+    }
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      "slides" in parsed &&
+      Array.isArray((parsed as { slides?: unknown }).slides)
+    ) {
+      return (parsed as { slides: AiSeedSlidePayload[] }).slides;
+    }
+    return [];
+  } catch {
+    return [];
+  }
+};
+
+const normalizeSlideTitleKey = (value: string): string =>
+  normalizeLookupText(value).replace(/\s+/g, " ").trim();
+
+const sanitizeGeneratedBullet = (value: string): string => {
+  const cleaned = trimToLength(value, MAX_SEED_BULLET_LENGTH);
+  return cleaned.replace(/^[-*•]+\s*/, "").trim();
+};
+
+const isGuidelineBullet = (value: string): boolean =>
+  GUIDELINE_BULLET_PREFIX.test(value.trim());
 
 const pickContextBullets = (
   lines: ContextLine[],
@@ -538,6 +601,120 @@ async function buildContextAwareSeedSlides(params: {
     };
   });
 };
+
+async function buildAiSeedSlides(params: {
+  workspaceId: WorkspaceId;
+  baseSlides: SeedSlideDefinition[];
+}): Promise<SeedSlideDefinition[] | null> {
+  const { workspaceId, baseSlides } = params;
+  const openAiApiKey = process.env.OPEN_AI_API_KEY;
+  if (!openAiApiKey) {
+    return null;
+  }
+
+  try {
+    const workspaceContext = await getWorkspaceAiContext(workspaceId);
+    const contextSnippet = workspaceContext.context
+      ? workspaceContext.context.slice(0, MAX_AI_SEED_CONTEXT_CHARS)
+      : "";
+
+    const slideSpec = baseSlides
+      .map(
+        (slide, index) =>
+          `${index + 1}. ${slide.title}\nCurrent bullets:\n- ${slide.content.bullets.join("\n- ")}`
+      )
+      .join("\n\n");
+
+    const systemPrompt = [
+      "You are a startup fundraising pitch expert.",
+      "Generate concrete, startup-specific bullet points for each pitch section.",
+      "Do not output writing instructions or guidelines.",
+      "Every bullet must read like factual startup content, not advice.",
+      workspaceContext.toneInstruction,
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    const userPrompt = [
+      "Return valid JSON only in this format:",
+      '{"slides":[{"title":"Problem","bullets":["...", "...", "..."]}]}',
+      "",
+      "Rules:",
+      "- Keep the same slide titles and order.",
+      "- Exactly 3 bullets per slide.",
+      "- Max 20 words per bullet.",
+      "- No imperative verbs like 'define', 'describe', 'list', 'explain', 'show'.",
+      "- Use only available context. If data is missing, infer cautiously without placeholders.",
+      "",
+      contextSnippet ? `Workspace startup context:\n${contextSnippet}` : "Workspace startup context: [none]",
+      "",
+      `Slides to populate:\n${slideSpec}`,
+    ].join("\n");
+
+    const openai = new OpenAI({ apiKey: openAiApiKey });
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      temperature: 0.35,
+      max_tokens: MAX_AI_SEED_OUTPUT_TOKENS,
+      response_format: { type: "json_object" },
+    });
+
+    const rawOutput = completion.choices[0]?.message?.content?.trim() ?? "";
+    const parsedSlides = parseAiSeedJson(rawOutput);
+    if (parsedSlides.length === 0) {
+      return null;
+    }
+
+    const bulletsByTitle = new Map<string, string[]>();
+    parsedSlides.forEach((slide) => {
+      if (typeof slide.title !== "string") return;
+      if (!Array.isArray(slide.bullets)) return;
+
+      const sanitized = slide.bullets
+        .filter((bullet): bullet is string => typeof bullet === "string")
+        .map(sanitizeGeneratedBullet)
+        .filter((bullet) => bullet.length > 0 && !isGuidelineBullet(bullet))
+        .slice(0, 3);
+
+      if (sanitized.length === 0) return;
+      bulletsByTitle.set(normalizeSlideTitleKey(slide.title), sanitized);
+    });
+
+    const parsedByIndex = parsedSlides.map((slide) => {
+      if (!Array.isArray(slide.bullets)) return [];
+      return slide.bullets
+        .filter((bullet): bullet is string => typeof bullet === "string")
+        .map(sanitizeGeneratedBullet)
+        .filter((bullet) => bullet.length > 0 && !isGuidelineBullet(bullet))
+        .slice(0, 3);
+    });
+
+    return baseSlides.map((slide, index) => {
+      const byTitle = bulletsByTitle.get(normalizeSlideTitleKey(slide.title)) ?? [];
+      const byIndex = parsedByIndex[index] ?? [];
+      const preferred = byTitle.length > 0 ? byTitle : byIndex;
+
+      if (preferred.length === 0) {
+        return slide;
+      }
+
+      return {
+        ...slide,
+        content: {
+          ...slide.content,
+          bullets: mergeBullets(preferred, slide.content.bullets, 3),
+        },
+      };
+    });
+  } catch (error) {
+    console.error("Failed to AI-generate pitch deck seed slides:", error);
+    return null;
+  }
+}
 
 async function userHasWorkspaceAccess(
   client: Supa,
@@ -835,11 +1012,16 @@ export async function createPitchDeck(
   }
 
   const pitchDeck = mapPitchDeckRow(data);
-  const seededSlides = await buildContextAwareSeedSlides({
+  const contextAwareSeedSlides = await buildContextAwareSeedSlides({
     client,
     workspaceId,
     userId: createdBy,
   });
+  const aiSeedSlides = await buildAiSeedSlides({
+    workspaceId,
+    baseSlides: contextAwareSeedSlides,
+  });
+  const seededSlides = aiSeedSlides ?? contextAwareSeedSlides;
 
   const slidesToInsert = [
     {

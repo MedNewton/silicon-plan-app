@@ -91,20 +91,19 @@ export const PitchDeckProvider: FC<PitchDeckProviderProps> = ({
       setSlides(data.slides);
       setTemplate(data.template);
 
-      // Select first slide if none selected
-      if (!selectedSlideId && data.slides.length > 0) {
-        const firstSlideId = data.slides.at(0)?.id ?? null;
-        if (firstSlideId) {
-          setSelectedSlideId(firstSlideId);
+      setSelectedSlideId((currentSelectedId) => {
+        if (currentSelectedId && data.slides.some((slide) => slide.id === currentSelectedId)) {
+          return currentSelectedId;
         }
-      }
+        return data.slides.at(0)?.id ?? null;
+      });
     } catch (err) {
       console.error("Error loading pitch deck:", err);
       setError(err instanceof Error ? err.message : "Failed to load pitch deck");
     } finally {
       setIsLoading(false);
     }
-  }, [workspaceId, deckId, selectedSlideId]);
+  }, [workspaceId, deckId]);
 
   // Load data on mount
   useEffect(() => {
@@ -151,13 +150,18 @@ export const PitchDeckProvider: FC<PitchDeckProviderProps> = ({
           throw new Error("Failed to add slide");
         }
 
-        await refreshData();
+        const data = (await response.json()) as { slide: PitchDeckSlide };
+        const createdSlide = data.slide;
+        setSlides((currentSlides) =>
+          [...currentSlides, createdSlide].sort((a, b) => a.order_index - b.order_index)
+        );
+        setSelectedSlideId((currentSelectedId) => currentSelectedId ?? createdSlide.id);
       } catch (err) {
         console.error("Error adding slide:", err);
         throw err;
       }
     },
-    [workspaceId, deckId, refreshData]
+    [workspaceId, deckId]
   );
 
   // Update slide
@@ -177,13 +181,17 @@ export const PitchDeckProvider: FC<PitchDeckProviderProps> = ({
           throw new Error("Failed to update slide");
         }
 
-        await refreshData();
+        const data = (await response.json()) as { slide: PitchDeckSlide };
+        const updatedSlide = data.slide;
+        setSlides((currentSlides) =>
+          currentSlides.map((slide) => (slide.id === slideId ? updatedSlide : slide))
+        );
       } catch (err) {
         console.error("Error updating slide:", err);
         throw err;
       }
     },
-    [workspaceId, deckId, refreshData]
+    [workspaceId, deckId]
   );
 
   // Delete slide
@@ -199,18 +207,25 @@ export const PitchDeckProvider: FC<PitchDeckProviderProps> = ({
           throw new Error("Failed to delete slide");
         }
 
-        // Clear selection if deleted slide was selected
-        if (selectedSlideId === slideId) {
-          setSelectedSlideId(null);
+        const deletedIndex = slides.findIndex((slide) => slide.id === slideId);
+        if (deletedIndex === -1) {
+          return;
         }
 
-        await refreshData();
+        const nextSlides = slides.filter((slide) => slide.id !== slideId);
+        setSlides(nextSlides);
+
+        if (selectedSlideId === slideId) {
+          const fallbackSlide =
+            nextSlides[deletedIndex] ?? nextSlides[deletedIndex - 1] ?? nextSlides[0] ?? null;
+          setSelectedSlideId(fallbackSlide?.id ?? null);
+        }
       } catch (err) {
         console.error("Error deleting slide:", err);
         throw err;
       }
     },
-    [workspaceId, deckId, refreshData, selectedSlideId]
+    [workspaceId, deckId, slides, selectedSlideId]
   );
 
   // Duplicate slide
@@ -230,13 +245,17 @@ export const PitchDeckProvider: FC<PitchDeckProviderProps> = ({
           throw new Error("Failed to duplicate slide");
         }
 
-        await refreshData();
+        const data = (await response.json()) as { slide: PitchDeckSlide };
+        const duplicatedSlide = data.slide;
+        setSlides((currentSlides) =>
+          [...currentSlides, duplicatedSlide].sort((a, b) => a.order_index - b.order_index)
+        );
       } catch (err) {
         console.error("Error duplicating slide:", err);
         throw err;
       }
     },
-    [workspaceId, deckId, refreshData]
+    [workspaceId, deckId]
   );
 
   // Reorder slides
