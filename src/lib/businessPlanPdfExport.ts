@@ -71,32 +71,25 @@ export async function renderHtmlToPdf(
     orientation: "portrait",
   });
 
-  await new Promise<void>((resolve, reject) => {
-    pdf.html(sourceEl, {
-      callback: () => resolve(),
-      margin: [marginMm, marginMm, marginMm, marginMm],
-      autoPaging: "text",
-      width: contentWidthMm,
-      windowWidth: contentWidthPx,
-      html2canvas: {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: "#FFFFFF",
-      },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any);
+  const htmlOptions: Record<string, unknown> = {
+    callback: (_doc: jsPDF) => {/* resolved inside the promise wrapper */},
+    margin: [marginMm, marginMm, marginMm, marginMm],
+    autoPaging: "text",
+    width: contentWidthMm,
+    windowWidth: contentWidthPx,
+    html2canvas: {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: "#FFFFFF",
+    },
+  };
+
+  await new Promise<void>((resolve) => {
+    htmlOptions.callback = () => resolve();
+    void pdf.html(sourceEl, htmlOptions as Parameters<typeof pdf.html>[1]);
   });
 
   container.remove();
-
-  // Remove the blank first page that jsPDF sometimes creates
-  const pageCount = pdf.getNumberOfPages();
-  if (pageCount > 1) {
-    // Check if the first page is blank (jsPDF bug when html() is used)
-    // We detect this by checking if the page has any content drawn.
-    // A simpler heuristic: if we have at least 2 pages, keep all of them
-    // since jsPDF.html() with autoPaging generally doesn't add spurious pages.
-  }
 
   return pdf;
 }
