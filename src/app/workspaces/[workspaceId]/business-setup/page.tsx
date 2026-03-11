@@ -289,7 +289,7 @@ export default function WorkspaceBusinessSetupPage() {
           businessName: "Nome azienda",
           businessNamePlaceholder: "Es. Silicon Plan LLC",
           isOperating: "Questa azienda e attualmente operativa?",
-          businessPlanPurpose: "Perche stai creando questo business plan?",
+          businessPlanPurpose: "Perchè stai creando questo business plan?",
           businessPlanPurposePlaceholder:
             "Scopo personalizzato (opzionale se una scelta predefinita e adatta)",
           selectIndustry: "Seleziona un settore",

@@ -146,7 +146,7 @@ const IT_PLACEHOLDER_MAP: Record<string, string> = {
   "Who are your target customers? Who are early adopters?":
     "Chi sono i clienti target? Chi sono gli early adopter?",
   "What is your single, clear, compelling message that states why you are different and worth buying?":
-    "Qual e il tuo messaggio unico, chiaro e convincente che spiega perche sei diverso e da scegliere?",
+    "Qual e il tuo messaggio unico, chiaro e convincente che spiega perchè sei diverso e da scegliere?",
   "What can't be easily copied or bought?":
     "Cosa non puo essere copiato o comprato facilmente?",
   "What key metrics will you track?": "Quali metriche chiave traccerai?",
