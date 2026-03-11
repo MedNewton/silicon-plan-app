@@ -78,7 +78,7 @@ export async function renderHtmlToPdf(
   const sourceEl = bodyEl ?? container;
 
   // Wait for any images (especially base64 logos) to finish loading
-  const images = Array.from(sourceEl.querySelectorAll("img")) as HTMLImageElement[];
+  const images = Array.from(sourceEl.querySelectorAll<HTMLImageElement>("img"));
   await Promise.all(
     images.map(
       (img) =>
@@ -94,8 +94,8 @@ export async function renderHtmlToPdf(
   // ---- 2. Force cover/final page elements to fill exactly one page ----
   // These use flexbox centering which needs an explicit height to work
   // in the offscreen container (vh units don't apply here).
-  const coverPage = sourceEl.querySelector(".cover-page") as HTMLElement | null;
-  const finalPage = sourceEl.querySelector(".final-page") as HTMLElement | null;
+  const coverPage = sourceEl.querySelector<HTMLElement>(".cover-page");
+  const finalPage = sourceEl.querySelector<HTMLElement>(".final-page");
   if (coverPage) {
     coverPage.style.height = `${contentH}px`;
     coverPage.style.minHeight = `${contentH}px`;

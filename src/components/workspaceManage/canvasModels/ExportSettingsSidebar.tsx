@@ -22,7 +22,7 @@ import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import { toast } from "react-toastify";
 import type { CanvasSectionsData, WorkspaceCanvasTemplateType } from "@/types/workspaces";
-import { A4_MARGIN_MM, PPTX_TYPOGRAPHY, sanitizeFileName } from "@/lib/exportStyles";
+import { PPTX_TYPOGRAPHY, sanitizeFileName } from "@/lib/exportStyles";
 import { fetchWorkspaceBranding, fetchImageAsDataUrl } from "@/lib/workspaceBranding";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
 

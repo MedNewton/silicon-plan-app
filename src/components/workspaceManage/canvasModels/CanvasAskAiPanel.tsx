@@ -296,7 +296,7 @@ const CanvasAskAiPanel: FC<CanvasAskAiPanelProps> = ({
         setIsLoading(false);
       }
     },
-    [workspaceId, templateType, sectionsData, copy.generatedSuggestions, copy.failedGenerate]
+    [workspaceId, templateType, sectionsData, copy.generatedSuggestions, copy.failedGenerate, locale]
   );
 
   const handleGenerateAll = useCallback(async () => {

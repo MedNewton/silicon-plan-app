@@ -235,22 +235,6 @@ export const buildBusinessPlanHtml = (
   const title = escapeHtml(plan?.title ?? "Business Plan");
   const currencyLabel = currencyCode ? escapeHtml(currencyCode) : null;
 
-  const headerHtml =
-    logoDataUrl || workspaceName
-      ? `
-      <header class="brand-header">
-        ${
-          logoDataUrl
-            ? `<img class="brand-logo" src="${escapeHtml(logoDataUrl)}" alt="${escapeHtml(
-                workspaceName ?? "Workspace Logo"
-              )}" />`
-            : ""
-        }
-        ${workspaceName ? `<span class="brand-name">${escapeHtml(workspaceName)}</span>` : ""}
-      </header>
-    `
-      : "";
-
   const coverPageHtml = `
     <div class="cover-page">
       ${logoDataUrl ? `<img class="cover-logo" src="${escapeHtml(logoDataUrl)}" alt="Logo" />` : ""}
