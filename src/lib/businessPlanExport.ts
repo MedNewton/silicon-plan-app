@@ -389,10 +389,10 @@ export const buildBusinessPlanHtml = (
         flex-direction: column;
         justify-content: center;
         align-items: center;
-        min-height: 90vh;
         text-align: center;
         page-break-after: always;
         break-after: page;
+        box-sizing: border-box;
       }
       .cover-page .cover-logo {
         max-width: 200px;
@@ -420,10 +420,10 @@ export const buildBusinessPlanHtml = (
         flex-direction: column;
         justify-content: center;
         align-items: center;
-        min-height: 80vh;
         text-align: center;
         page-break-before: always;
         break-before: page;
+        box-sizing: border-box;
       }
       .final-page .final-logo {
         max-width: 180px;

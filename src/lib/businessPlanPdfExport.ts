@@ -77,15 +77,48 @@ export async function renderHtmlToPdf(
   const bodyEl = container.querySelector("body");
   const sourceEl = bodyEl ?? container;
 
-  // ---- 2. Measure block positions ----
+  // Wait for any images (especially base64 logos) to finish loading
+  const images = Array.from(sourceEl.querySelectorAll("img")) as HTMLImageElement[];
+  await Promise.all(
+    images.map(
+      (img) =>
+        img.complete
+          ? Promise.resolve()
+          : new Promise<void>((resolve) => {
+              img.onload = () => resolve();
+              img.onerror = () => resolve();
+            })
+    )
+  );
+
+  // ---- 2. Force cover/final page elements to fill exactly one page ----
+  // These use flexbox centering which needs an explicit height to work
+  // in the offscreen container (vh units don't apply here).
+  const coverPage = sourceEl.querySelector(".cover-page") as HTMLElement | null;
+  const finalPage = sourceEl.querySelector(".final-page") as HTMLElement | null;
+  if (coverPage) {
+    coverPage.style.height = `${contentH}px`;
+    coverPage.style.minHeight = `${contentH}px`;
+    coverPage.style.maxHeight = `${contentH}px`;
+    coverPage.style.overflow = "hidden";
+  }
+  if (finalPage) {
+    finalPage.style.height = `${contentH}px`;
+    finalPage.style.minHeight = `${contentH}px`;
+    finalPage.style.maxHeight = `${contentH}px`;
+    finalPage.style.overflow = "hidden";
+  }
+
+  // ---- 3. Measure block positions ----
   // Collect every direct child; if it is an .export-block we treat it as
   // indivisible.  For very tall blocks (taller than one content area) we
   // still accept them — they will be sliced across pages later.
-  type Block = { top: number; height: number };
+  type Block = { top: number; height: number; fullPage?: boolean };
   const blocks: Block[] = [];
   const children = Array.from(sourceEl.children) as HTMLElement[];
   for (const child of children) {
-    blocks.push({ top: child.offsetTop, height: child.offsetHeight });
+    const isFullPage = child.classList.contains("cover-page") || child.classList.contains("final-page");
+    blocks.push({ top: child.offsetTop, height: child.offsetHeight, fullPage: isFullPage });
   }
 
   // ---- 3. Assign blocks to pages ----
@@ -99,6 +132,18 @@ export async function renderHtmlToPdf(
   let usedH = 0;
 
   for (const block of blocks) {
+    if (block.fullPage) {
+      // Full-page block (cover/final): finish current page if it has content,
+      // then give this block its own page.
+      if (usedH > 0) {
+        pages.push({ yStart: pageYStart, yEnd: pageYStart + usedH });
+      }
+      pages.push({ yStart: block.top, yEnd: block.top + block.height });
+      pageYStart = block.top + block.height;
+      usedH = 0;
+      continue;
+    }
+
     const blockRelY = block.top - pageYStart;
     const blockEnd = blockRelY + block.height;
 
