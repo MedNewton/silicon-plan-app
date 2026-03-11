@@ -194,6 +194,7 @@ type AiSuggestBody = {
   sectionId: string;
   templateType: WorkspaceCanvasTemplateType;
   existingItems?: Array<{ title: string; description: string }>;
+  locale?: string;
 };
 
 export async function POST(
@@ -219,7 +220,7 @@ export async function POST(
     }
 
     const body = (await req.json()) as AiSuggestBody;
-    const { sectionId, templateType, existingItems = [] } = body;
+    const { sectionId, templateType, existingItems = [], locale } = body;
 
     if (!sectionId) {
       return new NextResponse("sectionId is required", { status: 400 });
@@ -280,9 +281,13 @@ export async function POST(
     }
 
     // Build the prompt
+    const languageInstruction = locale === "it"
+      ? "\nIMPORTANT: You MUST write all suggestions (titles and descriptions) in Italian.\n"
+      : "\nIMPORTANT: You MUST write all suggestions (titles and descriptions) in English.\n";
+
     const systemPrompt = `You are a business strategy expert helping to fill out a ${templateType.replace("-", " ")} canvas.
 Your task is to suggest 2-3 concise, actionable items for a specific section of the canvas.
-
+${languageInstruction}
 Each suggestion should have:
 - A short title (3-7 words)
 - A brief description (1-2 sentences)

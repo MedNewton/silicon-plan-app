@@ -266,6 +266,7 @@ const CanvasModelEditPage: FC<CanvasModelEditPageProps> = ({
               title: item.title,
               description: item.description,
             })),
+            locale,
           }),
         }
       );
@@ -412,6 +413,7 @@ const CanvasModelEditPage: FC<CanvasModelEditPageProps> = ({
                   title: item.title,
                   description: item.description,
                 })),
+                locale,
               }),
             }
           );

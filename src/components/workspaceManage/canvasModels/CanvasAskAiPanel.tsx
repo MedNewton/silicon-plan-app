@@ -275,6 +275,7 @@ const CanvasAskAiPanel: FC<CanvasAskAiPanelProps> = ({
                 title: item.title,
                 description: item.description,
               })),
+              locale,
             }),
           }
         );

@@ -224,7 +224,8 @@ const ExportSettingsSidebar: FC<ExportSettingsSidebarProps> = ({
         format: [paperSize.width, paperSize.height],
       });
 
-      const margin = settings.paperSize === "A4" ? A4_MARGIN_MM : 10;
+      // Use smaller margins for canvas models to maximize space on single page
+      const margin = 8;
       const availableWidth = pdfWidth - margin * 2;
       const availableHeight = pdfHeight - margin * 2;
 

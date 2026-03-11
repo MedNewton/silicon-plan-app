@@ -87,13 +87,14 @@ const BusinessModelCanvasLayout: FC<BusinessModelCanvasLayoutProps> = ({
         {/* Key Partners - spans 2 rows */}
         <Box
           sx={{
+            gridColumn: 1,
             gridRow: "1 / 3",
             borderRight: "1px solid #D1D5DB",
             borderBottom: "1px solid #D1D5DB",
           }}
         >
           <CanvasSection
-            title="KEY PARTNERS"
+            title="Key Partners"
             placeholder="Who are our key partners?"
             icon={<HandshakeOutlinedIcon />}
             accentColor="#6366F1"
@@ -112,6 +113,8 @@ const BusinessModelCanvasLayout: FC<BusinessModelCanvasLayoutProps> = ({
         {/* Key Activities */}
         <Box
           sx={{
+            gridColumn: 2,
+            gridRow: 1,
             borderRight: "1px solid #D1D5DB",
             borderBottom: "1px solid #D1D5DB",
           }}
@@ -135,6 +138,7 @@ const BusinessModelCanvasLayout: FC<BusinessModelCanvasLayoutProps> = ({
         {/* Value Proposition - spans 2 rows */}
         <Box
           sx={{
+            gridColumn: 3,
             gridRow: "1 / 3",
             borderRight: "1px solid #D1D5DB",
             borderBottom: "1px solid #D1D5DB",
@@ -160,6 +164,8 @@ const BusinessModelCanvasLayout: FC<BusinessModelCanvasLayoutProps> = ({
         {/* Customer Relationships */}
         <Box
           sx={{
+            gridColumn: 4,
+            gridRow: 1,
             borderRight: "1px solid #D1D5DB",
             borderBottom: "1px solid #D1D5DB",
           }}
@@ -183,8 +189,8 @@ const BusinessModelCanvasLayout: FC<BusinessModelCanvasLayoutProps> = ({
         {/* Customer Segments - spans 2 rows */}
         <Box
           sx={{
+            gridColumn: 5,
             gridRow: "1 / 3",
-            borderLeft: "1px solid #D1D5DB",
             borderRight: "1px solid #D1D5DB",
             borderBottom: "1px solid #D1D5DB",
           }}
@@ -209,6 +215,8 @@ const BusinessModelCanvasLayout: FC<BusinessModelCanvasLayoutProps> = ({
         {/* Key Resources (below Key Activities) */}
         <Box
           sx={{
+            gridColumn: 2,
+            gridRow: 2,
             borderRight: "1px solid #D1D5DB",
             borderBottom: "1px solid #D1D5DB",
           }}
@@ -232,6 +240,8 @@ const BusinessModelCanvasLayout: FC<BusinessModelCanvasLayoutProps> = ({
         {/* Channels (below Customer Relationships) */}
         <Box
           sx={{
+            gridColumn: 4,
+            gridRow: 2,
             borderRight: "1px solid #D1D5DB",
             borderBottom: "1px solid #D1D5DB",
           }}
