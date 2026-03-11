@@ -507,29 +507,60 @@ const ChapterCard: FC<ChapterCardProps> = ({
           overflow: "hidden",
         }}
       >
-        <Box sx={{ pl: 0.2, pr: 1, py: 1, display: "flex", alignItems: "center", gap: 0.55 }}>
-          <IconButton
-            size="small"
-            onClick={onToggle}
-            sx={{ p: 0.15, ml: -0.1, color: "#475569" }}
-          >
-            <ExpandMoreIcon
-              sx={{
-                fontSize: 18,
-                color: "#475569",
-                transform: isOpen ? "rotate(0deg)" : "rotate(-90deg)",
-                transition: "transform 0.15s ease",
-              }}
+        <Box sx={{ px: 1, py: 1 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.6, mb: 0.4 }}>
+            <IconButton
+              size="small"
+              onClick={onToggle}
+              sx={{ p: 0.3, color: "#475569", flexShrink: 0 }}
+            >
+              <ExpandMoreIcon
+                sx={{
+                  fontSize: 18,
+                  color: "#475569",
+                  transform: isOpen ? "rotate(0deg)" : "rotate(-90deg)",
+                  transition: "transform 0.15s ease",
+                }}
+              />
+            </IconButton>
+
+            <Chip
+              size="small"
+              label={depth === 0 ? copy.chapter : copy.subchapter}
+              sx={{ fontSize: 10, bgcolor: "#EEF2FF", color: "#3730A3" }}
             />
-          </IconButton>
 
-          <Chip
-            size="small"
-            label={depth === 0 ? copy.chapter : copy.subchapter}
-            sx={{ fontSize: 10, bgcolor: "#EEF2FF", color: "#3730A3" }}
-          />
+            <Typography sx={{ fontSize: 11.5, color: "#64748B" }}>
+              {chapter.sections.length}{" "}
+              {chapter.sections.length === 1
+                ? copy.sectionLabel
+                : copy.sectionsLabel}
+            </Typography>
 
-          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Box sx={{ flex: 1 }} />
+
+            {isEditing ? (
+              <>
+                <IconButton size="small" onClick={() => setIsEditing(false)} disabled={isSaving} sx={{ flexShrink: 0 }}>
+                  <CloseIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+                <IconButton size="small" onClick={() => void handleSave()} disabled={isSaving} sx={{ flexShrink: 0 }}>
+                  <CheckIcon sx={{ fontSize: 16, color: "#1D4ED8" }} />
+                </IconButton>
+              </>
+            ) : (
+              <>
+                <IconButton size="small" onClick={() => setIsEditing(true)} sx={{ flexShrink: 0 }}>
+                  <EditOutlinedIcon sx={{ fontSize: 16, color: "#64748B" }} />
+                </IconButton>
+                <IconButton size="small" onClick={() => setShowDeleteModal(true)} sx={{ flexShrink: 0 }}>
+                  <DeleteOutlineIcon sx={{ fontSize: 16, color: "#64748B" }} />
+                </IconButton>
+              </>
+            )}
+          </Box>
+
+          <Box sx={{ pl: 0.5, pt: 0.5 }}>
             {isEditing ? (
               <TextField
                 size="small"
@@ -545,39 +576,19 @@ const ChapterCard: FC<ChapterCardProps> = ({
                 sx={{ "& .MuiOutlinedInput-root": { fontSize: 13 } }}
               />
             ) : (
-              <>
-                <Typography sx={{ fontSize: 13.5, fontWeight: 700, color: "#0F172A" }} noWrap>
-                  {chapter.title}
-                </Typography>
-                <Typography sx={{ fontSize: 11.5, color: "#64748B" }}>
-                  {chapter.sections.length}{" "}
-                  {chapter.sections.length === 1
-                    ? copy.sectionLabel
-                    : copy.sectionsLabel}
-                </Typography>
-              </>
+              <Typography
+                sx={{
+                  fontSize: 13.5,
+                  fontWeight: 700,
+                  color: "#0F172A",
+                  lineHeight: 1.35,
+                  wordBreak: "break-word",
+                }}
+              >
+                {chapter.title}
+              </Typography>
             )}
           </Box>
-
-          {isEditing ? (
-            <>
-              <IconButton size="small" onClick={() => setIsEditing(false)} disabled={isSaving}>
-                <CloseIcon sx={{ fontSize: 16 }} />
-              </IconButton>
-              <IconButton size="small" onClick={() => void handleSave()} disabled={isSaving}>
-                <CheckIcon sx={{ fontSize: 16, color: "#1D4ED8" }} />
-              </IconButton>
-            </>
-          ) : (
-            <>
-              <IconButton size="small" onClick={() => setIsEditing(true)}>
-                <EditOutlinedIcon sx={{ fontSize: 16, color: "#64748B" }} />
-              </IconButton>
-              <IconButton size="small" onClick={() => setShowDeleteModal(true)}>
-                <DeleteOutlineIcon sx={{ fontSize: 16, color: "#64748B" }} />
-              </IconButton>
-            </>
-          )}
         </Box>
 
         <Collapse in={isOpen} timeout="auto" unmountOnExit>
