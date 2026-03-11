@@ -867,7 +867,7 @@ const TaskCard: FC<TaskCardProps> = ({
         }}
       >
         <Box sx={{ pl: 0.6, pr: 1, py: 1, display: "flex", alignItems: "center", gap: 0.8 }}>
-          <IconButton size="small" onClick={onToggle} sx={{ p: 0.4, color: "#475569" }}>
+          <IconButton size="small" onClick={onToggle} sx={{ p: 0.4, color: "#475569", flexShrink: 0 }}>
             <ExpandMoreIcon
               sx={{
                 fontSize: 18,
@@ -881,7 +881,7 @@ const TaskCard: FC<TaskCardProps> = ({
           <Chip
             size="small"
             label="H1"
-            sx={{ fontSize: 10, bgcolor: "#EEF2FF", color: "#3730A3", minWidth: 34 }}
+            sx={{ fontSize: 10, bgcolor: "#EEF2FF", color: "#3730A3", minWidth: 34, flexShrink: 0 }}
           />
           <Box
             sx={{
@@ -891,6 +891,7 @@ const TaskCard: FC<TaskCardProps> = ({
               bgcolor: statusDotColor(task.status),
               border: "1px solid #FFFFFF",
               boxShadow: "0 0 0 1px rgba(148,163,184,0.35)",
+              flexShrink: 0,
             }}
           />
 
@@ -910,7 +911,15 @@ const TaskCard: FC<TaskCardProps> = ({
                 sx={{ "& .MuiOutlinedInput-root": { fontSize: 13 } }}
               />
             ) : (
-              <Typography sx={{ fontSize: 13.5, fontWeight: 700, color: "#0F172A" }} noWrap>
+              <Typography
+                sx={{
+                  fontSize: 13.5,
+                  fontWeight: 700,
+                  color: "#0F172A",
+                  lineHeight: 1.35,
+                  wordBreak: "break-word",
+                }}
+              >
                 {task.title}
               </Typography>
             )}
@@ -918,19 +927,19 @@ const TaskCard: FC<TaskCardProps> = ({
 
           {isEditing ? (
             <>
-              <IconButton size="small" onClick={() => setIsEditing(false)} disabled={isSaving}>
+              <IconButton size="small" onClick={() => setIsEditing(false)} disabled={isSaving} sx={{ flexShrink: 0 }}>
                 <CloseIcon sx={{ fontSize: 16 }} />
               </IconButton>
-              <IconButton size="small" onClick={() => void handleSave()} disabled={isSaving}>
+              <IconButton size="small" onClick={() => void handleSave()} disabled={isSaving} sx={{ flexShrink: 0 }}>
                 <CheckIcon sx={{ fontSize: 16, color: "#1D4ED8" }} />
               </IconButton>
             </>
           ) : (
             <>
-              <IconButton size="small" onClick={() => setIsEditing(true)}>
+              <IconButton size="small" onClick={() => setIsEditing(true)} sx={{ flexShrink: 0 }}>
                 <EditOutlinedIcon sx={{ fontSize: 16, color: "#64748B" }} />
               </IconButton>
-              <IconButton size="small" onClick={() => setShowDeleteModal(true)}>
+              <IconButton size="small" onClick={() => setShowDeleteModal(true)} sx={{ flexShrink: 0 }}>
                 <DeleteOutlineIcon sx={{ fontSize: 16, color: "#64748B" }} />
               </IconButton>
             </>
@@ -1118,11 +1127,11 @@ const SubTaskRow: FC<SubTaskRowProps> = ({
         cursor: "pointer",
       }}
     >
-      <Stack direction="row" spacing={0.8} alignItems="center">
+      <Box sx={{ display: "flex", alignItems: "center", gap: 0.8 }}>
         <Chip
           size="small"
           label="H2"
-          sx={{ fontSize: 10, bgcolor: "#ECFDF5", color: "#065F46", minWidth: 32 }}
+          sx={{ fontSize: 10, bgcolor: "#ECFDF5", color: "#065F46", minWidth: 32, flexShrink: 0 }}
         />
 
         <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -1141,12 +1150,45 @@ const SubTaskRow: FC<SubTaskRowProps> = ({
               sx={{ "& .MuiOutlinedInput-root": { fontSize: 12.5 } }}
             />
           ) : (
-            <Typography sx={{ fontSize: 12.8, color: "#1E293B" }} noWrap>
+            <Typography
+              sx={{
+                fontSize: 12.8,
+                color: "#1E293B",
+                lineHeight: 1.35,
+                wordBreak: "break-word",
+              }}
+            >
               {subTask.title}
             </Typography>
           )}
         </Box>
 
+        {isEditing ? (
+          <>
+            <IconButton size="small" onClick={() => setIsEditing(false)} disabled={isSaving} sx={{ flexShrink: 0 }}>
+              <CloseIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+            <IconButton size="small" onClick={() => void handleSave()} disabled={isSaving} sx={{ flexShrink: 0 }}>
+              <CheckIcon sx={{ fontSize: 16, color: "#1D4ED8" }} />
+            </IconButton>
+          </>
+        ) : (
+          <>
+            <IconButton size="small" onClick={() => setIsEditing(true)} sx={{ flexShrink: 0 }}>
+              <EditOutlinedIcon sx={{ fontSize: 16, color: "#64748B" }} />
+            </IconButton>
+            <IconButton size="small" onClick={() => void handleDelete()} disabled={isDeleting} sx={{ flexShrink: 0 }}>
+              {isDeleting ? (
+                <CircularProgress size={14} />
+              ) : (
+                <DeleteOutlineIcon sx={{ fontSize: 16, color: "#64748B" }} />
+              )}
+            </IconButton>
+          </>
+        )}
+      </Box>
+
+      <Stack direction="row" spacing={0.8} alignItems="center" sx={{ mt: 0.5, pl: 5 }}>
         <Select
           size="small"
           value={subTask.status}
@@ -1154,7 +1196,7 @@ const SubTaskRow: FC<SubTaskRowProps> = ({
             void onUpdateStatus(event.target.value);
           }}
           sx={{
-            minWidth: 122,
+            minWidth: 110,
             height: 26,
             borderRadius: 999,
             bgcolor: statusPillColor(subTask.status),
@@ -1183,30 +1225,6 @@ const SubTaskRow: FC<SubTaskRowProps> = ({
             <AutoFixHighRoundedIcon sx={{ fontSize: 16, color: "#1D4ED8" }} />
           )}
         </IconButton>
-
-        {isEditing ? (
-          <>
-            <IconButton size="small" onClick={() => setIsEditing(false)} disabled={isSaving}>
-              <CloseIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-            <IconButton size="small" onClick={() => void handleSave()} disabled={isSaving}>
-              <CheckIcon sx={{ fontSize: 16, color: "#1D4ED8" }} />
-            </IconButton>
-          </>
-        ) : (
-          <>
-            <IconButton size="small" onClick={() => setIsEditing(true)}>
-              <EditOutlinedIcon sx={{ fontSize: 16, color: "#64748B" }} />
-            </IconButton>
-            <IconButton size="small" onClick={() => void handleDelete()} disabled={isDeleting}>
-              {isDeleting ? (
-                <CircularProgress size={14} />
-              ) : (
-                <DeleteOutlineIcon sx={{ fontSize: 16, color: "#64748B" }} />
-              )}
-            </IconButton>
-          </>
-        )}
       </Stack>
 
       {draftError ? (
