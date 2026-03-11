@@ -90,7 +90,7 @@ type BusinessPlanContextValue = {
 
   // AI generation
   isGenerating: boolean;
-  generateBusinessPlan: (force?: boolean) => Promise<{ success?: boolean; skipped?: boolean; error?: string }>;
+  generateBusinessPlan: (force?: boolean, locale?: string) => Promise<{ success?: boolean; skipped?: boolean; error?: string }>;
 
   // AI chat state
   conversationId: BusinessPlanAiConversationId | null;
@@ -615,7 +615,7 @@ export const BusinessPlanProvider: FC<BusinessPlanProviderProps> = ({
   );
 
   const generateBusinessPlan = useCallback(
-    async (force = false): Promise<{ success?: boolean; skipped?: boolean; error?: string }> => {
+    async (force = false, locale?: string): Promise<{ success?: boolean; skipped?: boolean; error?: string }> => {
       setIsGenerating(true);
       try {
         const response = await fetch(
@@ -623,7 +623,7 @@ export const BusinessPlanProvider: FC<BusinessPlanProviderProps> = ({
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ force }),
+            body: JSON.stringify({ force, locale }),
           }
         );
 

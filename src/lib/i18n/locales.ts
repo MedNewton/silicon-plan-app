@@ -2,7 +2,7 @@ export const SUPPORTED_APP_LOCALES = ["en", "it"] as const;
 
 export type AppLocale = (typeof SUPPORTED_APP_LOCALES)[number];
 
-export const DEFAULT_APP_LOCALE: AppLocale = "en";
+export const DEFAULT_APP_LOCALE: AppLocale = "it";
 
 export function isAppLocale(value: unknown): value is AppLocale {
   return typeof value === "string" && SUPPORTED_APP_LOCALES.includes(value as AppLocale);

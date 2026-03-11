@@ -556,7 +556,9 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
       <Box
         sx={{
           width: 32,
+          minWidth: 32,
           height: 32,
+          flexShrink: 0,
           borderRadius: 1.5,
           display: "flex",
           alignItems: "center",
@@ -660,7 +662,7 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
           <Box
             sx={{
               display: "grid",
-              gridTemplateColumns: "3fr 1.1fr 1.6fr 1.5fr 1fr",
+              gridTemplateColumns: "minmax(0, 3fr) minmax(70px, 1.1fr) minmax(100px, 1.6fr) minmax(100px, 1.5fr) minmax(60px, 1fr)",
               px: 3,
               py: 1.5,
               bgcolor: "#F5F7FF",
@@ -723,14 +725,14 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
                 key={doc.id}
                 sx={{
                   display: "grid",
-                  gridTemplateColumns: "3fr 1.1fr 1.6fr 1.5fr 1fr",
+                  gridTemplateColumns: "minmax(0, 3fr) minmax(70px, 1.1fr) minmax(100px, 1.6fr) minmax(100px, 1.5fr) minmax(60px, 1fr)",
                   px: 3,
                   py: 1.4,
                   alignItems: "center",
                   borderBottom: "1px solid #EDF0FB",
                 }}
               >
-                <Stack direction="row" spacing={1.5} alignItems="center">
+                <Stack direction="row" spacing={1.5} alignItems="center" sx={{ minWidth: 0, pr: 2 }}>
                   {renderTypeBadge(doc.type)}
                   <Tooltip title={doc.name} placement="top" arrow>
                     <Typography
@@ -738,7 +740,6 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
                         fontSize: 14.5,
                         fontWeight: 500,
                         minWidth: 0,
-                        maxWidth: 300,
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",

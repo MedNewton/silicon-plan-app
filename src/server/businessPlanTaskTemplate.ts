@@ -69,7 +69,98 @@ export const validateDefaultBusinessPlanTaskTemplateInstructions = (): {
   };
 };
 
+/** Italian translations for all chapter/sub-chapter titles */
+const TITLE_IT: Record<string, string> = {
+  "Executive Summary": "Sommario Esecutivo",
+  "Business Overview": "Panoramica dell'Azienda",
+  "Market Opportunity": "Opportunita di Mercato",
+  "Financial Highlights": "Sintesi Finanziaria",
+  "Business Fundamentals": "Fondamenti del Business",
+  "The Business Idea": "L'Idea di Business",
+  "The Problem to Solve": "Il Problema da Risolvere",
+  "The Relevance of the Problem": "La Rilevanza del Problema",
+  "Description of the Solution": "Descrizione della Soluzione",
+  "The Team": "Il Team",
+  "Mission and Vision": "Missione e Visione",
+  "Market and Competitive Advantage": "Mercato e Vantaggio Competitivo",
+  "Market Needs": "Bisogni del Mercato",
+  "TAM SAM SOM Analysis": "Analisi TAM SAM SOM",
+  "Market Segmentation": "Segmentazione del Mercato",
+  "Competitor Analysis": "Analisi dei Concorrenti",
+  "Primary and Secondary Market Research": "Ricerca di Mercato Primaria e Secondaria",
+  "Problem-Solution Fit": "Problem-Solution Fit",
+  "Point of Difference": "Punto di Differenziazione",
+  "Business Model Canvas": "Business Model Canvas",
+  "Target Customer": "Cliente Target",
+  "Value Proposition": "Proposta di Valore",
+  "Channels": "Canali",
+  "Customer Relationships": "Relazioni con i Clienti",
+  "Key Activities": "Attivita Chiave",
+  "Key Resources": "Risorse Chiave",
+  "Key Partners": "Partner Chiave",
+  "Revenue Streams": "Flussi di Ricavi",
+  "Cost Structure": "Struttura dei Costi",
+  "Go-to-Market Strategy": "Strategia Go-to-Market",
+  "Marketing Objectives": "Obiettivi di Marketing",
+  "Minimum Viable Product (MVP)": "Prodotto Minimo Funzionante (MVP)",
+  "Price Point": "Punto di Prezzo",
+  "Customer Engagement": "Coinvolgimento del Cliente",
+  "Promotion": "Promozione",
+  "Distribution": "Distribuzione",
+  "Metrics and Economic-Financial Analysis": "Metriche e Analisi Economico-Finanziaria",
+  "Revenue Estimate": "Stima dei Ricavi",
+  "Cost Estimate": "Stima dei Costi",
+  "Customer Acquisition Cost (COCA)": "Costo di Acquisizione Cliente (COCA)",
+  "Customer Lifetime Value (LTV)": "Valore del Ciclo di Vita del Cliente (LTV)",
+  "Economic-Financial Plan": "Piano Economico-Finanziario",
+  "Pre-money Valuation": "Valutazione Pre-money",
+  "Pitch": "Pitch",
+  "Pitch Deck (12 sections)": "Pitch Deck (12 sezioni)",
+  "Ask (funding or partnership)": "Richiesta (finanziamento o partnership)",
+};
+
+/**
+ * Translate a chapter title to the given locale.
+ * Falls back to the English title if no translation exists.
+ */
+export const translateTemplateTitle = (title: string, locale?: string): string => {
+  if (locale === "it") {
+    return TITLE_IT[title] ?? title;
+  }
+  return title;
+};
+
 export const DEFAULT_BUSINESS_PLAN_TASK_TEMPLATE: DefaultTaskTemplateNode[] = [
+  {
+    title: "Executive Summary",
+    instructions:
+      "Provide a concise overview of the entire business plan.\nSummarize the business idea, target market, competitive advantage, and financial outlook.\nThis section should stand alone as a compelling snapshot for investors or stakeholders.",
+    aiPrompt:
+      "Draft the Executive Summary chapter. Provide a high-level overview covering: the business concept, the problem being solved, the target market, the unique solution, the business model, key financial projections, and the team. Keep it concise (1-2 pages) and investor-ready.",
+    children: [
+      {
+        title: "Business Overview",
+        instructions:
+          "Summarize what the company does, who it serves, and the core value proposition.\nKeep it brief and compelling.\nInclude the stage of the business and key milestones achieved.",
+        aiPrompt:
+          "Write the 'Business Overview' section summarizing the company's purpose, target market, value proposition, and current stage. Use {company_description}, {product_type}, and {target_market}. Keep it to 150-250 words.",
+      },
+      {
+        title: "Market Opportunity",
+        instructions:
+          "Briefly describe the market size and growth potential.\nHighlight the key unmet need and why now is the right time.\nReference TAM/SAM/SOM at a high level.",
+        aiPrompt:
+          "Write 'Market Opportunity' with a brief market sizing overview, key growth drivers, and timing relevance. Use {industry_macro}, {market_geo}, and {target_market}. Keep it concise (100-200 words).",
+      },
+      {
+        title: "Financial Highlights",
+        instructions:
+          "Summarize the key financial projections and metrics.\nInclude revenue outlook, break-even timeline, and funding needs.\nKeep numbers realistic and clearly labeled as projections.",
+        aiPrompt:
+          "Write 'Financial Highlights' summarizing projected revenue, key costs, break-even expectations, and funding requirements. Keep it brief and investor-readable (100-200 words).",
+      },
+    ],
+  },
   {
     title: "Business Fundamentals",
     instructions:

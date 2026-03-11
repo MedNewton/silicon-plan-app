@@ -161,12 +161,13 @@ const BusinessPlanPreview: FC = () => {
     if (chapters.length === 0) {
       items.push({ id: "empty-state", node: <EmptyState /> });
     } else {
-      chapters.forEach((chapter) => {
+      chapters.forEach((chapter, chapterIndex) => {
         items.push({
           id: chapter.id,
           node: (
             <ChapterBlock
               chapter={chapter}
+              chapterNumber={`${chapterIndex + 1}`}
               onOpenAi={(section) => {
                 setAiDrawerSection(section);
                 setIsAiDrawerOpen(true);
@@ -355,10 +356,11 @@ const EmptyState: FC = () => {
 
 type ChapterBlockProps = {
   chapter: BusinessPlanChapterWithSections;
+  chapterNumber?: string;
   onOpenAi?: (section: BusinessPlanSection) => void;
 };
 
-const ChapterBlock: FC<ChapterBlockProps> = ({ chapter, onOpenAi }) => {
+const ChapterBlock: FC<ChapterBlockProps> = ({ chapter, chapterNumber, onOpenAi }) => {
   const copy = usePlanContentCopy();
   const { reorderSections, selectedChapterId, setSelectedChapterId } = useBusinessPlan();
   const sensors = useSensors(
@@ -412,7 +414,7 @@ const ChapterBlock: FC<ChapterBlockProps> = ({ chapter, onOpenAi }) => {
           },
         }}
       >
-        {chapter.title}
+        {chapterNumber ? `${chapterNumber}. ${chapter.title}` : chapter.title}
         {isSelected && (
           <Box
             component="span"
@@ -435,7 +437,7 @@ const ChapterBlock: FC<ChapterBlockProps> = ({ chapter, onOpenAi }) => {
       </Typography>
 
       {/* Sections */}
-      {chapter.sections.length === 0 ? (
+      {chapter.sections.length === 0 && (!chapter.children || chapter.children.length === 0) ? (
         <Typography
           sx={{
             fontSize: 14,
@@ -446,7 +448,7 @@ const ChapterBlock: FC<ChapterBlockProps> = ({ chapter, onOpenAi }) => {
         >
           {copy.noChapterContent}
         </Typography>
-      ) : (
+      ) : chapter.sections.length === 0 ? null : (
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -467,8 +469,13 @@ const ChapterBlock: FC<ChapterBlockProps> = ({ chapter, onOpenAi }) => {
       {/* Nested chapters */}
       {chapter.children && chapter.children.length > 0 && (
         <Box sx={{ ml: 3, mt: 2 }}>
-          {chapter.children.map((child) => (
-            <ChapterBlock key={child.id} chapter={child} onOpenAi={onOpenAi} />
+          {chapter.children.map((child, childIndex) => (
+            <ChapterBlock
+              key={child.id}
+              chapter={child}
+              chapterNumber={chapterNumber ? `${chapterNumber}.${childIndex + 1}` : undefined}
+              onOpenAi={onOpenAi}
+            />
           ))}
         </Box>
       )}
@@ -666,7 +673,7 @@ const SectionBlock: FC<SectionBlockProps> = ({
       case "text":
         return (
           <Typography
-            sx={{ fontSize: 14, color: "#4B5563", lineHeight: 1.7 }}
+            sx={{ fontSize: 14, color: "#4B5563", lineHeight: 1.7, textAlign: "justify" }}
           >
             {content.text}
           </Typography>

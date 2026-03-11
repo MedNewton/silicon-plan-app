@@ -2,7 +2,8 @@
 "use client";
 
 import { useState } from "react";
-import { Box } from "@mui/material";
+import { Alert, Box, IconButton } from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
 import { toast } from "react-toastify";
 import ManageSidebar from "@/components/workspaceManage/business-plan/ManageSidebar";
 import ManageTopTabs, {
@@ -56,6 +57,7 @@ function ManageBusinessPlanPageInner({
   const { locale } = useLanguage();
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [showSourcePriorityBanner, setShowSourcePriorityBanner] = useState(true);
 
   const copy =
     locale === "it"
@@ -65,6 +67,8 @@ function ManageBusinessPlanPageInner({
           noContextLink: "Vai alla Libreria AI",
           generateSuccess: "Business plan generato con successo!",
           generateFailed: "Impossibile generare il business plan.",
+          sourcePriority:
+            "I dati del Setup Workspace hanno priorita sui documenti della Libreria AI. In caso di conflitto (es. team, dati finanziari), il setup viene utilizzato come fonte autorevole.",
         }
       : {
           noContext:
@@ -72,6 +76,8 @@ function ManageBusinessPlanPageInner({
           noContextLink: "Go to AI Library",
           generateSuccess: "Business plan generated successfully!",
           generateFailed: "Failed to generate business plan.",
+          sourcePriority:
+            "Workspace Setup data takes priority over AI Library documents. If there are conflicts (e.g. team info, financials), the setup is used as the authoritative source.",
         };
 
   const handleAutoGenerateClick = () => {
@@ -92,7 +98,7 @@ function ManageBusinessPlanPageInner({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ force }),
+          body: JSON.stringify({ force, locale }),
           signal: controller.signal,
         }
       );
@@ -177,6 +183,30 @@ function ManageBusinessPlanPageInner({
           onConfirm={handleGenerateConfirm}
           onCancel={() => setShowGenerateModal(false)}
         />
+
+        {showSourcePriorityBanner && chapters.length > 0 && (
+          <Alert
+            severity="info"
+            sx={{
+              mx: 2,
+              mt: 1,
+              borderRadius: 2,
+              fontSize: 13,
+              "& .MuiAlert-message": { flex: 1 },
+            }}
+            action={
+              <IconButton
+                size="small"
+                onClick={() => setShowSourcePriorityBanner(false)}
+                sx={{ color: "inherit" }}
+              >
+                <CloseIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            }
+          >
+            {copy.sourcePriority}
+          </Alert>
+        )}
 
         <Box
           sx={{

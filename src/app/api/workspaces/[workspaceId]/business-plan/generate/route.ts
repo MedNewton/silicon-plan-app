@@ -12,7 +12,7 @@ import {
   deleteAllChapters,
 } from "@/server/businessPlan";
 import { getWorkspaceAiContext } from "@/lib/workspaceAiContext";
-import { DEFAULT_BUSINESS_PLAN_TASK_TEMPLATE } from "@/server/businessPlanTaskTemplate";
+import { DEFAULT_BUSINESS_PLAN_TASK_TEMPLATE, translateTemplateTitle } from "@/server/businessPlanTaskTemplate";
 import type { BusinessPlanSectionContent } from "@/types/workspaces";
 
 // Allow up to 5 minutes for generating ~39 sub-chapters via OpenAI
@@ -49,8 +49,15 @@ type AiSectionBlock =
   | AiListBlock
   | AiTableBlock;
 
-const STRUCTURED_SYSTEM_PROMPT = `You are Silicon Plan AI. Write professional, investor-ready business plan content.
-Return ONLY a JSON array. No markdown, no text outside JSON.
+const buildStructuredSystemPrompt = (locale?: string) => {
+  const languageInstruction = locale === "it"
+    ? "\nIMPORTANT: You MUST write ALL content (text, headings, list items, table values) in Italian.\n"
+    : locale === "en"
+      ? "\nIMPORTANT: You MUST write ALL content (text, headings, list items, table values) in English.\n"
+      : "";
+
+  return `You are Silicon Plan AI. Write professional, investor-ready business plan content.
+${languageInstruction}Return ONLY a JSON array. No markdown, no text outside JSON.
 
 Block types:
 - {"type":"text","text":"paragraph"}
@@ -59,6 +66,7 @@ Block types:
 - {"type":"table","headers":["A","B"],"rows":[["1","2"]]}
 
 Rules: Use "table" for ALL tabular data. Use "list" for ALL bullet/numbered items. No markdown (* or -) in text. No LaTeX. Write formulas in plain text. Return ONLY the JSON array.`;
+};
 
 /**
  * Parse the AI response into structured section blocks.
@@ -221,8 +229,9 @@ export async function POST(
       return new NextResponse("Workspace id is required", { status: 400 });
     }
 
-    const body = (await req.json()) as { force?: boolean };
+    const body = (await req.json()) as { force?: boolean; locale?: string };
     const force = body.force === true;
+    const locale = body.locale;
 
     // Get or create business plan
     const businessPlan = await getOrCreateBusinessPlan({ workspaceId, userId });
@@ -262,7 +271,7 @@ export async function POST(
       const parentChapter = await createChapter({
         businessPlanId: businessPlan.id,
         userId,
-        title: h1Task.title,
+        title: translateTemplateTitle(h1Task.title, locale),
         orderIndex: h1Index,
       });
 
@@ -271,7 +280,7 @@ export async function POST(
           businessPlanId: businessPlan.id,
           userId,
           parentChapterId: parentChapter.id,
-          title: h2Task.title,
+          title: translateTemplateTitle(h2Task.title, locale),
           orderIndex: h2Index,
         });
 
@@ -296,11 +305,11 @@ export async function POST(
             messages: [
               {
                 role: "system",
-                content: `${STRUCTURED_SYSTEM_PROMPT}\n\n${workspaceContext.toneInstruction}`,
+                content: `${buildStructuredSystemPrompt(locale)}\n\n${workspaceContext.toneInstruction}`,
               },
               {
                 role: "user",
-                content: `Using the following workspace context, write the "${entry.h2Title}" section for the "${entry.h1Title}" chapter of this business plan.\n\nWorkspace context:\n${workspaceContext.context}\n\nSpecific guidance:\n${entry.aiPrompt}\n\nReturn ONLY a JSON array of section blocks as specified in your instructions. Do not include the section title "${entry.h2Title}" — it is already shown as a heading.`,
+                content: `Using the following workspace context, write the "${entry.h2Title}" section for the "${entry.h1Title}" chapter of this business plan.\n\nIMPORTANT SOURCE PRIORITY: When there are conflicts between the Workspace Setup/Profile data and Library Documents, ALWAYS prioritize the Workspace Setup/Profile data as the authoritative source. Library documents serve as supplementary context only.\n\nWorkspace context:\n${workspaceContext.context}\n\nSpecific guidance:\n${entry.aiPrompt}\n\nReturn ONLY a JSON array of section blocks as specified in your instructions. Do not include the section title "${entry.h2Title}" — it is already shown as a heading.`,
               },
             ],
             temperature: 0.4,

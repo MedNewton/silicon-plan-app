@@ -185,14 +185,23 @@ const renderChapterHtml = (
   chapter: BusinessPlanChapterWithSections,
   currencyCode?: BusinessPlanCurrencyCode,
   isChild = false,
+  numberPrefix?: string,
 ): string => {
   const headingTag = isChild ? "h2" : "h1";
-  const headingHtml = `<${headingTag}>${escapeHtml(chapter.title ?? "")}</${headingTag}>`;
+  const numberedTitle = numberPrefix
+    ? `${numberPrefix}. ${escapeHtml(chapter.title ?? "")}`
+    : escapeHtml(chapter.title ?? "");
+  const headingHtml = `<${headingTag}>${numberedTitle}</${headingTag}>`;
   const sectionHtmls = (chapter.sections ?? []).map((section) =>
     renderSectionHtml(section.content, currencyCode)
   );
-  const children = (chapter.children ?? []).map((child) =>
-    renderChapterHtml(child, currencyCode, true)
+  const children = (chapter.children ?? []).map((child, childIndex) =>
+    renderChapterHtml(
+      child,
+      currencyCode,
+      true,
+      numberPrefix ? `${numberPrefix}.${childIndex + 1}` : undefined,
+    )
   );
 
   // Group the heading with the first section so the heading is never orphaned
@@ -220,7 +229,7 @@ export const buildBusinessPlanHtml = (
   const logoDataUrl = options.logoDataUrl?.trim();
 
   const body = chapters.length
-    ? chapters.map((chapter) => renderChapterHtml(chapter, currencyCode)).join("\n")
+    ? chapters.map((chapter, index) => renderChapterHtml(chapter, currencyCode, false, `${index + 1}`)).join("\n")
     : "<p>No chapters yet.</p>";
 
   const title = escapeHtml(plan?.title ?? "Business Plan");
@@ -241,6 +250,22 @@ export const buildBusinessPlanHtml = (
       </header>
     `
       : "";
+
+  const coverPageHtml = `
+    <div class="cover-page">
+      ${logoDataUrl ? `<img class="cover-logo" src="${escapeHtml(logoDataUrl)}" alt="Logo" />` : ""}
+      <h1 class="cover-title" style="color: ${headingColor}">${title}</h1>
+      ${workspaceName ? `<p class="cover-workspace">${escapeHtml(workspaceName)}</p>` : ""}
+      <p class="cover-date">${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long" })}</p>
+    </div>
+  `;
+
+  const finalPageHtml = `
+    <div class="final-page">
+      ${logoDataUrl ? `<img class="final-logo" src="${escapeHtml(logoDataUrl)}" alt="Logo" />` : ""}
+      ${workspaceName ? `<p class="final-workspace">${escapeHtml(workspaceName)}</p>` : ""}
+    </div>
+  `;
 
   return `<!DOCTYPE html>
 <html>
@@ -313,6 +338,7 @@ export const buildBusinessPlanHtml = (
       }
       p {
         margin: 0 0 10px;
+        text-align: justify;
       }
       ul, ol {
         margin: 8px 0 12px 24px;
@@ -358,13 +384,71 @@ export const buildBusinessPlanHtml = (
         page-break-after: always;
         margin: 12px 0;
       }
+      .cover-page {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        min-height: 90vh;
+        text-align: center;
+        page-break-after: always;
+        break-after: page;
+      }
+      .cover-page .cover-logo {
+        max-width: 200px;
+        max-height: 80px;
+        object-fit: contain;
+        margin-bottom: 40px;
+      }
+      .cover-page .cover-title {
+        font-size: ${EXPORT_TYPOGRAPHY.title}px;
+        font-weight: 700;
+        margin: 0 0 16px;
+      }
+      .cover-page .cover-workspace {
+        font-size: ${EXPORT_TYPOGRAPHY.h3}px;
+        color: #6B7280;
+        margin: 0 0 8px;
+      }
+      .cover-page .cover-date {
+        font-size: ${EXPORT_TYPOGRAPHY.body}px;
+        color: #9CA3AF;
+        margin: 0;
+      }
+      .final-page {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        min-height: 80vh;
+        text-align: center;
+        page-break-before: always;
+        break-before: page;
+      }
+      .final-page .final-logo {
+        max-width: 180px;
+        max-height: 70px;
+        object-fit: contain;
+        margin-bottom: 30px;
+      }
+      .final-page .final-workspace {
+        font-size: ${EXPORT_TYPOGRAPHY.h2}px;
+        font-weight: 600;
+        color: #374151;
+        margin: 0 0 12px;
+      }
+      .final-page .final-tagline {
+        font-size: ${EXPORT_TYPOGRAPHY.body}px;
+        color: #9CA3AF;
+        margin: 0;
+      }
     </style>
   </head>
   <body>
-    ${headerHtml ? `<div class="export-block">${headerHtml}</div>` : ""}
-    <div class="export-block"><h1>${title}</h1></div>
+    ${coverPageHtml}
     ${currencyLabel ? `<div class="export-block"><p class="currency-note">Currency: ${currencyLabel}</p></div>` : ""}
     ${body}
+    ${finalPageHtml}
   </body>
 </html>`;
 };
@@ -389,12 +473,17 @@ const getImageDimensions = (url: string): Promise<{ width: number; height: numbe
 
 const buildDocxSections = async (
   chapters: BusinessPlanChapterWithSections[],
-  currencyCode?: BusinessPlanCurrencyCode
+  currencyCode?: BusinessPlanCurrencyCode,
+  numberPrefix?: string,
 ): Promise<Array<Paragraph | Table>> => {
   const blocks: Array<Paragraph | Table> = [];
 
-  for (const chapter of chapters) {
-    blocks.push(paragraphFromText(chapter.title ?? "", HeadingLevel.HEADING_1));
+  for (const [chapterIndex, chapter] of chapters.entries()) {
+    const chapterNum = numberPrefix
+      ? `${numberPrefix}.${chapterIndex + 1}`
+      : `${chapterIndex + 1}`;
+    const headingLevel = numberPrefix ? HeadingLevel.HEADING_2 : HeadingLevel.HEADING_1;
+    blocks.push(paragraphFromText(`${chapterNum}. ${chapter.title ?? ""}`, headingLevel));
 
     for (const section of chapter.sections ?? []) {
       const content = section.content;
@@ -411,6 +500,7 @@ const buildDocxSections = async (
             blocks.push(
               new Paragraph({
                 children: buildRunsFromText(textVal),
+                alignment: AlignmentType.JUSTIFIED,
               })
             );
           }
@@ -581,7 +671,7 @@ const buildDocxSections = async (
     }
 
     if (chapter.children?.length) {
-      blocks.push(...await buildDocxSections(chapter.children, currencyCode));
+      blocks.push(...await buildDocxSections(chapter.children, currencyCode, chapterNum));
     }
   }
 
@@ -715,24 +805,80 @@ export const buildBusinessPlanDocx = async (
       ],
     },
     sections: [
+      // Cover page
       {
         properties: {
           page: {
-            size: {
-              width: pageSize.width,
-              height: pageSize.height,
-            },
-            margin: {
-              top: marginTwip,
-              right: marginTwip,
-              bottom: marginTwip,
-              left: marginTwip,
-            },
+            size: { width: pageSize.width, height: pageSize.height },
+            margin: { top: marginTwip, right: marginTwip, bottom: marginTwip, left: marginTwip },
           },
         },
         children: [
-          ...brandingBlocks,
-          paragraphFromText(plan?.title ?? "Business Plan", HeadingLevel.TITLE),
+          // Spacer to push content toward center
+          new Paragraph({ spacing: { before: 4000 }, children: [new TextRun("")] }),
+          ...(options.logoBytes && options.logoBytes.length > 0
+            ? [
+                new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  children: [
+                    new ImageRun({
+                      data: options.logoBytes,
+                      type: "png",
+                      transformation: { width: 180, height: 62 },
+                    }),
+                  ],
+                }),
+                new Paragraph({ spacing: { after: 400 }, children: [new TextRun("")] }),
+              ]
+            : []),
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+              new TextRun({
+                text: plan?.title ?? "Business Plan",
+                size: DOCX_TYPOGRAPHY.title,
+                bold: true,
+                color: headingColor,
+              }),
+            ],
+          }),
+          ...(options.workspaceName
+            ? [
+                new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  spacing: { before: 200 },
+                  children: [
+                    new TextRun({
+                      text: options.workspaceName.trim(),
+                      size: DOCX_TYPOGRAPHY.h3,
+                      color: "6B7280",
+                    }),
+                  ],
+                }),
+              ]
+            : []),
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 200 },
+            children: [
+              new TextRun({
+                text: new Date().toLocaleDateString("en-US", { year: "numeric", month: "long" }),
+                size: DOCX_TYPOGRAPHY.body,
+                color: "9CA3AF",
+              }),
+            ],
+          }),
+        ],
+      },
+      // Main content
+      {
+        properties: {
+          page: {
+            size: { width: pageSize.width, height: pageSize.height },
+            margin: { top: marginTwip, right: marginTwip, bottom: marginTwip, left: marginTwip },
+          },
+        },
+        children: [
           ...(currencyCode
             ? [
                 new Paragraph({
@@ -747,6 +893,48 @@ export const buildBusinessPlanDocx = async (
               ]
             : []),
           ...(await buildDocxSections(chapters, currencyCode)),
+        ],
+      },
+      // Final page
+      {
+        properties: {
+          page: {
+            size: { width: pageSize.width, height: pageSize.height },
+            margin: { top: marginTwip, right: marginTwip, bottom: marginTwip, left: marginTwip },
+          },
+        },
+        children: [
+          new Paragraph({ spacing: { before: 4000 }, children: [new TextRun("")] }),
+          ...(options.logoBytes && options.logoBytes.length > 0
+            ? [
+                new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  children: [
+                    new ImageRun({
+                      data: options.logoBytes,
+                      type: "png",
+                      transformation: { width: 160, height: 55 },
+                    }),
+                  ],
+                }),
+                new Paragraph({ spacing: { after: 300 }, children: [new TextRun("")] }),
+              ]
+            : []),
+          ...(options.workspaceName
+            ? [
+                new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  children: [
+                    new TextRun({
+                      text: options.workspaceName.trim(),
+                      size: DOCX_TYPOGRAPHY.h2,
+                      bold: true,
+                      color: "374151",
+                    }),
+                  ],
+                }),
+              ]
+            : []),
         ],
       },
     ],
