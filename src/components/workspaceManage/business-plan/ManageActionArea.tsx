@@ -499,6 +499,7 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
         currencyCode: exportCurrencyCode,
         logoDataUrl,
         workspaceName,
+        locale,
       });
 
       if (format === "docx") {
@@ -509,6 +510,7 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
           currencyCode: exportCurrencyCode,
           logoBytes,
           workspaceName,
+          locale,
         });
         downloadBlob(blob, `${safeName}.docx`);
         toast.success(copy.toastDocxExported);

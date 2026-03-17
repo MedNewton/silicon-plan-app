@@ -309,7 +309,7 @@ export default function WorkspaceBusinessSetupPage() {
           problemDetails: "Dettagli problema",
           problemDetailsPlaceholder:
             "Descrivi i principali pain point e le alternative attuali",
-          solutionUniqueness: "Soluzione e unicita",
+          solutionUniqueness: "Soluzione e unicità",
           solutionUniquenessPlaceholder:
             "Descrivi la soluzione e cosa la differenzia",
           productService: "Prodotto o servizio",

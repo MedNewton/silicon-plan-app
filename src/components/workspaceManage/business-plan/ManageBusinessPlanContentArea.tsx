@@ -455,13 +455,22 @@ const ChapterBlock: FC<ChapterBlockProps> = ({ chapter, chapterNumber, onOpenAi 
           onDragEnd={handleSectionDragEnd}
         >
           <SortableContext items={sectionIds} strategy={verticalListSortingStrategy}>
-            {chapter.sections.map((section) => (
-              <SortableSectionBlock
-                key={section.id}
-                section={section}
-                onOpenAi={onOpenAi}
-              />
-            ))}
+            {(() => {
+              let subsectionCounter = 0;
+              return chapter.sections.map((section) => {
+                const num = section.content.type === "subsection" && chapterNumber
+                  ? `${chapterNumber}.${++subsectionCounter}`
+                  : undefined;
+                return (
+                  <SortableSectionBlock
+                    key={section.id}
+                    section={section}
+                    sectionNumber={num}
+                    onOpenAi={onOpenAi}
+                  />
+                );
+              });
+            })()}
           </SortableContext>
         </DndContext>
       )}
@@ -485,11 +494,13 @@ const ChapterBlock: FC<ChapterBlockProps> = ({ chapter, chapterNumber, onOpenAi 
 
 type SortableSectionBlockProps = {
   section: BusinessPlanSection;
+  sectionNumber?: string;
   onOpenAi?: (section: BusinessPlanSection) => void;
 };
 
 const SortableSectionBlock: FC<SortableSectionBlockProps> = ({
   section,
+  sectionNumber,
   onOpenAi,
 }) => {
   const {
@@ -511,6 +522,7 @@ const SortableSectionBlock: FC<SortableSectionBlockProps> = ({
     <Box ref={setNodeRef} style={style} sx={{ opacity: isDragging ? 0.6 : 1 }}>
       <SectionBlock
         section={section}
+        sectionNumber={sectionNumber}
         onOpenAi={onOpenAi}
         dragHandleProps={{ ...attributes, ...listeners } as HTMLAttributes<HTMLSpanElement>}
         dragHandleRef={setActivatorNodeRef as (element: HTMLSpanElement | null) => void}
@@ -524,6 +536,7 @@ const SortableSectionBlock: FC<SortableSectionBlockProps> = ({
 
 type SectionBlockProps = {
   section: BusinessPlanSection;
+  sectionNumber?: string;
   onOpenAi?: (section: BusinessPlanSection) => void;
   dragHandleProps?: HTMLAttributes<HTMLSpanElement>;
   dragHandleRef?: (element: HTMLSpanElement | null) => void;
@@ -531,6 +544,7 @@ type SectionBlockProps = {
 
 const SectionBlock: FC<SectionBlockProps> = ({
   section,
+  sectionNumber,
   onOpenAi,
   dragHandleProps,
   dragHandleRef,
@@ -666,14 +680,14 @@ const SectionBlock: FC<SectionBlockProps> = ({
               m: 0,
             }}
           >
-            {content.text}
+            {sectionNumber ? `${sectionNumber}. ${content.text}` : content.text}
           </Typography>
         );
 
       case "text":
         return (
           <Typography
-            sx={{ fontSize: 14, color: "#4B5563", lineHeight: 1.7, textAlign: "justify" }}
+            sx={{ fontSize: 14, color: "#4B5563", lineHeight: 1.7, textAlign: "justify", whiteSpace: "pre-line" }}
           >
             {content.text}
           </Typography>

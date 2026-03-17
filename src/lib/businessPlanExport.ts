@@ -42,6 +42,7 @@ export type BusinessPlanHtmlExportOptions = {
   currencyCode?: BusinessPlanCurrencyCode;
   logoDataUrl?: string | null;
   workspaceName?: string | null;
+  locale?: "en" | "it";
 };
 
 export type BusinessPlanDocxExportOptions = {
@@ -52,6 +53,7 @@ export type BusinessPlanDocxExportOptions = {
   currencyCode?: BusinessPlanCurrencyCode;
   logoBytes?: Uint8Array | null;
   workspaceName?: string | null;
+  locale?: "en" | "it";
 };
 
 const escapeHtml = (value: string) =>
@@ -86,6 +88,90 @@ const buildRunsFromText = (value: string): TextRun[] => {
   );
 };
 
+// ========== TABLE OF CONTENTS ==========
+
+type TocEntry = { number: string; title: string; level: number };
+
+const collectTocEntries = (
+  chapters: BusinessPlanChapterWithSections[],
+  numberPrefix?: string,
+): TocEntry[] => {
+  const entries: TocEntry[] = [];
+  for (const [i, chapter] of chapters.entries()) {
+    const num = numberPrefix ? `${numberPrefix}.${i + 1}` : `${i + 1}`;
+    const level = numberPrefix ? numberPrefix.split(".").length : 0;
+    entries.push({ number: num, title: chapter.title ?? "", level });
+
+    // Subsection headings within sections
+    let subsectionCounter = 0;
+    for (const section of chapter.sections ?? []) {
+      if (section.content.type === "subsection") {
+        subsectionCounter++;
+        entries.push({
+          number: `${num}.${subsectionCounter}`,
+          title: (section.content as { text: string }).text ?? "",
+          level: level + 1,
+        });
+      }
+    }
+
+    // Nested chapters
+    if (chapter.children?.length) {
+      entries.push(...collectTocEntries(chapter.children, num));
+    }
+  }
+  return entries;
+};
+
+const tocTitle = (locale?: "en" | "it") => locale === "it" ? "Indice" : "Table of Contents";
+
+const buildTocHtml = (chapters: BusinessPlanChapterWithSections[], headingColor: string, locale?: "en" | "it"): string => {
+  const entries = collectTocEntries(chapters);
+  if (entries.length === 0) return "";
+
+  const tocItems = entries.map((e) => {
+    const indent = e.level * 20;
+    const isBold = e.level === 0;
+    return `<div style="margin-left:${indent}px;padding:4px 0;${isBold ? "font-weight:600;" : ""}">${escapeHtml(e.number)}. ${escapeHtml(e.title)}</div>`;
+  });
+
+  // Group heading with first entry, then each remaining entry is its own block
+  const heading = `<h1 style="color:${headingColor}">${tocTitle(locale)}</h1>`;
+  const firstBlock = `<div class="export-block">${heading}${tocItems[0] ?? ""}</div>`;
+  const remainingBlocks = tocItems.slice(1).map((item) => `<div class="export-block">${item}</div>`);
+
+  return [firstBlock, ...remainingBlocks, `<hr class="page-break" />`].join("\n");
+};
+
+const buildTocDocxParagraphs = (chapters: BusinessPlanChapterWithSections[], locale?: "en" | "it"): Paragraph[] => {
+  const entries = collectTocEntries(chapters);
+  if (entries.length === 0) return [];
+
+  const paragraphs: Paragraph[] = [
+    new Paragraph({
+      children: [new TextRun({ text: tocTitle(locale), bold: true })],
+      heading: HeadingLevel.HEADING_1,
+    }),
+  ];
+
+  for (const entry of entries) {
+    paragraphs.push(
+      new Paragraph({
+        indent: { left: entry.level * 360 },
+        spacing: { after: 60 },
+        children: [
+          new TextRun({
+            text: `${entry.number}. ${entry.title}`,
+            bold: entry.level === 0,
+          }),
+        ],
+      })
+    );
+  }
+
+  return paragraphs;
+};
+
 const CURRENCY_VALUE_REGEX = /^-?(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d+)?$/;
 const CURRENCY_SYMBOL_REGEX = /[$€£¥₹]/;
 
@@ -115,13 +201,18 @@ const formatTableValueByCurrency = (
 
 const renderSectionHtml = (
   content: BusinessPlanSectionContent,
-  currencyCode?: BusinessPlanCurrencyCode
+  currencyCode?: BusinessPlanCurrencyCode,
+  sectionNumber?: string,
 ): string => {
   switch (content.type) {
     case "section_title":
       return `<h2>${escapeHtml(content.text ?? "")}</h2>`;
-    case "subsection":
-      return `<h3>${escapeHtml(content.text ?? "")}</h3>`;
+    case "subsection": {
+      const label = sectionNumber
+        ? `${sectionNumber}. ${escapeHtml(content.text ?? "")}`
+        : escapeHtml(content.text ?? "");
+      return `<h3>${label}</h3>`;
+    }
     case "text":
       return `<p>${escapeHtml(content.text ?? "")}</p>`;
     case "list": {
@@ -192,9 +283,13 @@ const renderChapterHtml = (
     ? `${numberPrefix}. ${escapeHtml(chapter.title ?? "")}`
     : escapeHtml(chapter.title ?? "");
   const headingHtml = `<${headingTag}>${numberedTitle}</${headingTag}>`;
-  const sectionHtmls = (chapter.sections ?? []).map((section) =>
-    renderSectionHtml(section.content, currencyCode)
-  );
+  let subsectionCounter = 0;
+  const sectionHtmls = (chapter.sections ?? []).map((section) => {
+    const num = section.content.type === "subsection" && numberPrefix
+      ? `${numberPrefix}.${++subsectionCounter}`
+      : undefined;
+    return renderSectionHtml(section.content, currencyCode, num);
+  });
   const children = (chapter.children ?? []).map((child, childIndex) =>
     renderChapterHtml(
       child,
@@ -233,8 +328,6 @@ export const buildBusinessPlanHtml = (
     : "<p>No chapters yet.</p>";
 
   const title = escapeHtml(plan?.title ?? "Business Plan");
-  const currencyLabel = currencyCode ? escapeHtml(currencyCode) : null;
-
   const coverPageHtml = `
     <div class="cover-page">
       ${logoDataUrl ? `<img class="cover-logo" src="${escapeHtml(logoDataUrl)}" alt="Logo" />` : ""}
@@ -288,11 +381,6 @@ export const buildBusinessPlanHtml = (
         font-size: ${EXPORT_TYPOGRAPHY.bodySmall}px;
         color: #6B7280;
         font-weight: 600;
-      }
-      .currency-note {
-        margin: 0 0 12px;
-        color: #4B5563;
-        font-size: ${EXPORT_TYPOGRAPHY.bodySmall}px;
       }
       h1, h2, h3 {
         color: ${headingColor};
@@ -430,7 +518,7 @@ export const buildBusinessPlanHtml = (
   </head>
   <body>
     ${coverPageHtml}
-    ${currencyLabel ? `<div class="export-block"><p class="currency-note">Currency: ${currencyLabel}</p></div>` : ""}
+    ${buildTocHtml(chapters, headingColor, options.locale)}
     ${body}
     ${finalPageHtml}
   </body>
@@ -469,14 +557,17 @@ const buildDocxSections = async (
     const headingLevel = numberPrefix ? HeadingLevel.HEADING_2 : HeadingLevel.HEADING_1;
     blocks.push(paragraphFromText(`${chapterNum}. ${chapter.title ?? ""}`, headingLevel));
 
+    let subsectionCounter = 0;
     for (const section of chapter.sections ?? []) {
       const content = section.content;
       switch (content.type) {
         case "section_title":
           blocks.push(paragraphFromText(content.text ?? "", HeadingLevel.HEADING_2));
           break;
-        case "subsection":
-          blocks.push(paragraphFromText(content.text ?? "", HeadingLevel.HEADING_3));
+        case "subsection": {
+          const subsectionLabel = `${chapterNum}.${++subsectionCounter}. ${content.text ?? ""}`;
+          blocks.push(paragraphFromText(subsectionLabel, HeadingLevel.HEADING_3));
+        }
           break;
         case "text": {
           const textVal = normalizeExportText(content.text ?? "");
@@ -854,6 +945,20 @@ export const buildBusinessPlanDocx = async (
           }),
         ],
       },
+      // Table of Contents
+      ...(chapters.length > 0
+        ? [
+            {
+              properties: {
+                page: {
+                  size: { width: pageSize.width, height: pageSize.height },
+                  margin: { top: marginTwip, right: marginTwip, bottom: marginTwip, left: marginTwip },
+                },
+              },
+              children: buildTocDocxParagraphs(chapters, options.locale),
+            },
+          ]
+        : []),
       // Main content
       {
         properties: {
@@ -863,19 +968,6 @@ export const buildBusinessPlanDocx = async (
           },
         },
         children: [
-          ...(currencyCode
-            ? [
-                new Paragraph({
-                  children: [
-                    new TextRun({
-                      text: `Currency: ${currencyCode}`,
-                      size: DOCX_TYPOGRAPHY.bodySmall,
-                      color: "4B5563",
-                    }),
-                  ],
-                }),
-              ]
-            : []),
           ...(await buildDocxSections(chapters, currencyCode)),
         ],
       },
