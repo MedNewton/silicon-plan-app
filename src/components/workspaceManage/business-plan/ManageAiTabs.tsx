@@ -33,6 +33,7 @@ import { useBusinessPlan } from "./BusinessPlanContext";
 import ConfirmDeleteModal from "./ConfirmDeleteModal";
 import ChatContainer from "./chat/ChatContainer";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
+import { translateTaskTitle } from "@/lib/i18n/taskTitleTranslations";
 import type {
   BusinessPlanChapterWithSections,
   BusinessPlanTaskStatus,
@@ -443,16 +444,53 @@ const ChapterCard: FC<ChapterCardProps> = ({
   onDeleteChild,
 }) => {
   const copy = useManageAiTabsCopy();
+  const { locale } = useLanguage();
+  const params = useParams<{ workspaceId: string }>();
+  const workspaceId = params.workspaceId;
   const isOpen = openChapterIds.includes(chapter.id);
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(chapter.title);
   const [isSaving, setIsSaving] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isGeneratingDraft, setIsGeneratingDraft] = useState(false);
+  const [generatedDraft, setGeneratedDraft] = useState<string | null>(null);
+  const [draftError, setDraftError] = useState<string | null>(null);
+
+  const chapterStatus: "todo" | "done" =
+    chapter.sections.length > 0 ? "done" : "todo";
 
   useEffect(() => {
     setTitle(chapter.title);
   }, [chapter.title]);
+
+  const handleGenerateDraft = async () => {
+    if (!workspaceId) return;
+    setIsGeneratingDraft(true);
+    setDraftError(null);
+
+    try {
+      const response = await fetch(
+        `/api/workspaces/${workspaceId}/business-plan/chapters/${chapter.id}/ai-draft`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(copy.toastGenerateDraftFailed);
+      }
+
+      const data = (await response.json()) as { draft?: string };
+      setGeneratedDraft(data.draft?.trim() ?? null);
+    } catch (error) {
+      console.error("Error generating chapter draft:", error);
+      setDraftError(copy.draftError);
+    } finally {
+      setIsGeneratingDraft(false);
+    }
+  };
 
   const handleSave = async () => {
     const normalized = title.trim();
@@ -492,7 +530,7 @@ const ChapterCard: FC<ChapterCardProps> = ({
         open={showDeleteModal}
         title={copy.deleteChapterTitle}
         message={copy.deleteChapterMessage}
-        itemName={chapter.title}
+        itemName={translateTaskTitle(chapter.title, locale)}
         isDeleting={isDeleting}
         onConfirm={() => void handleDelete()}
         onCancel={() => setShowDeleteModal(false)}
@@ -528,6 +566,18 @@ const ChapterCard: FC<ChapterCardProps> = ({
               size="small"
               label={depth === 0 ? copy.chapter : copy.subchapter}
               sx={{ fontSize: 10, bgcolor: "#EEF2FF", color: "#3730A3" }}
+            />
+
+            <Box
+              sx={{
+                width: 9,
+                height: 9,
+                borderRadius: "50%",
+                bgcolor: chapterStatus === "done" ? "#16A34A" : "#EA580C",
+                border: "1px solid #FFFFFF",
+                boxShadow: "0 0 0 1px rgba(148,163,184,0.35)",
+                flexShrink: 0,
+              }}
             />
 
             <Typography sx={{ fontSize: 11.5, color: "#64748B" }}>
@@ -585,7 +635,7 @@ const ChapterCard: FC<ChapterCardProps> = ({
                   wordBreak: "break-word",
                 }}
               >
-                {chapter.title}
+                {translateTaskTitle(chapter.title, locale)}
               </Typography>
             )}
           </Box>
@@ -609,6 +659,55 @@ const ChapterCard: FC<ChapterCardProps> = ({
                 ))}
               </Stack>
             )}
+
+            <Stack direction="row" spacing={0.8} alignItems="center" sx={{ mt: 0.5, mb: 0.5 }}>
+              <IconButton
+                size="small"
+                onClick={() => void handleGenerateDraft()}
+                disabled={isGeneratingDraft}
+                title={copy.askAiToDraft}
+              >
+                {isGeneratingDraft ? (
+                  <CircularProgress size={14} />
+                ) : (
+                  <AutoFixHighRoundedIcon sx={{ fontSize: 16, color: "#1D4ED8" }} />
+                )}
+              </IconButton>
+              <Typography sx={{ fontSize: 11, color: "#64748B" }}>
+                {copy.askAiToDraft}
+              </Typography>
+            </Stack>
+
+            {draftError ? (
+              <Typography sx={{ mt: 0.4, fontSize: 11.5, color: "#DC2626" }}>{draftError}</Typography>
+            ) : null}
+
+            {generatedDraft ? (
+              <Box
+                sx={{
+                  mt: 0.5,
+                  borderRadius: 1.5,
+                  border: "1px solid #DBEAFE",
+                  bgcolor: "#EFF6FF",
+                  px: 1,
+                  py: 0.9,
+                }}
+              >
+                <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: "#1E40AF", mb: 0.4 }}>
+                  {copy.aiDraft}
+                </Typography>
+                <Typography
+                  sx={{
+                    whiteSpace: "pre-wrap",
+                    fontSize: 12,
+                    lineHeight: 1.45,
+                    color: "#1F2937",
+                  }}
+                >
+                  {generatedDraft}
+                </Typography>
+              </Box>
+            ) : null}
 
             {chapter.children?.length ? (
               <Stack spacing={1} sx={{ mt: 0.4 }}>
@@ -804,6 +903,7 @@ const TaskCard: FC<TaskCardProps> = ({
   onDeleteSubTask,
 }) => {
   const copy = useManageAiTabsCopy();
+  const { locale } = useLanguage();
   const statusOptions = buildStatusOptions(copy);
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(task.title);
@@ -858,7 +958,7 @@ const TaskCard: FC<TaskCardProps> = ({
         open={showDeleteModal}
         title={copy.deleteTaskTitle}
         message={copy.deleteTaskMessage}
-        itemName={task.title}
+        itemName={translateTaskTitle(task.title, locale)}
         isDeleting={isDeleting}
         onConfirm={() => void handleDelete()}
         onCancel={() => setShowDeleteModal(false)}
@@ -931,7 +1031,7 @@ const TaskCard: FC<TaskCardProps> = ({
                   wordBreak: "break-word",
                 }}
               >
-                {task.title}
+                {translateTaskTitle(task.title, locale)}
               </Typography>
             )}
           </Box>
@@ -1060,6 +1160,7 @@ const SubTaskRow: FC<SubTaskRowProps> = ({
   onDelete,
 }) => {
   const copy = useManageAiTabsCopy();
+  const { locale } = useLanguage();
   const statusOptions = buildStatusOptions(copy);
   const params = useParams<{ workspaceId: string }>();
   const workspaceId = params.workspaceId;
@@ -1169,7 +1270,7 @@ const SubTaskRow: FC<SubTaskRowProps> = ({
                 wordBreak: "break-word",
               }}
             >
-              {subTask.title}
+              {translateTaskTitle(subTask.title, locale)}
             </Typography>
           )}
         </Box>

@@ -22,6 +22,7 @@ import CheckCircleOutlineOutlinedIcon from "@mui/icons-material/CheckCircleOutli
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import CloseOutlinedIcon from "@mui/icons-material/CloseOutlined";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
+import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 
@@ -111,6 +112,7 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
           loadingDocuments: "Caricamento documenti...",
           noDocuments:
             "Nessun documento nella libreria AI. Carica il primo documento per iniziare.",
+          download: "Scarica",
           delete: "Elimina",
           rowsPerPage: "Righe per pagina:",
           pageRange: "{start}-{end} di {total}",
@@ -138,6 +140,7 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
           toastLoadKnowledgeFailed: "Impossibile caricare la conoscenza AI.",
           toastLoadKnowledgeError:
             "Si e verificato un errore durante il caricamento della conoscenza AI.",
+          toastDownloadFailed: "Impossibile scaricare il documento.",
           toastDeleteDocumentFailed: "Impossibile eliminare il documento.",
           toastDeleteDocumentSuccess: "Documento eliminato.",
           toastDeleteDocumentError:
@@ -173,6 +176,7 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
           loadingDocuments: "Loading documents...",
           noDocuments:
             "No documents in your AI library yet. Upload your first document to get started.",
+          download: "Download",
           delete: "Delete",
           rowsPerPage: "Rows per page:",
           pageRange: "{start}-{end} of {total}",
@@ -200,6 +204,7 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
           toastLoadKnowledgeFailed: "Failed to load AI knowledge.",
           toastLoadKnowledgeError:
             "Something went wrong while loading AI knowledge.",
+          toastDownloadFailed: "Failed to download document.",
           toastDeleteDocumentFailed: "Failed to delete document.",
           toastDeleteDocumentSuccess: "Document deleted.",
           toastDeleteDocumentError:
@@ -364,6 +369,28 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
     } catch (error) {
       console.error("Error deleting document", error);
       toast.error(copy.toastDeleteDocumentError);
+    }
+  };
+
+  const handleDownloadDocument = async (doc: DocumentRow): Promise<void> => {
+    if (!effectiveWorkspaceId) return;
+
+    try {
+      const res = await fetch(
+        `/api/workspaces/${effectiveWorkspaceId}/ai-library/documents/${doc.id}`,
+      );
+
+      if (!res.ok) {
+        toast.error(copy.toastDownloadFailed);
+        return;
+      }
+
+      const data = (await res.json()) as { url: string; name: string };
+
+      window.open(data.url, "_blank", "noopener,noreferrer");
+    } catch (error) {
+      console.error("Error downloading document", error);
+      toast.error(copy.toastDownloadFailed);
     }
   };
 
@@ -764,7 +791,28 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
 
                 <Box>{renderStatus(doc.status)}</Box>
 
-                <Box textAlign="right">
+                <Stack direction="row" spacing={0.8} justifyContent="flex-end">
+                  <Tooltip title={copy.download} placement="top" arrow>
+                    <IconButton
+                      size="small"
+                      onClick={() => {
+                        void handleDownloadDocument(doc);
+                      }}
+                      sx={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 999,
+                        border: "1px solid #BFDBFE",
+                        bgcolor: "#EFF6FF",
+                        color: "#1D4ED8",
+                        "&:hover": {
+                          bgcolor: "#DBEAFE",
+                        },
+                      }}
+                    >
+                      <FileDownloadOutlinedIcon sx={{ fontSize: 17 }} />
+                    </IconButton>
+                  </Tooltip>
                   <Button
                     disableRipple
                     onClick={() => {
@@ -788,7 +836,7 @@ const AILibraryTabContent: FC<AILibraryTabContentProps> = ({
                   >
                     {copy.delete}
                   </Button>
-                </Box>
+                </Stack>
               </Box>
             ))}
 

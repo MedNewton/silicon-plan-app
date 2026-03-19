@@ -140,7 +140,7 @@ const buildTocHtml = (chapters: BusinessPlanChapterWithSections[], headingColor:
   const firstBlock = `<div class="export-block">${heading}${tocItems[0] ?? ""}</div>`;
   const remainingBlocks = tocItems.slice(1).map((item) => `<div class="export-block">${item}</div>`);
 
-  return [firstBlock, ...remainingBlocks, `<hr class="page-break" />`].join("\n");
+  return [firstBlock, ...remainingBlocks, `<div class="page-break"></div>`].join("\n");
 };
 
 const buildTocDocxParagraphs = (chapters: BusinessPlanChapterWithSections[], locale?: "en" | "it"): Paragraph[] => {
@@ -266,7 +266,7 @@ const renderSectionHtml = (
     case "empty_space":
       return `<div style="height:${content.height ?? 40}px;"></div>`;
     case "page_break":
-      return `<hr class="page-break" />`;
+      return `<div class="page-break"></div>`;
     default:
       return `<p>[Unsupported section]</p>`;
   }

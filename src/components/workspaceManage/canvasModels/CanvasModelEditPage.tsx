@@ -784,6 +784,7 @@ const CanvasModelEditPage: FC<CanvasModelEditPageProps> = ({
           <Box
             sx={{
               flex: 1,
+              minWidth: 0,
               overflowY: "auto",
               p: 3,
               scrollbarWidth: "none",

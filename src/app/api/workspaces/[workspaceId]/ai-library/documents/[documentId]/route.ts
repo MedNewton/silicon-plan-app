@@ -38,6 +38,79 @@ async function ensureWorkspaceAccess(
   return data != null;
 }
 
+// ---------- GET: generate a signed download URL ----------
+
+export async function GET(
+  _req: Request,
+  ctx: { params: Promise<{ workspaceId: string; documentId: string }> },
+) {
+  try {
+    const { userId } = await auth();
+    const { workspaceId, documentId } = await ctx.params;
+
+    if (!userId) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    if (!workspaceId || !documentId) {
+      return new NextResponse("Workspace id and document id are required", {
+        status: 400,
+      });
+    }
+
+    const client = getSupabaseClient();
+
+    const hasAccess = await ensureWorkspaceAccess(client, workspaceId, userId);
+    if (!hasAccess) {
+      return new NextResponse("Forbidden", { status: 403 });
+    }
+
+    const { data: docRow, error: docError } = await client
+      .from("workspace_ai_documents")
+      .select("*")
+      .eq("id", documentId)
+      .eq("workspace_id", workspaceId)
+      .maybeSingle();
+
+    if (docError) {
+      console.error("Failed to load AI document for download:", docError);
+      return new NextResponse("Failed to load document", { status: 500 });
+    }
+
+    if (!docRow) {
+      return new NextResponse("Document not found", { status: 404 });
+    }
+
+    const document = docRow as WorkspaceAiDocument;
+    const storageBucket = document.storage_bucket ?? null;
+    const storagePath = document.storage_path ?? null;
+
+    if (!storageBucket || !storagePath) {
+      return new NextResponse("Document has no associated file", { status: 404 });
+    }
+
+    const { data: signedUrlData, error: signedUrlError } = await client.storage
+      .from(storageBucket)
+      .createSignedUrl(storagePath, 60); // 60 seconds expiry
+
+    if (signedUrlError || !signedUrlData?.signedUrl) {
+      console.error("Failed to create signed URL:", signedUrlError);
+      return new NextResponse("Failed to generate download link", { status: 500 });
+    }
+
+    return NextResponse.json({
+      url: signedUrlData.signedUrl,
+      name: document.name,
+    });
+  } catch (error) {
+    console.error(
+      "Unexpected error in GET /ai-library/documents/[documentId]:",
+      error,
+    );
+    return new NextResponse("Internal server error", { status: 500 });
+  }
+}
+
 export async function DELETE(
   _req: Request,
   ctx: { params: Promise<{ workspaceId: string; documentId: string }> },

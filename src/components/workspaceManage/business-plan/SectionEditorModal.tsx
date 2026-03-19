@@ -275,7 +275,7 @@ const SectionEditorModal: FC<SectionEditorModalProps> = ({
         </Typography>
       </DialogTitle>
 
-      <DialogContent sx={{ pt: 3 }}>
+      <DialogContent sx={{ pt: "24px !important", overflow: "auto" }}>
         {content.type === "section_title" && (
           <TextBasedEditor
             content={content}

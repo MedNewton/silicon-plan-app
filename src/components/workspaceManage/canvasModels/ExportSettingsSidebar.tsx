@@ -328,6 +328,7 @@ const ExportSettingsSidebar: FC<ExportSettingsSidebarProps> = ({
     <Box
       sx={{
         width: 280,
+        flexShrink: 0,
         bgcolor: "#FFFFFF",
         borderLeft: "1px solid #E5E7EB",
         display: "flex",

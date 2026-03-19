@@ -299,8 +299,6 @@ const CanvasSection: FC<CanvasSectionProps> = ({
 
   const placeholderItems: CanvasSectionItem[] = [
     { id: "placeholder-1", title: resolvedPlaceholder, description: "" },
-    { id: "placeholder-2", title: resolvedPlaceholder, description: "" },
-    { id: "placeholder-3", title: resolvedPlaceholder, description: "" },
   ];
 
   const displayItems: CanvasSectionItem[] = items.length > 0 ? items : placeholderItems;

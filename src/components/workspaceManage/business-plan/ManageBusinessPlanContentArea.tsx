@@ -2,7 +2,7 @@
 "use client";
 
 import type { FC, ReactNode, HTMLAttributes } from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   Box,
   IconButton,
@@ -41,6 +41,7 @@ import ConfirmDeleteModal from "./ConfirmDeleteModal";
 import SectionEditorModal from "./SectionEditorModal";
 import SectionAiDrawer from "./SectionAiDrawer";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
+import { translateTaskTitle } from "@/lib/i18n/taskTitleTranslations";
 import type {
   BusinessPlanChapterWithSections,
   BusinessPlanSection,
@@ -146,7 +147,9 @@ export default ManageBusinessPlanContentArea;
 
 const BusinessPlanPreview: FC = () => {
   const copy = usePlanContentCopy();
+  const { locale } = useLanguage();
   const { businessPlan, chapters, isLoading, error, updateSection } = useBusinessPlan();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [aiDrawerSection, setAiDrawerSection] = useState<BusinessPlanSection | null>(
     null
   );
@@ -180,6 +183,12 @@ const BusinessPlanPreview: FC = () => {
     return items;
   }, [businessPlan?.title, chapters, copy.fallbackPlanTitle]);
 
+  const handleScrollToChapter = useCallback((chapterId: string) => {
+    const el = document.getElementById(`chapter-${chapterId}`);
+    if (el && scrollContainerRef.current) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, []);
 
   if (isLoading) {
     return (
@@ -219,54 +228,180 @@ const BusinessPlanPreview: FC = () => {
         flex: 1,
         height: "100%",
         display: "flex",
-        flexDirection: "column",
         minHeight: 0,
         bgcolor: "#F3F4FB",
       }}
     >
+      {/* Document Outline Sidebar */}
+      {chapters.length > 0 && (
+        <DocumentOutlineSidebar
+          chapters={chapters}
+          locale={locale}
+          onScrollToChapter={handleScrollToChapter}
+        />
+      )}
+
+      {/* Document content */}
       <Box
         sx={{
           flex: 1,
           display: "flex",
-          justifyContent: "center",
-          alignItems: "flex-start",
+          flexDirection: "column",
+          minHeight: 0,
+          minWidth: 0,
+        }}
+      >
+        <Box
+          ref={scrollContainerRef}
+          sx={{
+            flex: 1,
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "flex-start",
+            overflowY: "auto",
+            px: 4,
+            py: 3,
+            scrollbarWidth: "none",
+            msOverflowStyle: "none",
+            "&::-webkit-scrollbar": { display: "none" },
+          }}
+        >
+          <Box
+            sx={{
+              width: "100%",
+              maxWidth: 720,
+              borderRadius: 3,
+              border: "1px solid #E5E7EB",
+              bgcolor: "#FFFFFF",
+              px: 4,
+              py: 3.2,
+              display: "flex",
+              flexDirection: "column",
+              gap: 2.2,
+            }}
+          >
+            {blocks.map((block) => (
+              <Box key={block.id}>{block.node}</Box>
+            ))}
+          </Box>
+        </Box>
+
+        <SectionAiDrawer
+          open={isAiDrawerOpen}
+          section={aiDrawerSection}
+          onClose={() => setIsAiDrawerOpen(false)}
+          onSave={async (content) => {
+            if (!aiDrawerSection) return;
+            await updateSection(aiDrawerSection.id, content);
+          }}
+        />
+      </Box>
+    </Box>
+  );
+};
+
+// ========== DOCUMENT OUTLINE SIDEBAR ==========
+
+type DocumentOutlineSidebarProps = {
+  chapters: BusinessPlanChapterWithSections[];
+  locale: string;
+  onScrollToChapter: (chapterId: string) => void;
+};
+
+const DocumentOutlineSidebar: FC<DocumentOutlineSidebarProps> = ({
+  chapters,
+  locale,
+  onScrollToChapter,
+}) => {
+  const outlineLabel = locale === "it" ? "Indice" : "Outline";
+
+  const renderItems = (
+    nodes: BusinessPlanChapterWithSections[],
+    depth: number,
+    parentNumber?: string
+  ) =>
+    nodes.map((chapter, index) => {
+      const num = parentNumber ? `${parentNumber}.${index + 1}` : `${index + 1}`;
+      return (
+        <Box key={chapter.id}>
+          <Box
+            onClick={() => onScrollToChapter(chapter.id)}
+            sx={{
+              pl: depth * 1.5 + 1,
+              pr: 1,
+              py: 0.6,
+              cursor: "pointer",
+              borderRadius: 1,
+              transition: "background-color 0.15s ease",
+              "&:hover": {
+                bgcolor: "rgba(76,106,210,0.08)",
+              },
+            }}
+          >
+            <Typography
+              sx={{
+                fontSize: 12,
+                fontWeight: depth === 0 ? 600 : 400,
+                color: depth === 0 ? "#1E293B" : "#475569",
+                lineHeight: 1.4,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {num}. {translateTaskTitle(chapter.title, locale)}
+            </Typography>
+          </Box>
+          {chapter.children?.length
+            ? renderItems(chapter.children, depth + 1, num)
+            : null}
+        </Box>
+      );
+    });
+
+  return (
+    <Box
+      sx={{
+        width: 200,
+        flexShrink: 0,
+        borderRight: "1px solid #E5E7EB",
+        bgcolor: "#FFFFFF",
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+      }}
+    >
+      <Box
+        sx={{
+          px: 1.5,
+          py: 1.2,
+          borderBottom: "1px solid #F1F5F9",
+        }}
+      >
+        <Typography
+          sx={{
+            fontSize: 11,
+            fontWeight: 700,
+            color: "#64748B",
+            textTransform: "uppercase",
+            letterSpacing: 0.5,
+          }}
+        >
+          {outlineLabel}
+        </Typography>
+      </Box>
+      <Box
+        sx={{
+          flex: 1,
           overflowY: "auto",
-          px: 4,
-          py: 3,
+          py: 1,
           scrollbarWidth: "none",
           msOverflowStyle: "none",
           "&::-webkit-scrollbar": { display: "none" },
         }}
       >
-        <Box
-          sx={{
-            width: "100%",
-            maxWidth: 720,
-            borderRadius: 3,
-            border: "1px solid #E5E7EB",
-            bgcolor: "#FFFFFF",
-            px: 4,
-            py: 3.2,
-            display: "flex",
-            flexDirection: "column",
-            gap: 2.2,
-          }}
-        >
-          {blocks.map((block) => (
-            <Box key={block.id}>{block.node}</Box>
-          ))}
-        </Box>
+        {renderItems(chapters, 0)}
       </Box>
-
-      <SectionAiDrawer
-        open={isAiDrawerOpen}
-        section={aiDrawerSection}
-        onClose={() => setIsAiDrawerOpen(false)}
-        onSave={async (content) => {
-          if (!aiDrawerSection) return;
-          await updateSection(aiDrawerSection.id, content);
-        }}
-      />
     </Box>
   );
 };
@@ -394,6 +529,7 @@ const ChapterBlock: FC<ChapterBlockProps> = ({ chapter, chapterNumber, onOpenAi 
     <Box sx={{ mb: 2 }}>
       {/* Chapter Title - Now clickable for selection */}
       <Typography
+        id={`chapter-${chapter.id}`}
         onClick={handleChapterClick}
         sx={{
           fontSize: 20,

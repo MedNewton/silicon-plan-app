@@ -54,7 +54,7 @@ const IT_MESSAGES: Record<TranslationKey, string> = {
   "sidebar.settings": "Impostazioni",
   "sidebar.back": "Indietro",
   "sidebar.manageSectionTitle": "Documenti AI",
-  "sidebar.businessPlan": "Piano aziendale",
+  "sidebar.businessPlan": "Business Plan",
   "sidebar.canvasModels": "Modelli Canvas",
   "sidebar.pitchDeck": "Pitch Deck",
   "sidebar.financeForecasting": "Previsioni finanziarie",
