@@ -27,6 +27,16 @@ export type PitchDeckSlideId = string;
 // id for invites
 export type WorkspaceMemberInviteId = string;
 
+// Consultant IDs
+export type ConsultantId = string;
+export type ConsultantSkillId = string;
+export type ServicePackageId = string;
+export type ConsultantAvailabilityId = string;
+export type BookingId = string;
+export type ConsultantReviewId = string;
+export type MessageThreadId = string;
+export type MessageId = string;
+
 // Clerk user id
 export type UserId = string;
 
@@ -909,4 +919,114 @@ export type ReorderPitchDeckSlidesParams = {
 export type DuplicatePitchDeckParams = {
   pitchDeckId: PitchDeckId;
   newTitle?: string;
+};
+
+// ========== CONSULTANTS MARKETPLACE ==========
+
+export type ConsultantAvailabilityStatus = "available" | "busy" | "unavailable";
+export type BookingStatus = "upcoming" | "pending" | "finished" | "cancelled";
+export type PaymentStatus = "unpaid" | "paid" | "refunded";
+
+export type Consultant = {
+  id: ConsultantId;
+  user_id: UserId;
+  name: string;
+  title: string;
+  description: string;
+  hourly_rate: number;
+  rating: number;
+  review_count: number;
+  session_count: number;
+  country: string | null;
+  industry: string | null;
+  availability: ConsultantAvailabilityStatus;
+  avatar_url: string | null;
+  video_url: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ConsultantSkill = {
+  id: ConsultantSkillId;
+  consultant_id: ConsultantId;
+  section_title: string;
+  skill_name: string;
+  order_index: number;
+  created_at: string;
+};
+
+export type ServicePackage = {
+  id: ServicePackageId;
+  consultant_id: ConsultantId;
+  name: string;
+  price: number;
+  description: string;
+  consultation_content: string;
+  duration_minutes: number;
+  order_index: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ConsultantAvailability = {
+  id: ConsultantAvailabilityId;
+  consultant_id: ConsultantId;
+  date: string;
+  start_time: string;
+  end_time: string;
+  is_booked: boolean;
+  created_at: string;
+};
+
+export type Booking = {
+  id: BookingId;
+  user_id: UserId;
+  consultant_id: ConsultantId;
+  service_package_id: ServicePackageId;
+  status: BookingStatus;
+  booking_date: string;
+  start_time: string;
+  end_time: string;
+  duration_minutes: number;
+  cost: number;
+  payment_status: PaymentStatus;
+  user_comment: string;
+  video_call_url: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ConsultantReview = {
+  id: ConsultantReviewId;
+  consultant_id: ConsultantId;
+  user_id: UserId;
+  booking_id: BookingId | null;
+  rating: number;
+  text: string;
+  user_name: string;
+  user_country: string | null;
+  created_at: string;
+};
+
+export type ConsultantFavorite = {
+  id: string;
+  user_id: UserId;
+  consultant_id: ConsultantId;
+  created_at: string;
+};
+
+export type MessageThread = {
+  id: MessageThreadId;
+  user_id: UserId;
+  consultant_id: ConsultantId;
+  last_message_at: string | null;
+  created_at: string;
+};
+
+export type Message = {
+  id: MessageId;
+  thread_id: MessageThreadId;
+  sender_user_id: UserId;
+  text: string;
+  created_at: string;
 };

@@ -16,6 +16,8 @@ import AIDocumentsTopTabs, {
 import AIDocumentCreateTabContent from "@/components/ai-documents/AIDocumentsCreateTabContent";
 import AIDocumentMyWorkspacesTabContent from "@/components/ai-documents/AIDocumentsMyWorkspacesTabContent";
 import LearningCenterContent from "@/components/learning/LearningCenterContent";
+import ConsultantsContent from "@/components/consultants/ConsultantsContent";
+import MyBookingsContent from "@/components/bookings/MyBookingsContent";
 
 type ListWorkspacesResponse = {
   workspaces: Workspace[];
@@ -27,11 +29,19 @@ export default function AIDocumentsPage() {
   const initialTab: ActiveTab =
     searchParams.get("tab") === "my-workspaces" ? "myWorkspaces" : "create";
 
+  const navParam = searchParams.get("nav");
   const initialNav: NavKey =
-    searchParams.get("nav") === "learning" ? "learning" : "ai-documents";
+    navParam === "learning"
+      ? "learning"
+      : navParam === "consultants"
+        ? "consultants"
+        : navParam === "bookings"
+          ? "bookings"
+          : "ai-documents";
 
   const [activeTab, setActiveTab] = useState<ActiveTab>(initialTab);
   const [activeNav, setActiveNav] = useState<NavKey>(initialNav);
+  const [consultantDetailId, setConsultantDetailId] = useState<string | null>(null);
 
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [loadingWorkspaces, setLoadingWorkspaces] = useState(false);
@@ -66,6 +76,14 @@ export default function AIDocumentsPage() {
   }, []);
 
   const renderMainContent = () => {
+    if (activeNav === "consultants") {
+      return <ConsultantsContent onNavigateToBookings={() => setActiveNav("bookings")} initialConsultantId={consultantDetailId} key={consultantDetailId} />;
+    }
+
+    if (activeNav === "bookings") {
+      return <MyBookingsContent onNavigateToConsultants={() => setActiveNav("consultants")} onNavigateToConsultant={(id) => { setConsultantDetailId(id); setActiveNav("consultants"); }} />;
+    }
+
     if (activeNav === "learning") {
       return <LearningCenterContent />;
     }

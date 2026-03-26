@@ -22,6 +22,15 @@ import type {
   PitchDeckSlide,
   PitchDeckSettings,
   PitchDeckSlideContent,
+  Consultant,
+  ConsultantSkill,
+  ServicePackage,
+  ConsultantAvailability,
+  Booking,
+  ConsultantReview,
+  MessageThread,
+  Message,
+  ConsultantFavorite,
 } from "@/types/workspaces";
 
 export type Database = {
@@ -639,6 +648,206 @@ export type Database = {
             foreignKeyName: "pitch_deck_slides_pitch_deck_id_fkey";
             columns: ["pitch_deck_id"];
             referencedRelation: "pitch_decks";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      consultants: {
+        Row: Consultant;
+        Insert: {
+          id?: string;
+          user_id: string;
+          name: string;
+          title: string;
+          description?: string;
+          hourly_rate: number;
+          rating?: number;
+          review_count?: number;
+          session_count?: number;
+          country?: string | null;
+          industry?: string | null;
+          availability?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Consultant>;
+        Relationships: [];
+      };
+      consultant_skills: {
+        Row: ConsultantSkill;
+        Insert: {
+          id?: string;
+          consultant_id: string;
+          section_title: string;
+          skill_name: string;
+          order_index?: number;
+          created_at?: string;
+        };
+        Update: Partial<ConsultantSkill>;
+        Relationships: [
+          {
+            foreignKeyName: "consultant_skills_consultant_id_fkey";
+            columns: ["consultant_id"];
+            referencedRelation: "consultants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      service_packages: {
+        Row: ServicePackage;
+        Insert: {
+          id?: string;
+          consultant_id: string;
+          name: string;
+          price: number;
+          description?: string;
+          consultation_content?: string;
+          duration_minutes: number;
+          order_index?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<ServicePackage>;
+        Relationships: [
+          {
+            foreignKeyName: "service_packages_consultant_id_fkey";
+            columns: ["consultant_id"];
+            referencedRelation: "consultants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      consultant_availability: {
+        Row: ConsultantAvailability;
+        Insert: {
+          id?: string;
+          consultant_id: string;
+          date: string;
+          start_time: string;
+          end_time: string;
+          is_booked?: boolean;
+          created_at?: string;
+        };
+        Update: Partial<ConsultantAvailability>;
+        Relationships: [
+          {
+            foreignKeyName: "consultant_availability_consultant_id_fkey";
+            columns: ["consultant_id"];
+            referencedRelation: "consultants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      bookings: {
+        Row: Booking;
+        Insert: {
+          id?: string;
+          user_id: string;
+          consultant_id: string;
+          service_package_id: string;
+          status?: string;
+          booking_date: string;
+          start_time: string;
+          end_time: string;
+          duration_minutes: number;
+          cost: number;
+          payment_status?: string;
+          user_comment?: string;
+          video_call_url?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Booking>;
+        Relationships: [
+          {
+            foreignKeyName: "bookings_consultant_id_fkey";
+            columns: ["consultant_id"];
+            referencedRelation: "consultants";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "bookings_service_package_id_fkey";
+            columns: ["service_package_id"];
+            referencedRelation: "service_packages";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      consultant_reviews: {
+        Row: ConsultantReview;
+        Insert: {
+          id?: string;
+          consultant_id: string;
+          user_id: string;
+          booking_id?: string | null;
+          rating: number;
+          text?: string;
+          user_name: string;
+          user_country?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<ConsultantReview>;
+        Relationships: [
+          {
+            foreignKeyName: "consultant_reviews_consultant_id_fkey";
+            columns: ["consultant_id"];
+            referencedRelation: "consultants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      message_threads: {
+        Row: MessageThread;
+        Insert: {
+          id?: string;
+          user_id: string;
+          consultant_id: string;
+          last_message_at?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<MessageThread>;
+        Relationships: [
+          {
+            foreignKeyName: "message_threads_consultant_id_fkey";
+            columns: ["consultant_id"];
+            referencedRelation: "consultants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      messages: {
+        Row: Message;
+        Insert: {
+          id?: string;
+          thread_id: string;
+          sender_user_id: string;
+          text: string;
+          created_at?: string;
+        };
+        Update: Partial<Message>;
+        Relationships: [
+          {
+            foreignKeyName: "messages_thread_id_fkey";
+            columns: ["thread_id"];
+            referencedRelation: "message_threads";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      consultant_favorites: {
+        Row: ConsultantFavorite;
+        Insert: {
+          id?: string;
+          user_id: string;
+          consultant_id: string;
+          created_at?: string;
+        };
+        Update: Partial<ConsultantFavorite>;
+        Relationships: [
+          {
+            foreignKeyName: "consultant_favorites_consultant_id_fkey";
+            columns: ["consultant_id"];
+            referencedRelation: "consultants";
             referencedColumns: ["id"];
           },
         ];

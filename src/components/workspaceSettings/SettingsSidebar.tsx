@@ -169,11 +169,6 @@ export default function SettingsSidebar({
           <BookmarkBorderOutlinedIcon sx={{ fontSize: 22 }} />,
         )}
         {makeItem(
-          "session-history",
-          t("sidebar.sessionHistory"),
-          <HistoryOutlinedIcon sx={{ fontSize: 22 }} />,
-        )}
-        {makeItem(
           "learning",
           t("sidebar.learning"),
           <MenuBookOutlinedIcon sx={{ fontSize: 22 }} />,
