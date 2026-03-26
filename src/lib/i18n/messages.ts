@@ -120,6 +120,9 @@ const EN_MESSAGES = {
   "consultants.reviewAlreadyDone": "You have already reviewed this consultant.",
   "consultants.reviewSuccess": "Thank you for your review!",
   "consultants.reviewBrowse": "Browse Consultants",
+  "consultants.messageBlockedTitle": "Booking Required",
+  "consultants.messageBlockedText": "You need to have a booking with this consultant before you can send them a message.",
+  "consultants.messageBlockedCta": "View Profile",
 } as const;
 
 export type TranslationKey = keyof typeof EN_MESSAGES;
@@ -244,6 +247,9 @@ const IT_MESSAGES: Record<TranslationKey, string> = {
   "consultants.reviewAlreadyDone": "Hai già recensito questo consulente.",
   "consultants.reviewSuccess": "Grazie per la tua recensione!",
   "consultants.reviewBrowse": "Esplora consulenti",
+  "consultants.messageBlockedTitle": "Prenotazione richiesta",
+  "consultants.messageBlockedText": "Devi avere una prenotazione con questo consulente prima di potergli inviare un messaggio.",
+  "consultants.messageBlockedCta": "Vedi profilo",
 };
 
 const MESSAGES: Record<AppLocale, Record<TranslationKey, string>> = {

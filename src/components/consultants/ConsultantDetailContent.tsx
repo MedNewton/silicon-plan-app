@@ -113,7 +113,7 @@ export default function ConsultantDetailContent({ consultantId, onBack, onNaviga
         setLoading(true);
         const res = await fetch(`/api/consultants/${consultantId}`);
         if (!res.ok) throw new Error("Failed to fetch");
-        const data = await res.json();
+        const data = (await res.json()) as ConsultantDetailData;
         setDetail(data);
       } catch (err) {
         console.error("Failed to load consultant detail", err);

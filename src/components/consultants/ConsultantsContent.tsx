@@ -110,6 +110,7 @@ export default function ConsultantsContent({ onNavigateToBookings, initialConsul
   const [consultants, setConsultants] = useState<ConsultantListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+  const [messageBlockedConsultant, setMessageBlockedConsultant] = useState<string | null>(null);
 
   type RateBucket = { label: string; min: number; max: number };
   const [filterOptions, setFilterOptions] = useState<{
@@ -154,6 +155,20 @@ export default function ConsultantsContent({ onNavigateToBookings, initialConsul
         else next.add(consultantId);
         return next;
       });
+    }
+  };
+
+  const handleMessage = async (consultantId: string) => {
+    try {
+      const res = await fetch(`/api/consultants/${consultantId}/reviews`);
+      const data = (await res.json()) as { allowed: boolean; hasExistingReview: boolean };
+      if (data.allowed || data.hasExistingReview) {
+        setView({ kind: "messages", consultantId });
+      } else {
+        setMessageBlockedConsultant(consultantId);
+      }
+    } catch {
+      setMessageBlockedConsultant(consultantId);
     }
   };
 
@@ -348,7 +363,7 @@ export default function ConsultantsContent({ onNavigateToBookings, initialConsul
               isFavorite={favoriteIds.has(c.id)}
               onToggleFavorite={() => void toggleFavorite(c.id)}
               onSelect={() => setView({ kind: "detail", consultantId: c.id })}
-              onMessage={() => setView({ kind: "messages", consultantId: c.id })}
+              onMessage={() => void handleMessage(c.id)}
               onRate={() => setReviewConsultant(c)}
             />
           ))}
@@ -370,7 +385,7 @@ export default function ConsultantsContent({ onNavigateToBookings, initialConsul
               isFavorite={favoriteIds.has(c.id)}
               onToggleFavorite={() => void toggleFavorite(c.id)}
               onSelect={() => setView({ kind: "detail", consultantId: c.id })}
-              onMessage={() => setView({ kind: "messages", consultantId: c.id })}
+              onMessage={() => void handleMessage(c.id)}
               onRate={() => setReviewConsultant(c)}
             />
           ))}
@@ -386,6 +401,41 @@ export default function ConsultantsContent({ onNavigateToBookings, initialConsul
           onSubmitted={() => { setReviewConsultant(null); void fetchConsultants(); }}
         />
       )}
+
+      {/* Message blocked modal */}
+      <Dialog
+        open={messageBlockedConsultant !== null}
+        onClose={() => setMessageBlockedConsultant(null)}
+        PaperProps={{ sx: { borderRadius: 4, p: 4, maxWidth: 400, width: "100%", textAlign: "center" } }}
+      >
+        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+          <ChatBubbleOutlineIcon sx={{ fontSize: 40, color: "#94A3B8" }} />
+          <Typography sx={{ fontSize: 16, fontWeight: 700, color: "#1E2B42" }}>
+            {t("consultants.messageBlockedTitle")}
+          </Typography>
+          <Typography sx={{ fontSize: 13, color: "text.secondary", lineHeight: 1.6 }}>
+            {t("consultants.messageBlockedText")}
+          </Typography>
+          <Stack direction="row" spacing={1.5} sx={{ width: "100%", mt: 1 }}>
+            <Button
+              variant="outlined"
+              fullWidth
+              onClick={() => setMessageBlockedConsultant(null)}
+              sx={{ textTransform: "none", borderRadius: 2, borderColor: "#E2E8F0", color: "#1E2B42", fontWeight: 600, fontSize: 13, py: 1, "&:hover": { borderColor: "#CBD5E1", bgcolor: "#F8FAFC" } }}
+            >
+              {t("consultants.close")}
+            </Button>
+            <Button
+              variant="contained"
+              fullWidth
+              onClick={() => { const cId = messageBlockedConsultant; setMessageBlockedConsultant(null); if (cId) setView({ kind: "detail", consultantId: cId }); }}
+              sx={{ textTransform: "none", borderRadius: 2, bgcolor: "#3B5998", fontWeight: 600, fontSize: 13, py: 1, "&:hover": { bgcolor: "#2D4A7A" } }}
+            >
+              {t("consultants.messageBlockedCta")}
+            </Button>
+          </Stack>
+        </Box>
+      </Dialog>
     </Box>
   );
 }

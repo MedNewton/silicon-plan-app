@@ -13,10 +13,10 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const search = searchParams.get("search") || undefined;
-    const industry = searchParams.get("industry") || undefined;
-    const country = searchParams.get("country") || undefined;
-    const availability = searchParams.get("availability") || undefined;
+    const search = searchParams.get("search") ?? undefined;
+    const industry = searchParams.get("industry") ?? undefined;
+    const country = searchParams.get("country") ?? undefined;
+    const availability = searchParams.get("availability") ?? undefined;
     const minRate = searchParams.get("minRate")
       ? Number(searchParams.get("minRate"))
       : undefined;

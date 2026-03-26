@@ -78,8 +78,8 @@ export default function ConsultantMessagesContent({
       setLoadingThreads(true);
       const res = await fetch("/api/messages");
       if (!res.ok) return;
-      const data = await res.json();
-      const allThreads = (data.threads ?? []) as Thread[];
+      const data = (await res.json()) as { threads?: Thread[] };
+      const allThreads = data.threads ?? [];
       setThreads(allThreads);
 
       // Auto-select: if consultantId is provided, pick the thread for that consultant
@@ -107,8 +107,8 @@ export default function ConsultantMessagesContent({
       setLoadingMessages(true);
       const res = await fetch(`/api/messages/${selectedThreadId}`);
       if (!res.ok) return;
-      const data = await res.json();
-      setMessages((data.messages ?? []) as Message[]);
+      const data = (await res.json()) as { messages?: Message[]; consultantName?: string };
+      setMessages(data.messages ?? []);
       setConsultantName(data.consultantName ?? "");
     } catch (err) {
       console.error("Failed to load messages", err);
