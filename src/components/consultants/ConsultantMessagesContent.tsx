@@ -160,14 +160,27 @@ export default function ConsultantMessagesContent({
 
       if (!threadId) return;
 
-      const res = await fetch(`/api/messages/${threadId}`, {
+      const sendRes = await fetch(`/api/messages/${threadId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text }),
       });
-      if (!res.ok) throw new Error("Failed to send");
-      await fetchMessages();
-      await fetchThreads();
+      if (!sendRes.ok) throw new Error("Failed to send");
+
+      // Reload messages directly using threadId (avoids stale closure)
+      const msgRes = await fetch(`/api/messages/${threadId}`);
+      if (msgRes.ok) {
+        const msgData = (await msgRes.json()) as { messages?: Message[]; consultantName?: string };
+        setMessages(msgData.messages ?? []);
+        if (msgData.consultantName) setConsultantName(msgData.consultantName);
+      }
+
+      // Reload thread list
+      const threadRes = await fetch("/api/messages");
+      if (threadRes.ok) {
+        const threadData = (await threadRes.json()) as { threads?: Thread[] };
+        setThreads(threadData.threads ?? []);
+      }
     } catch (err) {
       console.error("Failed to send message", err);
     } finally {
