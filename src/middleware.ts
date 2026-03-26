@@ -9,9 +9,14 @@ const isProtectedRoute = createRouteMatcher([
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
-  // 1) Auth gate: protect selected routes
   if (isProtectedRoute(req)) {
-    await auth.protect(); // will redirect to your Clerk sign-in URL (set to /auth)
+    const { userId } = await auth();
+    if (!userId) {
+      const redirectUrl = req.nextUrl.pathname + req.nextUrl.search;
+      const signInUrl = new URL("/auth", req.url);
+      signInUrl.searchParams.set("redirect_url", redirectUrl);
+      return NextResponse.redirect(signInUrl);
+    }
   }
 
   return NextResponse.next();
