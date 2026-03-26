@@ -159,3 +159,90 @@ export async function cancelBooking(bookingId: string, userId: string): Promise<
     .update({ status: "cancelled" })
     .eq("id", bookingId);
 }
+
+// ── Get available slots for a consultant ──
+
+export async function getAvailableSlots(consultantId: string): Promise<
+  { id: string; date: string; start_time: string; end_time: string }[]
+> {
+  const client = getSupabaseClient();
+  const today = new Date().toISOString().split("T")[0];
+
+  const { data, error } = await client
+    .from("consultant_availability")
+    .select("id, date, start_time, end_time")
+    .eq("consultant_id", consultantId)
+    .eq("is_booked", false)
+    .gte("date", today)
+    .order("date", { ascending: true })
+    .order("start_time", { ascending: true });
+
+  if (error) throw new Error(`Failed to load slots: ${error.message}`);
+  return (data ?? []) as { id: string; date: string; start_time: string; end_time: string }[];
+}
+
+// ── Update booking details (day, time, comment) ──
+
+export async function updateBookingDetails(
+  bookingId: string,
+  userId: string,
+  newSlotId: string,
+  userComment: string,
+): Promise<void> {
+  const client = getSupabaseClient();
+
+  // 1. Load the booking and verify ownership
+  const { data: bookingData, error: bookingErr } = await client
+    .from("bookings")
+    .select("*")
+    .eq("id", bookingId)
+    .eq("user_id", userId)
+    .single();
+
+  if (bookingErr || !bookingData) throw new Error("Booking not found");
+  const booking = bookingData as Booking;
+  if (booking.status === "cancelled" || booking.status === "finished") {
+    throw new Error("Cannot modify this booking");
+  }
+
+  // 2. Load and lock the new slot
+  const { data: newSlotData, error: slotErr } = await client
+    .from("consultant_availability")
+    .select("*")
+    .eq("id", newSlotId)
+    .eq("is_booked", false)
+    .single();
+
+  if (slotErr || !newSlotData) throw new Error("Time slot is no longer available");
+  const newSlot = newSlotData as { id: string; date: string; start_time: string; end_time: string };
+
+  // 3. Free the old slot (find by consultant + date + time match)
+  await client
+    .from("consultant_availability")
+    .update({ is_booked: false })
+    .eq("consultant_id", booking.consultant_id)
+    .eq("date", booking.booking_date)
+    .eq("start_time", booking.start_time)
+    .eq("end_time", booking.end_time);
+
+  // 4. Mark new slot as booked
+  const { error: markErr } = await client
+    .from("consultant_availability")
+    .update({ is_booked: true })
+    .eq("id", newSlotId)
+    .eq("is_booked", false);
+  if (markErr) throw new Error("Failed to reserve new time slot");
+
+  // 5. Update the booking
+  const { error: updateErr } = await client
+    .from("bookings")
+    .update({
+      booking_date: newSlot.date,
+      start_time: newSlot.start_time,
+      end_time: newSlot.end_time,
+      user_comment: userComment,
+    })
+    .eq("id", bookingId);
+
+  if (updateErr) throw new Error(`Failed to update booking: ${updateErr.message}`);
+}

@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Box, Typography, Chip, Skeleton, Button, Stack, Divider, Drawer, IconButton, CircularProgress, Dialog } from "@mui/material";
+import { Box, Typography, Chip, Skeleton, Button, Stack, Divider, Drawer, IconButton, CircularProgress, Dialog, TextField } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import CloseIcon from "@mui/icons-material/Close";
 import SendOutlinedIcon from "@mui/icons-material/SendOutlined";
@@ -634,6 +634,57 @@ function BookingInfoDrawer({
   const [cancelling, setCancelling] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
+  // Edit mode state
+  const [editing, setEditing] = useState(false);
+  const [slots, setSlots] = useState<{ id: string; date: string; start_time: string; end_time: string }[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [editComment, setEditComment] = useState(booking.user_comment);
+  const [saving, setSaving] = useState(false);
+
+  const startEditing = async () => {
+    setEditing(true);
+    setLoadingSlots(true);
+    setEditComment(booking.user_comment);
+    setSelectedDay(null);
+    setSelectedSlot(null);
+    try {
+      const res = await fetch(`/api/consultants/${booking.consultant_id}/slots`);
+      if (!res.ok) throw new Error("Failed to load slots");
+      const data = (await res.json()) as { slots: { id: string; date: string; start_time: string; end_time: string }[] };
+      setSlots(data.slots ?? []);
+    } catch (err) {
+      console.error("Failed to load available slots", err);
+    } finally {
+      setLoadingSlots(false);
+    }
+  };
+
+  const uniqueDates = [...new Set(slots.map((s) => s.date))];
+  const selectedDateStr = selectedDay !== null ? uniqueDates[selectedDay] ?? null : null;
+  const slotsForDay = selectedDateStr ? slots.filter((s) => s.date === selectedDateStr) : [];
+
+  const handleSave = async () => {
+    if (!selectedSlot) return;
+    try {
+      setSaving(true);
+      const res = await fetch(`/api/bookings/${booking.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slotId: selectedSlot, userComment: editComment }),
+      });
+      if (!res.ok) throw new Error("Failed to update");
+      setEditing(false);
+      onRefresh();
+      onClose();
+    } catch (err) {
+      console.error("Failed to update booking", err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleCancel = async () => {
     setShowCancelConfirm(false);
     try {
@@ -717,38 +768,147 @@ function BookingInfoDrawer({
 
       {/* Scrollable content */}
       <Box sx={{ flex: 1, overflowY: "auto", px: 3, pb: 3 }}>
-        {/* Consultant / Service / Description / Comment */}
-        <Box sx={{ border: "1px solid #E2E8F0", borderRadius: 3, mb: 2 }}>
-          <InfoRow
-            label={t("bookings.consultant")}
-            value={booking.consultantName}
-            icon={<SendOutlinedIcon sx={{ fontSize: 18, color: "#64748B", transform: "rotate(-45deg)" }} />}
-          />
-          <InfoRow label={t("bookings.service")} value={booking.type} />
-          {booking.user_comment && (
-            <Box sx={{ py: 1.5, px: 2.5 }}>
-              <Typography sx={{ fontSize: 14, color: "text.secondary", mb: 1 }}>
-                {t("bookings.yourComment")}
-              </Typography>
-              <Typography sx={{ fontSize: 14, fontWeight: 500, color: "#1E2B42", textAlign: "right" }}>
-                {booking.user_comment}
-              </Typography>
+        {editing ? (
+          /* ── Edit mode ── */
+          <>
+            {loadingSlots ? (
+              <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
+                <CircularProgress size={32} />
+              </Box>
+            ) : (
+              <>
+                {/* Select day */}
+                <Typography sx={{ fontSize: 14, fontWeight: 700, color: "#1E2B42", mb: 1.5 }}>
+                  {t("bookings.editSelectDay")}
+                </Typography>
+                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mb: 3 }}>
+                  {uniqueDates.map((date, i) => {
+                    const d = new Date(date + "T00:00:00");
+                    const label = `${String(d.getDate()).padStart(2, "0")} ${d.toLocaleString("en", { month: "short" })}`;
+                    const isSelected = selectedDay === i;
+                    return (
+                      <Button
+                        key={date}
+                        variant={isSelected ? "contained" : "outlined"}
+                        onClick={() => { setSelectedDay(i); setSelectedSlot(null); }}
+                        sx={{
+                          textTransform: "none",
+                          borderRadius: 2,
+                          fontSize: 13,
+                          fontWeight: 600,
+                          px: 2,
+                          py: 0.8,
+                          minWidth: 0,
+                          ...(isSelected
+                            ? { bgcolor: "#3B5998", "&:hover": { bgcolor: "#2D4A7A" } }
+                            : { borderColor: "#E2E8F0", color: "#1E2B42", "&:hover": { borderColor: "#CBD5E1", bgcolor: "#F8FAFC" } }),
+                        }}
+                      >
+                        {label}
+                      </Button>
+                    );
+                  })}
+                  {uniqueDates.length === 0 && (
+                    <Typography sx={{ fontSize: 13, color: "text.secondary" }}>
+                      {t("bookings.editNoSlots")}
+                    </Typography>
+                  )}
+                </Box>
+
+                {/* Select time */}
+                {selectedDay !== null && (
+                  <>
+                    <Typography sx={{ fontSize: 14, fontWeight: 700, color: "#1E2B42", mb: 1.5 }}>
+                      {t("bookings.editSelectTime")}
+                    </Typography>
+                    <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mb: 3 }}>
+                      {slotsForDay.map((s) => {
+                        const label = `${s.start_time.slice(0, 5)}–${s.end_time.slice(0, 5)}`;
+                        const isSelected = selectedSlot === s.id;
+                        return (
+                          <Button
+                            key={s.id}
+                            variant={isSelected ? "contained" : "outlined"}
+                            onClick={() => setSelectedSlot(s.id)}
+                            sx={{
+                              textTransform: "none",
+                              borderRadius: 2,
+                              fontSize: 13,
+                              fontWeight: 600,
+                              px: 2,
+                              py: 0.8,
+                              minWidth: 0,
+                              ...(isSelected
+                                ? { bgcolor: "#3B5998", "&:hover": { bgcolor: "#2D4A7A" } }
+                                : { borderColor: "#E2E8F0", color: "#1E2B42", "&:hover": { borderColor: "#CBD5E1", bgcolor: "#F8FAFC" } }),
+                            }}
+                          >
+                            {label}
+                          </Button>
+                        );
+                      })}
+                    </Box>
+                  </>
+                )}
+
+                {/* Edit comment */}
+                <Typography sx={{ fontSize: 14, fontWeight: 700, color: "#1E2B42", mb: 1.5 }}>
+                  {t("bookings.editComment")}
+                </Typography>
+                <TextField
+                  fullWidth
+                  multiline
+                  minRows={3}
+                  value={editComment}
+                  onChange={(e) => setEditComment(e.target.value)}
+                  placeholder={t("bookings.editCommentPlaceholder")}
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: 2,
+                      fontSize: 13,
+                    },
+                  }}
+                />
+              </>
+            )}
+          </>
+        ) : (
+          /* ── View mode ── */
+          <>
+            {/* Consultant / Service / Description / Comment */}
+            <Box sx={{ border: "1px solid #E2E8F0", borderRadius: 3, mb: 2 }}>
+              <InfoRow
+                label={t("bookings.consultant")}
+                value={booking.consultantName}
+                icon={<SendOutlinedIcon sx={{ fontSize: 18, color: "#64748B", transform: "rotate(-45deg)" }} />}
+              />
+              <InfoRow label={t("bookings.service")} value={booking.type} />
+              {booking.user_comment && (
+                <Box sx={{ py: 1.5, px: 2.5 }}>
+                  <Typography sx={{ fontSize: 14, color: "text.secondary", mb: 1 }}>
+                    {t("bookings.yourComment")}
+                  </Typography>
+                  <Typography sx={{ fontSize: 14, fontWeight: 500, color: "#1E2B42", textAlign: "right" }}>
+                    {booking.user_comment}
+                  </Typography>
+                </Box>
+              )}
             </Box>
-          )}
-        </Box>
 
-        {/* Date / Time / Duration */}
-        <Box sx={{ border: "1px solid #E2E8F0", borderRadius: 3, mb: 2 }}>
-          <InfoRow label={t("bookings.date")} value={formatDrawerDate(booking.booking_date)} />
-          <InfoRow label={t("bookings.time")} value={formatTimeRange(booking.start_time, booking.end_time)} />
-          <InfoRow label={t("bookings.duration")} value={formatDuration(booking.duration_minutes)} />
-        </Box>
+            {/* Date / Time / Duration */}
+            <Box sx={{ border: "1px solid #E2E8F0", borderRadius: 3, mb: 2 }}>
+              <InfoRow label={t("bookings.date")} value={formatDrawerDate(booking.booking_date)} />
+              <InfoRow label={t("bookings.time")} value={formatTimeRange(booking.start_time, booking.end_time)} />
+              <InfoRow label={t("bookings.duration")} value={formatDuration(booking.duration_minutes)} />
+            </Box>
 
-        {/* Cost / Payment */}
-        <Box sx={{ border: "1px solid #E2E8F0", borderRadius: 3 }}>
-          <InfoRow label={t("bookings.costOfSession")} value={`$${booking.cost}`} />
-          <InfoRow label={t("bookings.paymentStatus")} value={booking.payment_status.charAt(0).toUpperCase() + booking.payment_status.slice(1)} />
-        </Box>
+            {/* Cost / Payment */}
+            <Box sx={{ border: "1px solid #E2E8F0", borderRadius: 3 }}>
+              <InfoRow label={t("bookings.costOfSession")} value={`$${booking.cost}`} />
+              <InfoRow label={t("bookings.paymentStatus")} value={booking.payment_status.charAt(0).toUpperCase() + booking.payment_status.slice(1)} />
+            </Box>
+          </>
+        )}
       </Box>
 
       {/* Footer buttons */}
@@ -757,13 +917,53 @@ function BookingInfoDrawer({
           sx={{
             display: "flex",
             alignItems: "center",
-            justifyContent: booking.status === "finished" ? "center" : "space-between",
+            justifyContent: editing || booking.status === "finished" ? "center" : "space-between",
             px: 3,
             py: 2.5,
             borderTop: "1px solid #E2E8F0",
+            gap: 1.5,
           }}
         >
-          {booking.status === "finished" ? (
+          {editing ? (
+            /* Edit mode footer */
+            <>
+              <Button
+                variant="outlined"
+                fullWidth
+                onClick={() => setEditing(false)}
+                sx={{
+                  textTransform: "none",
+                  borderRadius: 2.5,
+                  borderColor: "#E2E8F0",
+                  color: "#1E2B42",
+                  fontWeight: 600,
+                  fontSize: 13,
+                  py: 1,
+                  "&:hover": { borderColor: "#CBD5E1", bgcolor: "#F8FAFC" },
+                }}
+              >
+                {t("bookings.editCancel")}
+              </Button>
+              <Button
+                variant="contained"
+                fullWidth
+                disabled={!selectedSlot || saving}
+                onClick={() => void handleSave()}
+                sx={{
+                  textTransform: "none",
+                  borderRadius: 2.5,
+                  bgcolor: "#3B5998",
+                  fontWeight: 600,
+                  fontSize: 13,
+                  py: 1,
+                  "&:hover": { bgcolor: "#2D4A7A" },
+                  "&.Mui-disabled": { bgcolor: "#3B5998", color: "#fff", opacity: 0.45 },
+                }}
+              >
+                {saving ? "..." : t("bookings.editSave")}
+              </Button>
+            </>
+          ) : booking.status === "finished" ? (
             <Button
               variant="contained"
               fullWidth
@@ -804,6 +1004,7 @@ function BookingInfoDrawer({
               <Stack direction="row" spacing={1.5}>
                 <Button
                   variant="outlined"
+                  onClick={() => void startEditing()}
                   sx={{
                     textTransform: "none",
                     borderRadius: 2.5,
