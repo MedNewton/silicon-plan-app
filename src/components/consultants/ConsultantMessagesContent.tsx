@@ -100,6 +100,16 @@ export default function ConsultantMessagesContent({
     void fetchThreads();
   }, [fetchThreads]);
 
+  // Load consultant name when opening for a specific consultant with no thread yet
+  useEffect(() => {
+    if (consultantId && !selectedThreadId && threads.length === 0) {
+      fetch(`/api/consultants/${consultantId}`)
+        .then((r) => r.json() as Promise<{ name?: string }>)
+        .then((data) => { if (data.name) setConsultantName(data.name); })
+        .catch(() => undefined);
+    }
+  }, [consultantId, selectedThreadId, threads.length]);
+
   // Load messages for selected thread
   const fetchMessages = useCallback(async () => {
     if (!selectedThreadId) return;
@@ -128,17 +138,36 @@ export default function ConsultantMessagesContent({
 
   const handleSend = async () => {
     const text = messageText.trim();
-    if (!text || !selectedThreadId) return;
+    if (!text) return;
     try {
       setSending(true);
       setMessageText("");
-      const res = await fetch(`/api/messages/${selectedThreadId}`, {
+
+      let threadId = selectedThreadId;
+
+      // If no thread exists yet, create one
+      if (!threadId && consultantId) {
+        const createRes = await fetch("/api/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ consultantId }),
+        });
+        if (!createRes.ok) throw new Error("Failed to create thread");
+        const createData = (await createRes.json()) as { thread: { id: string } };
+        threadId = createData.thread.id;
+        setSelectedThreadId(threadId);
+      }
+
+      if (!threadId) return;
+
+      const res = await fetch(`/api/messages/${threadId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text }),
       });
       if (!res.ok) throw new Error("Failed to send");
       await fetchMessages();
+      await fetchThreads();
     } catch (err) {
       console.error("Failed to send message", err);
     } finally {

@@ -121,6 +121,36 @@ export async function listThreadMessages(
   };
 }
 
+// ── Get or create a thread ──
+
+export async function getOrCreateThread(
+  userId: string,
+  consultantId: string,
+): Promise<MessageThread> {
+  const client = getSupabaseClient();
+
+  // Check for existing thread
+  const { data: existing } = await client
+    .from("message_threads")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("consultant_id", consultantId)
+    .limit(1);
+
+  const threads = (existing ?? []) as MessageThread[];
+  if (threads.length > 0) return threads[0]!;
+
+  // Create new thread
+  const { data: newThread, error } = await client
+    .from("message_threads")
+    .insert({ user_id: userId, consultant_id: consultantId })
+    .select("*")
+    .single();
+
+  if (error || !newThread) throw new Error(`Failed to create thread: ${error?.message}`);
+  return newThread as MessageThread;
+}
+
 // ── Send message ──
 
 export async function sendMessage(
