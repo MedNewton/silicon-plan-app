@@ -123,13 +123,13 @@ export default function ConsultantsContent({ onNavigateToBookings, initialConsul
   // Fetch filter options + favorites once
   useEffect(() => {
     fetch("/api/consultants/filters")
-      .then((r) => r.json())
+      .then((r) => r.json() as Promise<{ industries: string[]; countries: string[]; availabilities: string[]; serviceTypes: string[]; rateBuckets: RateBucket[] }>)
       .then((data) => setFilterOptions(data))
-      .catch(() => {});
+      .catch(() => undefined);
     fetch("/api/consultants/favorites")
-      .then((r) => r.json())
+      .then((r) => r.json() as Promise<{ favoriteIds?: string[] }>)
       .then((data) => setFavoriteIds(new Set(data.favoriteIds ?? [])))
-      .catch(() => {});
+      .catch(() => undefined);
   }, []);
 
   const toggleFavorite = async (consultantId: string) => {
@@ -175,7 +175,7 @@ export default function ConsultantsContent({ onNavigateToBookings, initialConsul
       const qs = params.toString();
       const res = await fetch(`/api/consultants${qs ? `?${qs}` : ""}`);
       if (!res.ok) throw new Error("Failed to fetch");
-      const data = await res.json();
+      const data = (await res.json()) as { consultants?: ConsultantListItem[] };
       setConsultants(data.consultants ?? []);
     } catch (err) {
       console.error("Failed to load consultants", err);
@@ -804,7 +804,7 @@ function ReviewModal({
 
   useEffect(() => {
     fetch(`/api/consultants/${consultantId}/reviews`)
-      .then((r) => r.json())
+      .then((r) => r.json() as Promise<{ allowed: boolean; hasExistingReview: boolean }>)
       .then((data) => setEligibility(data))
       .catch(() => setEligibility({ allowed: false, hasExistingReview: false }))
       .finally(() => setLoading(false));
@@ -821,8 +821,8 @@ function ReviewModal({
         body: JSON.stringify({ rating, text: text.trim() }),
       });
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to submit");
+        const data = (await res.json()) as { error?: string };
+        throw new Error(data.error ?? "Failed to submit");
       }
       onSubmitted();
     } catch (err) {

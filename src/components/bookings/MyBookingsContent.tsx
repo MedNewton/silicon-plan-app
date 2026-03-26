@@ -81,8 +81,7 @@ export default function MyBookingsContent({ onNavigateToConsultants, onNavigateT
       setLoading(true);
       const res = await fetch("/api/bookings");
       if (!res.ok) throw new Error("Failed to fetch");
-      const data = await res.json();
-      const raw = (data.bookings ?? []) as Array<{
+      const data = (await res.json()) as { bookings?: Array<{
         id: string;
         consultant_id: string;
         consultant_name: string;
@@ -96,7 +95,8 @@ export default function MyBookingsContent({ onNavigateToConsultants, onNavigateT
         cost: number;
         payment_status: string;
         user_comment: string;
-      }>;
+      }> };
+      const raw = data.bookings ?? [];
       setBookings(
         raw.map((b) => ({
           id: b.id,

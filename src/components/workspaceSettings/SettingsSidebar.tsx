@@ -14,7 +14,6 @@ import { useRouter } from "next/navigation";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import PersonOutlineOutlinedIcon from "@mui/icons-material/PersonOutlineOutlined";
 import BookmarkBorderOutlinedIcon from "@mui/icons-material/BookmarkBorderOutlined";
-import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
 import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import MenuOpenIcon from "@mui/icons-material/MenuOpen";
