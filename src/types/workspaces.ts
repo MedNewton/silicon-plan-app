@@ -10,6 +10,9 @@ export type WorkspaceAiKnowledgeId = string;
 export type WorkspaceAiLibraryEventId = string;
 export type WorkspaceCanvasModelId = string;
 
+// Financial Projections ID
+export type WorkspaceFinancialProjectionId = string;
+
 // Business Plan IDs
 export type BusinessPlanId = string;
 export type BusinessPlanChapterId = string;
@@ -1029,4 +1032,16 @@ export type Message = {
   sender_user_id: UserId;
   text: string;
   created_at: string;
+};
+
+// ========== FINANCIAL PROJECTIONS ==========
+
+export type WorkspaceFinancialProjection = {
+  id: WorkspaceFinancialProjectionId;
+  workspace_id: WorkspaceId;
+  financial_data: Record<string, unknown>;
+  industry_classification: Record<string, unknown> | null;
+  valuation_results: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
 };

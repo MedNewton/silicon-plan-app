@@ -31,6 +31,7 @@ import type {
   MessageThread,
   Message,
   ConsultantFavorite,
+  WorkspaceFinancialProjection,
 } from "@/types/workspaces";
 
 export type Database = {
@@ -848,6 +849,35 @@ export type Database = {
             foreignKeyName: "consultant_favorites_consultant_id_fkey";
             columns: ["consultant_id"];
             referencedRelation: "consultants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      workspace_financial_projections: {
+        Row: WorkspaceFinancialProjection;
+        Insert: {
+          id?: string;
+          workspace_id: string;
+          financial_data?: Record<string, unknown>;
+          industry_classification?: Record<string, unknown> | null;
+          valuation_results?: Record<string, unknown> | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          workspace_id?: string;
+          financial_data?: Record<string, unknown>;
+          industry_classification?: Record<string, unknown> | null;
+          valuation_results?: Record<string, unknown> | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "workspace_financial_projections_workspace_id_fkey";
+            columns: ["workspace_id"];
+            referencedRelation: "workspaces";
             referencedColumns: ["id"];
           },
         ];

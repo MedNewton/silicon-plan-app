@@ -49,6 +49,7 @@ yarn-error.log*
 
 # Ignore Markdown files…
 *.md
+*.pdf
 
 # …except README
 !README.md

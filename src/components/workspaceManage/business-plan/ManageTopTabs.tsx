@@ -5,10 +5,11 @@ import type { FC } from "react";
 import { Box, Button, CircularProgress, Stack } from "@mui/material";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
+import CalculateOutlinedIcon from "@mui/icons-material/CalculateOutlined";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
 
-export type ManageTopTab = "plan" | "download";
+export type ManageTopTab = "plan" | "financials" | "download";
 
 export type ManageTopTabsProps = Readonly<{
   activeTab: ManageTopTab;
@@ -27,6 +28,7 @@ const ManageTopTabs: FC<ManageTopTabsProps> = ({
   isGenerating,
 }) => {
   const isPlanActive = activeTab === "plan";
+  const isFinancialsActive = activeTab === "financials";
   const isDownloadActive = activeTab === "download";
   const { t } = useLanguage();
 
@@ -79,6 +81,45 @@ const ManageTopTabs: FC<ManageTopTabsProps> = ({
             }}
           >
             {t("topTabs.plan")}
+          </Button>
+        </Box>
+
+        {/* FINANCIALS */}
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            borderBottom: isFinancialsActive
+              ? `2px solid ${ACTIVE_COLOR}`
+              : "2px solid transparent",
+            pb: 0.5,
+          }}
+        >
+          <Button
+            disableRipple
+            onClick={() => onTabChange("financials")}
+            startIcon={
+              <CalculateOutlinedIcon
+                sx={{
+                  fontSize: 20,
+                  color: isFinancialsActive ? ACTIVE_COLOR : INACTIVE_COLOR,
+                }}
+              />
+            }
+            sx={{
+              textTransform: "none",
+              fontSize: 14,
+              fontWeight: isFinancialsActive ? 700 : 600,
+              px: 0,
+              minWidth: "auto",
+              color: isFinancialsActive ? ACTIVE_COLOR : INACTIVE_COLOR,
+              bgcolor: "transparent",
+              "&:hover": {
+                bgcolor: "transparent",
+              },
+            }}
+          >
+            {t("topTabs.financials")}
           </Button>
         </Box>
 

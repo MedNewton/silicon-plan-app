@@ -17,6 +17,8 @@ import {
   useBusinessPlan,
 } from "@/components/workspaceManage/business-plan/BusinessPlanContext";
 import ConfirmGenerateModal from "@/components/workspaceManage/business-plan/ConfirmGenerateModal";
+import FinancialProjectionsPage from "@/components/valuation/FinancialProjectionsPage";
+import { FinancialProjectionsProvider } from "@/components/valuation/FinancialProjectionsContext";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 type Props = {
@@ -184,7 +186,7 @@ function ManageBusinessPlanPageInner({
           onCancel={() => setShowGenerateModal(false)}
         />
 
-        {showSourcePriorityBanner && chapters.length > 0 && (
+        {activeTopTab !== "financials" && showSourcePriorityBanner && chapters.length > 0 && (
           <Alert
             severity="info"
             sx={{
@@ -208,25 +210,31 @@ function ManageBusinessPlanPageInner({
           </Alert>
         )}
 
-        <Box
-          sx={{
-            flex: 1,
-            display: "flex",
-            minHeight: 0,
-            overflow: "hidden",
-          }}
-        >
-          <ManageBusinessPlanContentArea
-            activeTopTab={activeTopTab}
-            activeAiTab={activeAiTab}
-            onAiTabChange={setActiveAiTab}
-          />
+        {activeTopTab === "financials" ? (
+          <FinancialProjectionsProvider workspaceId={workspaceId}>
+            <FinancialProjectionsPage />
+          </FinancialProjectionsProvider>
+        ) : (
+          <Box
+            sx={{
+              flex: 1,
+              display: "flex",
+              minHeight: 0,
+              overflow: "hidden",
+            }}
+          >
+            <ManageBusinessPlanContentArea
+              activeTopTab={activeTopTab}
+              activeAiTab={activeAiTab}
+              onAiTabChange={setActiveAiTab}
+            />
 
-          <ManageActionArea
-            activeTopTab={activeTopTab}
-            workspaceId={workspaceId}
-          />
-        </Box>
+            <ManageActionArea
+              activeTopTab={activeTopTab}
+              workspaceId={workspaceId}
+            />
+          </Box>
+        )}
       </Box>
     </Box>
   );

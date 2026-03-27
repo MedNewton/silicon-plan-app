@@ -43,12 +43,21 @@ import type {
   BusinessPlanSectionContent,
 } from "@/types/workspaces";
 import { buildBusinessPlanHtml, buildBusinessPlanDocx } from "@/lib/businessPlanExport";
-import { A4_MARGIN_CM, A4_MARGIN_MM, sanitizeFileName } from "@/lib/exportStyles";
+import { buildValuationHtml } from "@/lib/valuation/valuationExportHtml";
+import { buildValuationDocxSections } from "@/lib/valuation/valuationExportDocx";
+import { A4_MARGIN_CM, A4_MARGIN_MM, A4_MARGIN_TWIP, sanitizeFileName } from "@/lib/exportStyles";
 import {
   fetchWorkspaceBranding,
   fetchImageAsDataUrl,
   fetchImageAsUint8Array,
 } from "@/lib/workspaceBranding";
+import type {
+  FinancialProjectionData,
+  IndustryClassification,
+} from "@/types/financialProjections";
+import type { FullValuationResults } from "@/types/valuation";
+
+type ExportScope = "business-plan" | "valuation" | "complete";
 
 type RightPlanTab = "sections" | "finance" | "charts";
 
@@ -202,6 +211,7 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
   const [isSavingFinanceSection, setIsSavingFinanceSection] = useState(false);
   const [exportAnchorEl, setExportAnchorEl] = useState<null | HTMLElement>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [exportScope, setExportScope] = useState<ExportScope>("business-plan");
 
   const copy =
     locale === "it"
@@ -258,6 +268,10 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
           colorBlue: "Blu",
           colorNavy: "Blu notte",
           colorBlack: "Nero",
+          exportScope: "Contenuto export",
+          scopeBusinessPlan: "Solo Business Plan",
+          scopeValuation: "Solo Valutazione",
+          scopeComplete: "Completo (Entrambi)",
         }
       : {
           rightTabSections: "Sections",
@@ -310,6 +324,10 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
           colorBlue: "Blue",
           colorNavy: "Navy",
           colorBlack: "Black",
+          exportScope: "Export Content",
+          scopeBusinessPlan: "Business Plan Only",
+          scopeValuation: "Valuation Only",
+          scopeComplete: "Complete (Both)",
         };
 
   const sectionToolLabels: Record<string, string> =
@@ -472,15 +490,43 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
 
   const exportCurrencyCode = businessPlan?.export_settings?.currency_code ?? currencyCode;
 
+  // Fetch valuation data for export when scope includes valuation
+  const fetchValuationData = async (): Promise<{
+    financialData: FinancialProjectionData;
+    industryClassification: IndustryClassification;
+    valuationResults: FullValuationResults;
+  } | null> => {
+    try {
+      const res = await fetch(`/api/workspaces/${workspaceId}/financial-projections`);
+      if (!res.ok) return null;
+      const json = (await res.json()) as {
+        financialData: FinancialProjectionData | null;
+        industryClassification: IndustryClassification | null;
+        valuationResults: FullValuationResults | null;
+      };
+      if (!json.financialData || !json.industryClassification || !json.valuationResults) return null;
+      return {
+        financialData: json.financialData,
+        industryClassification: json.industryClassification,
+        valuationResults: json.valuationResults,
+      };
+    } catch {
+      return null;
+    }
+  };
+
   const handleExport = async (format: "pdf" | "docx") => {
-    if (!businessPlan) {
+    if (exportScope !== "valuation" && !businessPlan) {
       toast.error(copy.toastNoBusinessPlan);
       return;
     }
 
     setIsExporting(true);
     try {
-      const safeName = sanitizeFileName(businessPlan.title || "business-plan", "business-plan");
+      const safeName = sanitizeFileName(
+        businessPlan?.title || "business-plan",
+        "business-plan",
+      );
       const branding = includeBrandingExport
         ? await fetchWorkspaceBranding(workspaceId)
         : null;
@@ -490,34 +536,160 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
         ? await Promise.all([fetchImageAsDataUrl(logoUrl), fetchImageAsUint8Array(logoUrl)])
         : [null, null];
 
-      const html = buildBusinessPlanHtml(businessPlan, chapters, {
-        headingColor: headingColorValue,
-        fontFamily,
-        fontSize: Number(fontSize),
-        paperSize: paperSize as "A4" | "Letter" | "A3",
-        marginCm: A4_MARGIN_CM,
-        currencyCode: exportCurrencyCode,
-        logoDataUrl,
-        workspaceName,
-        locale,
-      });
+      const includeBusinessPlan = exportScope === "business-plan" || exportScope === "complete";
+      const includeValuation = exportScope === "valuation" || exportScope === "complete";
 
-      if (format === "docx") {
-        const blob = await buildBusinessPlanDocx(businessPlan, chapters, {
+      // Fetch valuation data if needed
+      let valuationData: Awaited<ReturnType<typeof fetchValuationData>> = null;
+      if (includeValuation) {
+        valuationData = await fetchValuationData();
+        if (!valuationData) {
+          toast.error(locale === "it"
+            ? "Nessun dato di valutazione. Calcola prima la valutazione nella scheda Finanziari."
+            : "No valuation data. Calculate valuation first in the Financials tab.");
+          setIsExporting(false);
+          return;
+        }
+      }
+
+      // Build business plan HTML
+      let html = "";
+      if (includeBusinessPlan && businessPlan) {
+        html += buildBusinessPlanHtml(businessPlan, chapters, {
           headingColor: headingColorValue,
           fontFamily,
+          fontSize: Number(fontSize),
           paperSize: paperSize as "A4" | "Letter" | "A3",
+          marginCm: A4_MARGIN_CM,
           currencyCode: exportCurrencyCode,
-          logoBytes,
+          logoDataUrl,
           workspaceName,
           locale,
         });
-        downloadBlob(blob, `${safeName}.docx`);
-        toast.success(copy.toastDocxExported);
+      }
+
+      // Append valuation HTML
+      if (includeValuation && valuationData) {
+        const valuationHtml = buildValuationHtml(
+          valuationData.financialData,
+          valuationData.industryClassification,
+          valuationData.valuationResults,
+          {
+            headingColor: headingColorValue,
+            fontFamily,
+            fontSize: Number(fontSize),
+            paperSize: paperSize as "A4" | "Letter" | "A3",
+            marginCm: A4_MARGIN_CM,
+            locale,
+            logoDataUrl: !includeBusinessPlan ? logoDataUrl : undefined,
+            workspaceName: !includeBusinessPlan ? workspaceName : undefined,
+          },
+        );
+
+        if (includeBusinessPlan && html) {
+          // Strip the outer HTML wrapper from valuation and just inject the body content
+          const bodyMatch = valuationHtml.match(/<body[^>]*>([\s\S]*)<\/body>/);
+          if (bodyMatch?.[1]) {
+            html = html.replace("</body>", `\n<div class="page-break"></div>\n${bodyMatch[1]}\n</body>`);
+          }
+        } else {
+          html = valuationHtml;
+        }
+      }
+
+      if (!html) {
+        toast.error(copy.toastNoBusinessPlan);
+        setIsExporting(false);
         return;
       }
 
-      // --- Single-pass html2canvas render, then slice into pages ---
+      if (format === "docx") {
+        // For DOCX with valuation, we need to handle differently
+        const { Document, Packer } = await import("docx");
+
+        let bpSections: import("docx").ISectionOptions[] = [];
+        if (includeBusinessPlan && businessPlan) {
+          const bpBlob = await buildBusinessPlanDocx(businessPlan, chapters, {
+            headingColor: headingColorValue,
+            fontFamily,
+            paperSize: paperSize as "A4" | "Letter" | "A3",
+            currencyCode: exportCurrencyCode,
+            logoBytes,
+            workspaceName,
+            locale,
+          });
+
+          // If only business plan, just download it
+          if (!includeValuation) {
+            downloadBlob(bpBlob, `${safeName}.docx`);
+            toast.success(copy.toastDocxExported);
+            return;
+          }
+        }
+
+        if (includeValuation && valuationData) {
+          const valSections = buildValuationDocxSections(
+            valuationData.financialData,
+            valuationData.industryClassification,
+            valuationData.valuationResults,
+            {
+              headingColor: headingColorValue,
+              fontFamily,
+              paperSize: paperSize as "A4" | "Letter" | "A3",
+              marginTwip: A4_MARGIN_TWIP,
+              locale,
+            },
+          );
+
+          if (includeBusinessPlan && businessPlan) {
+            // For complete DOCX, build BP first then append valuation sections
+            // Since buildBusinessPlanDocx returns a Blob directly, we need to
+            // just export the valuation part separately for now, or concatenate
+            const bpBlob = await buildBusinessPlanDocx(businessPlan, chapters, {
+              headingColor: headingColorValue,
+              fontFamily,
+              paperSize: paperSize as "A4" | "Letter" | "A3",
+              currencyCode: exportCurrencyCode,
+              logoBytes,
+              workspaceName,
+              locale,
+            });
+            // Download BP + Valuation as separate files for now
+            downloadBlob(bpBlob, `${safeName}.docx`);
+
+            const valDoc = new Document({ sections: valSections });
+            const valBuffer = await Packer.toBlob(valDoc);
+            downloadBlob(valBuffer, `${safeName}-valuation.docx`);
+            toast.success(copy.toastDocxExported);
+            return;
+          }
+
+          // Valuation only
+          const valDoc = new Document({ sections: valSections });
+          const valBuffer = await Packer.toBlob(valDoc);
+          downloadBlob(valBuffer, `${safeName}-valuation.docx`);
+          toast.success(copy.toastDocxExported);
+          return;
+        }
+
+        // Fallback: business plan only
+        if (businessPlan) {
+          const blob = await buildBusinessPlanDocx(businessPlan, chapters, {
+            headingColor: headingColorValue,
+            fontFamily,
+            paperSize: paperSize as "A4" | "Letter" | "A3",
+            currencyCode: exportCurrencyCode,
+            logoBytes,
+            workspaceName,
+            locale,
+          });
+          downloadBlob(blob, `${safeName}.docx`);
+          toast.success(copy.toastDocxExported);
+        }
+        return;
+      }
+
+      // --- PDF: Single-pass html2canvas render, then slice into pages ---
       const pdf = await renderHtmlToPdf(html, {
         paperSize: paperSize as "A4" | "Letter" | "A3",
         marginMm: A4_MARGIN_MM,
@@ -784,6 +956,35 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
                   },
                 }}
               />
+            </Box>
+
+            <Box>
+              <Typography
+                sx={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: "#4B5563",
+                  mb: 0.7,
+                }}
+              >
+                {copy.exportScope}
+              </Typography>
+              <FormControl fullWidth size="small">
+                <Select
+                  value={exportScope}
+                  onChange={(e: SelectChangeEvent<string>) =>
+                    setExportScope(e.target.value as ExportScope)
+                  }
+                  sx={{
+                    borderRadius: 2,
+                    bgcolor: "#FFFFFF",
+                  }}
+                >
+                  <MenuItem value="business-plan">{copy.scopeBusinessPlan}</MenuItem>
+                  <MenuItem value="valuation">{copy.scopeValuation}</MenuItem>
+                  <MenuItem value="complete">{copy.scopeComplete}</MenuItem>
+                </Select>
+              </FormControl>
             </Box>
           </Stack>
         </Box>
