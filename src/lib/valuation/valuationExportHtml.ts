@@ -37,7 +37,7 @@ const fmtDec = (v: number, d = 1) => v.toFixed(d);
 
 // ========== TABLE HELPERS ==========
 
-const tableStyle = (accent: string) => `
+const tableStyle = (_accent: string) => `
   border-collapse: collapse;
   width: 100%;
   font-size: 12px;

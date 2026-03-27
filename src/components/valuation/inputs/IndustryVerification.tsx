@@ -62,7 +62,7 @@ const IndustryVerification: FC<Props> = ({
     fetch("/api/sectors/damodaran")
       .then((r) => r.json())
       .then((data: { industries: string[] }) => setDamodaranIndustries(data.industries))
-      .catch(() => {});
+      .catch(() => undefined);
   }, []);
 
   // Search ATECO codes
@@ -71,7 +71,7 @@ const IndustryVerification: FC<Props> = ({
       fetch(`/api/sectors/ateco/search?q=${encodeURIComponent(atecoQuery)}`)
         .then((r) => r.json())
         .then((data: { results: AtecoResult[] }) => setAtecoResults(data.results))
-        .catch(() => {});
+        .catch(() => undefined);
     }, 300);
     return () => clearTimeout(timeout);
   }, [atecoQuery]);
@@ -94,10 +94,10 @@ const IndustryVerification: FC<Props> = ({
       };
 
       const sector =
-        (profile.raw_form_data?.industryOption as string) ||
-        profile.industry ||
+        (profile.raw_form_data?.industryOption as string) ??
+        profile.industry ??
         "";
-      const stage = profile.company_stage || "Early Stage";
+      const stage = profile.company_stage ?? "Early Stage";
 
       if (!sector) return;
 
@@ -239,7 +239,7 @@ const IndustryVerification: FC<Props> = ({
             getOptionLabel={(opt) =>
               typeof opt === "string" ? opt : opt.displayLabel
             }
-            inputValue={atecoQuery || ic?.atecoCode || ""}
+            inputValue={atecoQuery ?? ic?.atecoCode ?? ""}
             onInputChange={(_, val) => setAtecoQuery(val)}
             onChange={(_, val) => {
               if (val && typeof val !== "string" && ic) {

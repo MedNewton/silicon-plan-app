@@ -48,12 +48,6 @@ const THIN_BORDER = {
   color: "E5E7EB",
 };
 
-const NO_BORDER = {
-  style: BorderStyle.NONE,
-  size: 0,
-  color: "FFFFFF",
-};
-
 // ========== HELPERS ==========
 
 function heading(text: string, level: typeof HeadingLevel.HEADING_1 | typeof HeadingLevel.HEADING_2, color: string): Paragraph {

@@ -524,7 +524,7 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
     setIsExporting(true);
     try {
       const safeName = sanitizeFileName(
-        businessPlan?.title || "business-plan",
+        businessPlan?.title ?? "business-plan",
         "business-plan",
       );
       const branding = includeBrandingExport
@@ -588,7 +588,7 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
 
         if (includeBusinessPlan && html) {
           // Strip the outer HTML wrapper from valuation and just inject the body content
-          const bodyMatch = valuationHtml.match(/<body[^>]*>([\s\S]*)<\/body>/);
+          const bodyMatch = /<body[^>]*>([\s\S]*)<\/body>/.exec(valuationHtml);
           if (bodyMatch?.[1]) {
             html = html.replace("</body>", `\n<div class="page-break"></div>\n${bodyMatch[1]}\n</body>`);
           }
@@ -607,7 +607,6 @@ const ManageActionArea: FC<ManageActionAreaProps> = ({ activeTopTab, workspaceId
         // For DOCX with valuation, we need to handle differently
         const { Document, Packer } = await import("docx");
 
-        let bpSections: import("docx").ISectionOptions[] = [];
         if (includeBusinessPlan && businessPlan) {
           const bpBlob = await buildBusinessPlanDocx(businessPlan, chapters, {
             headingColor: headingColorValue,

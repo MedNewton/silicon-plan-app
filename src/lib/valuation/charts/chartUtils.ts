@@ -51,8 +51,8 @@ export const MUTED_COLOR = "#6B7280";
 
 export function formatCurrency(
   value: number,
-  locale: string = "en-US",
-  compact: boolean = true,
+  locale = "en-US",
+  compact = true,
 ): string {
   if (compact && Math.abs(value) >= 1_000_000) {
     return `${(value / 1_000_000).toFixed(1)}M`;
@@ -76,7 +76,7 @@ export function formatPercent(value: number): string {
 export function computeNiceScale(
   dataMin: number,
   dataMax: number,
-  targetTicks: number = 5,
+  targetTicks = 5,
 ): { min: number; max: number; ticks: number[] } {
   if (dataMin === dataMax) {
     const pad = Math.abs(dataMin) * 0.1 || 1;
